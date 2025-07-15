@@ -1,0 +1,9 @@
+## Title: CinematicCam
+## Author: YFNatey
+## Version: 1.0
+## APIVersion: 101046
+## SavedVariables: CinematicCameraSavedVars
+## ConsoleDependsOn: LibAddonMenu-2.0
+
+CinematicCam.lua
+CinematicCam.xml
