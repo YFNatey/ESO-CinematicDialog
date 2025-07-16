@@ -2,8 +2,10 @@
 ## Author: YFNatey
 ## Version: 1.0
 ## APIVersion: 101046
-## SavedVariables: CinematicCameraSavedVars
+## SavedVariables: CinematicCamSavedVars
 ## ConsoleDependsOn: LibAddonMenu-2.0
 
 CinematicCam.lua
+SettingsMenu.lua
 CinematicCam.xml
+
