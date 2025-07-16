@@ -15,6 +15,7 @@ local defaults = {
     customUiElements = {},
     hideUiElements = {},
     letterboxVisible = false,
+    uiVisible = true
 }
 -- UI elements to hide
 local uiElements = {
@@ -98,7 +99,7 @@ function CinematicCam:CameraZoom()
 end
 
 ---=============================================================================
--- Letterbox Bars
+-- Manage Letterbox Bars
 --=============================================================================
 function CinematicCam.ToggleLetterboxOnly()
     CinematicCam:ToggleLetterbox()
@@ -166,7 +167,6 @@ function CinematicCam:HideLetterbox()
     if CinematicCam_LetterboxTop:IsHidden() then
         return
     end
-
     local barHeight = self.savedVars.letterboxSize
 
     -- Create timeline for hide animation
@@ -196,9 +196,6 @@ function CinematicCam:HideLetterbox()
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
         self.savedVars.letterboxVisible = false
     end)
-
-
-
     -- Start the animation
     timeline:PlayFromStart()
 end
@@ -246,8 +243,14 @@ function CinematicCam:CalculateLetterboxSize()
     end
 end
 
--- Hide UI elements
+---=============================================================================
+-- Manage ESO UI Elements
+--=============================================================================
 function CinematicCam:HideUI()
+    if not self.savedVars.uiVisible then
+        return
+    end
+
     for _, elementName in ipairs(uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
@@ -265,14 +268,14 @@ function CinematicCam:HideUI()
             end
         end
     end
-
-    if self.savedVars.letterboxVisible then
-        self:ShowLetterbox()
-    end
+    self.savedVars.uiVisible = false
 end
 
 -- Show UI elements
 function CinematicCam:ShowUI()
+    if self.savedVars.uiVisible then
+        return
+    end
     for elementName, _ in pairs(hiddenElements) do
         local element = _G[elementName]
         if element then
@@ -280,14 +283,15 @@ function CinematicCam:ShowUI()
         end
     end
     hiddenElements = {}
+    self.savedVars.uiVisible = true
 end
 
 -- Toggle UI
 function CinematicCam:ToggleUI()
-    if next(hiddenElements) then
-        self:ShowUI()
-    else
+    if self.savedVars.uiVisible then
         self:HideUI()
+    else
+        self:ShowUI()
     end
 end
 
@@ -297,9 +301,10 @@ end
 local function Initialize()
     -- Load saved variables
     CinematicCam.savedVars = ZO_SavedVars:NewCharacterIdSettings("CinematicCamSavedVars", 1, nil, defaults)
+
+    -- Init letterbox bars savedVars
     if CinematicCam.savedVars.letterboxVisible then
         zo_callLater(function()
-            -- Show letterbox without animation on load
             CinematicCam_Container:SetHidden(false)
             CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
             CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
@@ -319,6 +324,28 @@ local function Initialize()
         end, 1500) -- Wait for UI to be ready
     end
 
+    -- Init UI saved Vars
+    if not CinematicCam.savedVars.uiVisible then
+        zo_callLater(function()
+            for _, elementName in ipairs(uiElements) do
+                local element = _G[elementName]
+                if element and not element:IsHidden() then
+                    hiddenElements[elementName] = true
+                    element:SetHidden(true)
+                end
+            end
+            for elementName, shouldHide in pairs(CinematicCam.savedVars.hideUiElements) do
+                if shouldHide then
+                    local element = _G[elementName]
+                    if element and not element:IsHidden() then
+                        hiddenElements[elementName] = true
+                        element:SetHidden(true)
+                    end
+                end
+            end
+        end, 1600)
+    end
+
     -- Register slash commands
     SLASH_COMMANDS["/ccui"] = function()
         CinematicCam:ToggleUI()
@@ -327,7 +354,6 @@ local function Initialize()
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
-
 
     -- Calculate letterbox size
     CinematicCam:CalculateLetterboxSize()
@@ -357,7 +383,6 @@ local function OnPlayerActivated(eventCode)
         zo_callLater(function()
             camEnabled = false
             CinematicCam:ShowUI()
-            -- CinematicCam:ToggleLetterbox()
         end, 100)
         for i = 1, 9 do
             CameraZoomIn()
