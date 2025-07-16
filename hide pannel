@@ -239,9 +239,7 @@ function CinematicCam:HideLetterbox()
         CinematicCam_LetterboxBottom:ClearAnchors()
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
-        self.savedVars.letterboxVisible = false
     end)
-
     -- Start the animation
     timeline:PlayFromStart()
 end
