@@ -209,8 +209,6 @@ function CinematicCam:HideLetterbox()
         return
     end
 
-    -- SET THE FLAG IMMEDIATELY, before animation starts
-    self.savedVars.letterboxVisible = false
 
     local barHeight = self.savedVars.letterboxSize
 
@@ -505,6 +503,12 @@ local function Initialize()
             CinematicCam_LetterboxBottom:SetDrawLevel(5)
             CinematicCam_LetterboxBottom:SetHidden(false)
         end, 1500) -- Wait for UI to be ready
+    else
+        zo_callLater(function()
+            CinematicCam_Container:SetHidden(false) -- Container can stay visible
+            CinematicCam_LetterboxTop:SetHidden(true)
+            CinematicCam_LetterboxBottom:SetHidden(true)
+        end, 1500)
     end
 
     -- Init UI saved Vars
@@ -541,18 +545,7 @@ local function Initialize()
         CinematicCam:ToggleThirdPersonDialogue()
     end
 
-    SLASH_COMMANDS["/ccdialogue"] = function()
-        CinematicCam:ToggleThirdPersonDialogue()
-    end
 
-    -- Register for camera events (for 3rd person dialogue)
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_DEACTIVATED, function()
-        CinematicCam:OnGameCameraDeactivated()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_ACTIVATED, function()
-        CinematicCam:OnGameCameraActivated()
-    end)
 
     -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()
@@ -598,6 +591,8 @@ local function Initialize()
         end, 2000)
     end, 100)
 end
+
+
 function CinematicCam:OnInteractionEnd()
     d("OnInteractionEnd called - isInBlockedInteraction: " .. tostring(isInBlockedInteraction))
     if isInBlockedInteraction then

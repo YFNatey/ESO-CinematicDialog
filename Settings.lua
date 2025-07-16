@@ -124,6 +124,16 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
+            name = "Hide NPC Dialogue UI Panels",
+            tooltip = "Hide the dialogue window, text, and choice panels during 3rd person dialogue",
+            getFunc = function() return self.savedVars.hideDialoguePanels end,
+            setFunc = function(value)
+                self.savedVars.hideDialoguePanels = value
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
             name = "3rd Person - NPC Dialogue",
             tooltip = "Keep camera in 3rd person when talking to NPCs",
             getFunc = function() return self.savedVars.forceThirdPersonDialogue end,
