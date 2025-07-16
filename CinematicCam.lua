@@ -9,12 +9,12 @@ local camTargetY = 0.99
 -- Default settings
 local defaults = {
     camEnabled = false,
-
     letterboxSize = 100,
     letterboxOpacity = 1.0,
     autoSizeLetterbox = true,
     customUiElements = {},
-    hideUiElements = {}
+    hideUiElements = {},
+    letterboxVisible = false,
 }
 -- UI elements to hide
 local uiElements = {
@@ -91,39 +91,10 @@ function CinematicCam:RegisterSceneCallbacks()
     end
 end
 
----=============================================================================
--- Restrictive Player focus camera
---=============================================================================
-local function ApplyPlayerFocusCamera()
-    if not IsPlayerMoving() then
-        SetFrameLocalPlayerInGameCamera(true)
-        SetFrameLocalPlayerTarget(camTargetX, camTargetY)
-        SetFrameLocalPlayerLookAtDistanceFactor(nil)
-    else
-        SetFrameLocalPlayerInGameCamera(false)
-    end
-end
-
--- Update camera settings immediately
-local function UpdateCamTargetX(value)
-    camTargetX = value
-    if camEnabled then
-        SetFrameLocalPlayerTarget(camTargetX, camTargetY)
-    end
-end
-
-local function UpdateCamTargetY(value)
-    camTargetY = value
-    if camEnabled then
-        SetFrameLocalPlayerTarget(camTargetX, camTargetY)
-    end
-end
-
 function CinematicCam:CameraZoom()
     -- Zoom in the camera
     local currentZoom = GetCameraZoom()
     SetCameraZoom(currentZoom - 0.5) -- Adjust zoom speed as needed
-    d("Camera zoomed in")
 end
 
 ---=============================================================================
@@ -134,45 +105,110 @@ function CinematicCam.ToggleLetterboxOnly()
 end
 
 function CinematicCam:ShowLetterbox()
+    if self.savedVars.letterboxVisible then
+        return
+    end
     -- Make sure our container is visible
     CinematicCam_Container:SetHidden(false)
+
+    -- Set initial positions (bars start off-screen)
+    local screenHeight = GuiRoot:GetHeight()
+    local barHeight = self.savedVars.letterboxSize
+
+    CinematicCam_LetterboxTop:ClearAnchors()
+    CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, 0, -barHeight)
+    CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, 0, -barHeight)
+    CinematicCam_LetterboxTop:SetHeight(barHeight)
+
+    CinematicCam_LetterboxBottom:ClearAnchors()
+    CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT, 0, barHeight)
+    CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT, 0, barHeight)
+    CinematicCam_LetterboxBottom:SetHeight(barHeight)
+
+    -- Set color and draw properties
+    CinematicCam_LetterboxTop:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
+    CinematicCam_LetterboxBottom:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
+    CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
+    CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
+    CinematicCam_LetterboxTop:SetDrawLevel(5)
+    CinematicCam_LetterboxBottom:SetDrawLevel(5)
 
     -- Show bars
     CinematicCam_LetterboxTop:SetHidden(false)
     CinematicCam_LetterboxBottom:SetHidden(false)
 
-    -- Set height
-    CinematicCam_LetterboxTop:SetHeight(self.savedVars.letterboxSize)
-    CinematicCam_LetterboxBottom:SetHeight(self.savedVars.letterboxSize)
+    -- Create timeline for animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
 
-    -- Set color to solid black with user-defined opacity
-    CinematicCam_LetterboxTop:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
-    CinematicCam_LetterboxBottom:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
+    -- Animate top bar sliding down
+    local topAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxTop)
+    topAnimation:SetTranslateOffsets(0, -barHeight, 0, 0) -- Move from off-screen to final position
+    topAnimation:SetDuration(2600)
 
-    -- Set draw layer to make sure it appears on top of other UI elements
-    CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
-    CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
 
-    -- Set draw level to ensure it's on top
-    CinematicCam_LetterboxTop:SetDrawLevel(5)
-    CinematicCam_LetterboxBottom:SetDrawLevel(5)
+    -- Animate bottom bar sliding up
+    local bottomAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxBottom)
+    bottomAnimation:SetTranslateOffsets(0, barHeight, 0, 0) -- Move from off-screen to final position
+    bottomAnimation:SetDuration(2600)
 
-    d("Letterbox enabled")
+    timeline:SetHandler('OnStop', function()
+        self.savedVars.letterboxVisible = true
+    end)
+    -- Start the animation
+    timeline:PlayFromStart()
 end
 
 -- Hide letterbox bars
 function CinematicCam:HideLetterbox()
-    CinematicCam_LetterboxTop:SetHidden(true)
-    CinematicCam_LetterboxBottom:SetHidden(true)
-    d("Letterbox disabled")
+    if not self.savedVars.letterboxVisible then
+        return
+    end
+    if CinematicCam_LetterboxTop:IsHidden() then
+        return
+    end
+
+    local barHeight = self.savedVars.letterboxSize
+
+    -- Create timeline for hide animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+
+    -- Animate top bar sliding up (off-screen)
+    local topAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxTop)
+    topAnimation:SetTranslateOffsets(0, 0, 0, -barHeight) -- Move from current position to off-screen
+    topAnimation:SetDuration(3300)                        -- Slightly faster exit
+    topAnimation:SetEasingFunction(ZO_EaseOutCubic)
+    -- Animate bottom bar sliding down (off-screen)
+    local bottomAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxBottom)
+    bottomAnimation:SetTranslateOffsets(0, 0, 0, barHeight) -- Move from current position to off-screen
+    bottomAnimation:SetDuration(3300)                       -- Slightly faster exit
+    bottomAnimation:SetEasingFunction(ZO_EaseOutCubic)
+
+    -- Hide bars after animation completes
+    timeline:SetHandler('OnStop', function()
+        CinematicCam_LetterboxTop:SetHidden(true)
+        CinematicCam_LetterboxBottom:SetHidden(true)
+        -- Reset positions for next time
+        CinematicCam_LetterboxTop:ClearAnchors()
+        CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
+        CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
+        CinematicCam_LetterboxBottom:ClearAnchors()
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
+        self.savedVars.letterboxVisible = false
+    end)
+
+
+
+    -- Start the animation
+    timeline:PlayFromStart()
 end
 
 -- Toggle letterbox visibility
 function CinematicCam:ToggleLetterbox()
-    if CinematicCam_LetterboxTop:IsHidden() then
-        self:ShowLetterbox()
-    else
+    if self.savedVars.letterboxVisible then
         self:HideLetterbox()
+    else
+        self:ShowLetterbox()
     end
 end
 
@@ -220,7 +256,6 @@ function CinematicCam:HideUI()
         end
     end
 
-    -- Also hide any custom UI elements the user added
     for elementName, shouldHide in pairs(self.savedVars.hideUiElements) do
         if shouldHide then
             local element = _G[elementName]
@@ -231,12 +266,9 @@ function CinematicCam:HideUI()
         end
     end
 
-    -- Show letterbox if enabled
-    if self.savedVars.letterboxEnabled then
+    if self.savedVars.letterboxVisible then
         self:ShowLetterbox()
     end
-
-    d("Cinematic mode enabled")
 end
 
 -- Show UI elements
@@ -248,11 +280,6 @@ function CinematicCam:ShowUI()
         end
     end
     hiddenElements = {}
-
-    -- Hide letterbox
-    self:HideLetterbox()
-
-    d("Cinematic mode disabled")
 end
 
 -- Toggle UI
@@ -270,74 +297,41 @@ end
 local function Initialize()
     -- Load saved variables
     CinematicCam.savedVars = ZO_SavedVars:NewCharacterIdSettings("CinematicCamSavedVars", 1, nil, defaults)
+    if CinematicCam.savedVars.letterboxVisible then
+        zo_callLater(function()
+            -- Show letterbox without animation on load
+            CinematicCam_Container:SetHidden(false)
+            CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
+            CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
+            CinematicCam_LetterboxTop:SetHeight(CinematicCam.savedVars.letterboxSize)
+            CinematicCam_LetterboxTop:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+            CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
+            CinematicCam_LetterboxTop:SetDrawLevel(5)
+            CinematicCam_LetterboxTop:SetHidden(false)
 
-    -- Debug both XML file controls
-    zo_callLater(function()
-        -- Check letterbox controls
-        if CinematicCam_Container then
-            d("✓ Letterbox XML loaded - CinematicCam_Container found")
-            if CinematicCam_LetterboxTop and CinematicCam_LetterboxBottom then
-                d("✓ Letterbox bars found")
-            else
-                d("✗ Letterbox bars not found")
-            end
-        else
-            d("✗ Letterbox XML not loaded - CinematicCam_Container not found")
-        end
-    end, 1000)
-
-    -- Create a global reference to the addon
-
-
-    -- Load saved variables
-    CinematicCam.savedVars = ZO_SavedVars:NewCharacterIdSettings("CinematicCamSavedVars", 1, nil, defaults)
+            CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
+            CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
+            CinematicCam_LetterboxBottom:SetHeight(CinematicCam.savedVars.letterboxSize)
+            CinematicCam_LetterboxBottom:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+            CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
+            CinematicCam_LetterboxBottom:SetDrawLevel(5)
+            CinematicCam_LetterboxBottom:SetHidden(false)
+        end, 1500) -- Wait for UI to be ready
+    end
 
     -- Register slash commands
-    SLASH_COMMANDS["/hideui"] = function()
+    SLASH_COMMANDS["/ccui"] = function()
         CinematicCam:ToggleUI()
     end
 
-    SLASH_COMMANDS["/letterbox"] = function()
+    SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
 
 
-    SLASH_COMMANDS["/focus"] = function()
-        ApplyPlayerFocusCamera()
-    end
-
-
-    SLASH_COMMANDS["/letterboxopacity"] = function(arg)
-        local opacity = tonumber(arg)
-        if opacity and opacity >= 0 and opacity <= 1 then
-            CinematicCam.savedVars.letterboxOpacity = opacity
-            d("Letterbox opacity set to " .. opacity)
-
-            -- Update if visible
-            if not CinematicCam_LetterboxTop:IsHidden() then
-                CinematicCam_LetterboxTop:SetColor(0, 0, 0, opacity)
-                CinematicCam_LetterboxBottom:SetColor(0, 0, 0, opacity)
-            end
-        else
-            d("Usage: /letterboxopacity [0-1] (e.g., /letterboxopacity 1 for fully opaque)")
-        end
-    end
-
-    SLASH_COMMANDS["/cinematic"] = function(arg)
-        if arg == "letterbox" then
-            CinematicCam:ToggleLetterbox()
-        else
-            CinematicCam:ToggleUI()
-        end
-    end
-
     -- Calculate letterbox size
     CinematicCam:CalculateLetterboxSize()
 
-    -- Make sure letterbox is hidden initially
-    ---CinematicCam_Container:SetHidden(false) -- Container always exists but children are hidden
-    --CinematicCam_LetterboxTop:SetHidden(true)
-    --CinematicCam_LetterboxBottom:SetHidden(true)
 
     -- Register for screen resize
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_SCREEN_RESIZED, function()
@@ -350,8 +344,7 @@ local function Initialize()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks() -- Not doing anything
         zo_callLater(function()
-            d("Cinematic Camera loaded - use /hideui to toggle UI, /letterbox to toggle letterbox bars")
-            d("Settings menu available with /cinematicsettings")
+            d("Cinematic Camera loaded - use /ccui to toggle UI, /ccbars to toggle letterbox bars")
         end, 2000)
     end, 100)
 end
@@ -359,9 +352,6 @@ local function OnPlayerActivated(eventCode)
     if not CinematicCam.hasPlayedIntro then
         CinematicCam.hasPlayedIntro = true
         camEnabled = true
-
-
-        -- Optional letterbox fade-in can go here
 
         -- Smooth exit after a few seconds
         zo_callLater(function()
@@ -371,7 +361,7 @@ local function OnPlayerActivated(eventCode)
         end, 100)
         for i = 1, 9 do
             CameraZoomIn()
-        end -- 10 sec
+        end
     end
 end
 
@@ -390,5 +380,4 @@ local function OnAddOnLoaded(event, addonName)
 end
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)
-
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_PLAYER_ACTIVATED, OnPlayerActivated)

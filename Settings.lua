@@ -25,49 +25,13 @@ function CinematicCam:CreateSettingsMenu()
 
     local optionsData = {
         {
-            type = "checkbox",
-            name = "Enable Picture Mode",
-            tooltip = "Toggles the cinematic camera mode. Disables on movement automatically.",
-            getFunc = function() return camEnabled end,
-            setFunc = function(value)
-                camEnabled = value
-                ApplyPlayerFocusCamera()
-            end,
-            default = false,
-        },
-        {
-            type = "slider",
-            name = "Target X",
-            tooltip = "Horizontal position of your character on screen.",
-            min = 0.0,
-            max = 1.0,
-            step = 0.01,
-            getFunc = function() return camTargetX end,
-            setFunc = function(value)
-                UpdateCamTargetX(value)
-            end,
-        },
-        {
-            type = "slider",
-            name = "Target Y",
-            tooltip = "Vertical position of your character on screen.",
-            min = 0.0,
-            max = 1.0,
-            step = 0.01,
-            getFunc = function() return camTargetY end,
-            setFunc = function(value)
-                UpdateCamTargetY(value)
-            end,
-        },
-
-        {
             type = "header",
-            name = "Letterbox Settings",
+            name = "Black Bars Settings",
         },
         {
             type = "checkbox",
-            name = "Enable Letterbox with Cinematic Mode",
-            tooltip = "When enabled, letterbox bars will appear when toggling cinematic mode",
+            name = "Enable Black Bars with Cinematic Mode",
+            tooltip = "When enabled, black bars will appear when toggling cinematic mode",
             getFunc = function() return self.savedVars.letterboxEnabled end,
             setFunc = function(value)
                 self.savedVars.letterboxEnabled = value
@@ -84,8 +48,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto-size Letterbox Bars",
-            tooltip = "When enabled, letterbox bars will be sized automatically to create a cinematic aspect ratio",
+            name = "Auto-size Black Bars",
+            tooltip = "When enabled, black bars will be sized automatically to create a cinematic aspect ratio",
             getFunc = function() return self.savedVars.autoSizeLetterbox end,
             setFunc = function(value)
                 self.savedVars.autoSizeLetterbox = value
@@ -103,8 +67,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Letterbox Size",
-            tooltip = "Adjust the height of letterbox bars (in pixels)",
+            name = "Black Bar Size",
+            tooltip = "Adjust the height of the bars",
             min = 10,
             max = 300,
             step = 5,
@@ -122,8 +86,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Letterbox Opacity",
-            tooltip = "Adjust the opacity of letterbox bars (1.0 = solid black)",
+            name = "Black Bar Opacity",
+            tooltip = "Adjust the opacity of the bars (1.0 = solid black)",
             min = 0.5,
             max = 1.0,
             step = 0.05,
@@ -141,7 +105,6 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "button",
             name = "Reset to Default Size",
-            tooltip = "Reset letterbox size to default",
             func = function()
                 self.savedVars.letterboxSize = defaults.letterboxSize
                 if not CinematicCam_LetterboxTop:IsHidden() then

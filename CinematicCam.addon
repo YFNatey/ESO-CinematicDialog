@@ -6,6 +6,5 @@
 ## ConsoleDependsOn: LibAddonMenu-2.0
 
 CinematicCam.lua
-SettingsMenu.lua
+Settings.lua
 CinematicCam.xml
-
