@@ -9,7 +9,7 @@ function CinematicCam:CreateSettingsMenu()
         d("LibAddonMenu-2.0 is required for the settings menu. You can still use slash commands.")
         return
     end
-
+    local choices, choicesValues = self:GetFontChoices()
     local panelName = "CinematicCamOptions"
 
     local panelData = {
@@ -120,6 +120,67 @@ function CinematicCam:CreateSettingsMenu()
             getFunc = function() return CinematicCam.savedVars.autoLetterboxMount end,
             setFunc = function(value) CinematicCam.savedVars.autoLetterboxMount = value end,
             width = "full",
+        },
+        {
+            type = "header",
+            name = "Font Settings",
+        },
+        {
+            type = "description",
+            text = "Customize the fonts used in dialogue and UI elements.",
+        },
+        {
+            type = "dropdown",
+            name = "Font",
+            tooltip = "Choose the font family for dialogue text",
+            choices = choices,
+            choicesValues = choicesValues,
+            getFunc = function() return self.savedVars.selectedFont end,
+            setFunc = function(value)
+                self.savedVars.selectedFont = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Font Size",
+            tooltip = "Adjust the base font size for dialogue text",
+            min = 10,
+            max = 32,
+            step = 1,
+            getFunc = function() return self.savedVars.customFontSize end,
+            setFunc = function(value)
+                self.savedVars.customFontSize = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Font Scale",
+            tooltip = "Scale all fonts by this multiplier",
+            min = 0.5,
+            max = 2.0,
+            step = 0.1,
+            getFunc = function() return self.savedVars.fontScale end,
+            setFunc = function(value)
+                self.savedVars.fontScale = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "button",
+            name = "Reset Font Settings",
+            tooltip = "Reset font settings to defaults",
+            func = function()
+                self.savedVars.selectedFont = "ESO_Standard"
+                self.savedVars.customFontSize = 18
+                self.savedVars.fontScale = 1.0
+                self:OnFontChanged()
+            end,
+            width = "half",
         },
         {
             type = "header",
