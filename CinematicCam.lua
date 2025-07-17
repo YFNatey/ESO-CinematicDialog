@@ -41,6 +41,9 @@ local defaults = {
     selectedFont = "ESO_Standard",
     customFontSize = 18,
     fontScale = 1.0,
+    selectedFont = "ESO_Standard",
+    customFontSize = 18,
+    fontScale = 1.0,
 }
 
 local letterboxSettings = {}
