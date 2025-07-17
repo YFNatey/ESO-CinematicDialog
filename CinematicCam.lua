@@ -38,6 +38,9 @@ local defaults = {
     autoLetterboxVendor = false,      -- Disable for vendors
     autoLetterboxBank = false,        -- Disable for banks
     autoLetterboxCrafting = false,    -- Disable for crafting stations
+    selectedFont = "ESO_Standard",
+    customFontSize = 18,
+    fontScale = 1.0,
 }
 
 local letterboxSettings = {}
@@ -95,6 +98,25 @@ local uiElements = {
     -- Gamepad elements
     "ZO_GamepadChatSystem",
 }
+
+local fontBook = {
+    ["ESO_Standard"] = {
+        name = "ESO Standard",
+        path = nil,
+        description = "Default ESO font"
+    },
+    ["Handwritten"] = {
+        name = "Handwritten Style",
+        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|20|soft-shadow-thick",
+        description = "Handwritten-style font"
+    },
+    ["ESO_Bold"] = {
+        name = "ESO Bold",
+        path = "EsoUI/Common/Fonts/FTN57.slug|30|thick-outline",
+        description = "Bold ESO font"
+    }
+}
+
 
 -- Only working on initialize, mnay need to revise logic
 -- Replace your RegisterSceneCallbacks function with this:
@@ -600,6 +622,123 @@ end
 ---=============================================================================
 -- Font Book
 --=============================================================================
+function CinematicCam:GetFontChoices()
+    local choices = {}
+    local choicesValues = {}
+
+    for fontId, fontData in pairs(fontBook) do
+        table.insert(choices, fontData.name)
+        table.insert(choicesValues, fontId)
+    end
+
+    return choices, choicesValues
+end
+
+function CinematicCam:GetCurrentFont()
+    local fontData = fontBook[self.savedVars.selectedFont]
+    if fontData then
+        return fontData.path
+    end
+    return fontBook["ESO_Standard"].path -- fallback
+end
+
+function CinematicCam:ApplyFontToElement(element, fontSize)
+    if not element then return end
+
+    local fontPath = self:GetCurrentFont()
+
+    -- If fontPath is nil (Default ESO selected), don't apply custom font
+    if not fontPath then
+        return -- Let ESO use its default font
+    end
+
+    local actualSize = fontSize or self.savedVars.customFontSize
+    actualSize = math.floor(actualSize * self.savedVars.fontScale)
+
+    -- Parse the font path and replace size
+    local finalFontString = self:ParseFontPath(fontPath, actualSize)
+
+    element:SetFont(finalFontString)
+end
+
+function CinematicCam:ParseFontPath(fontPath, newSize)
+    -- Safety check for nil fontPath
+    if not fontPath or fontPath == "" then
+        return nil
+    end
+
+    -- Check if the path contains a size (pattern: |number|)
+    local hasSize = string.find(fontPath, "|%d+|")
+
+    if hasSize then
+        -- Replace existing size with new size
+        local newPath = string.gsub(fontPath, "|%d+|", "|" .. newSize .. "|")
+        return newPath
+    else
+        -- No size found, check if it has effects after the font file
+        local hasEffects = string.find(fontPath, "|")
+
+        if hasEffects then
+            -- Has effects but no size, insert size before effects
+            local newPath = string.gsub(fontPath, "|", "|" .. newSize .. "|", 1)
+            return newPath
+        else
+            -- No size, no effects, just add size
+            return fontPath .. "|" .. newSize
+        end
+    end
+end
+
+function CinematicCam:ApplyFontsToUI()
+    -- Use the same size for all dialogue elements
+    local fontSize = self.savedVars.customFontSize
+
+    if ZO_InteractWindowTargetAreaTitle then
+        self:ApplyFontToElement(ZO_InteractWindowTargetAreaTitle, fontSize)
+    end
+
+    if ZO_InteractWindowTargetAreaBodyText then
+        self:ApplyFontToElement(ZO_InteractWindowTargetAreaBodyText, fontSize)
+    end
+
+    if ZO_InteractWindow_GamepadContainerText then
+        self:ApplyFontToElement(ZO_InteractWindow_GamepadContainerText, fontSize)
+    end
+end
+
+function CinematicCam:SetupDialogueFontHooks()
+    -- Hook into the interaction window showing
+    local originalSetupInteraction = ZO_InteractWindow_OnInteractionUpdated
+    if originalSetupInteraction then
+        ZO_InteractWindow_OnInteractionUpdated = function(...)
+            originalSetupInteraction(...)
+            -- Apply fonts after dialogue is set up
+            zo_callLater(function()
+                CinematicCam:ApplyFontsToUI()
+            end, 50)
+        end
+    end
+
+    -- Also hook into chatter events for simple NPC dialogue
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
+        zo_callLater(function()
+            CinematicCam:ApplyFontsToUI()
+        end, 100)
+    end)
+end
+
+function CinematicCam:OnFontChanged()
+    -- Apply fonts immediately if dialogue is currently open
+    local interactionType = GetInteractionType()
+    if interactionType ~= INTERACTION_NONE then
+        self:ApplyFontsToUI()
+    end
+
+    -- Also apply to any existing dialogue elements
+    zo_callLater(function()
+        self:ApplyFontsToUI()
+    end, 100)
+end
 
 ---=============================================================================
 -- Initialize
@@ -607,7 +746,14 @@ end
 local function Initialize()
     -- Load saved variables
     CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCamSavedVars", 2, nil, defaults)
+    zo_callLater(function()
+        CinematicCam:SetupDialogueFontHooks()
+    end, 1000)
 
+    -- Apply fonts after UI elements are loaded
+    zo_callLater(function()
+        CinematicCam:ApplyFontsToUI()
+    end, 2000)
     -- Init letterbox bars savedVars
     if CinematicCam.savedVars.letterboxVisible then
         zo_callLater(function()
