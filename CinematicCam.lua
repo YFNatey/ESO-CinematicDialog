@@ -7,17 +7,9 @@ local hiddenElements = {}
 local interactionSettings = {}
 local savedCameraState = {}
 local isInBlockedInteraction = false
-
--- UI element references
-local xWINDOWDIV = ZO_InteractWindowDivider
-local xSEPARATOR = ZO_InteractWindowVerticalSeparator
-local xTOPBG = ZO_InteractWindowTopBG
-local xBOTTOMBG = ZO_InteractWindowBottomBG
-local xTITLE = ZO_InteractWindowTargetAreaTitle
-local xBODY = ZO_InteractWindowTargetAreaBodyText
-local xOPTIONS = ZO_InteractWindowPlayerAreaOptions
-local xHIGHLIGHT = ZO_InteractWindowPlayerAreaHighlight
-local xREWARD = ZO_InteractWindowCollapseContainerRewardArea
+local wasMountLetterboxAutoShown = false
+local wasLetterboxAutoShown = false
+local wasUIAutoHidden = false
 
 -- Default settings
 local defaults = {
@@ -29,6 +21,7 @@ local defaults = {
     hideUiElements = {},
     letterboxVisible = false,
     uiVisible = true,
+    autoLetterboxMount = false,
 
     -- 3rd Person Dialogue Settings
     forceThirdPersonDialogue = true,
@@ -38,7 +31,16 @@ local defaults = {
     forceThirdPersonCrafting = false,
     autoLetterboxDialogue = false,
     autoHideUIDialogue = false,
+    hideDialoguePanels = false,
+    hideNPCText = false,
+    autoLetterboxConversation = true, -- Enable for regular dialogue
+    autoLetterboxQuest = true,        -- Enable for quest interactions
+    autoLetterboxVendor = false,      -- Disable for vendors
+    autoLetterboxBank = false,        -- Disable for banks
+    autoLetterboxCrafting = false,    -- Disable for crafting stations
 }
+
+local letterboxSettings = {}
 -- UI elements to hide
 local uiElements = {
     "ZO_CompassFrame",
@@ -53,6 +55,7 @@ local uiElements = {
     "ZO_MinimapContainer",
     "ZO_PowerBlock",
     "ZO_BuffTracker",
+    "ZO_ReticleContainer",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -61,50 +64,40 @@ local uiElements = {
     "ZO_FocusedQuestTrackerPanel",
     "ZO_QuestTrackerPanelContainer",
     "ZO_QuestLog",
-    -- Interaction/Dialog UI
-    "ZO_InteractWindow",
-    "ZO_InteractWindowDivider",
-    "ZO_InteractWindowTopBG",
-    "ZO_InteractWindowBottomBG",
+
+    -- General Interaction UI (but NOT specific dialogue elements)
     "ZO_ConversationWindow",
+
     -- Inventory & Menus
     "ZO_PlayerInventory",
     "ZO_GameMenu_InGame",
     "ZO_MainMenuCategoryBarContainer",
+
     -- Social UI
     "ZO_KeyboardGuildWindow",
     "ZO_FriendsListKeyboard",
     "ZO_IgnoreListKeyboard",
     "ZO_GroupWindow",
-    -- Other UI
+
+    -- Crafting UI
     "ZO_CraftingTopLevel",
     "ZO_SmithingTopLevel",
     "ZO_EnchantingTopLevel",
     "ZO_AlchemyTopLevel",
     "ZO_ProvisionerTopLevel",
+
+
+    -- Other UI
     "ZO_NotificationContainer",
     "ZO_TutorialOverlay",
     "ZO_DeathRecapWindow",
-    -- Gamepad elements (just in case)
+
+    -- Gamepad elements
     "ZO_GamepadChatSystem",
-    "ZO_InteractWindow_Gamepad",
-
-    "ZO_InteractWindowDivider",
-    "ZO_InteractWindowVerticalSeparator",
-    "ZO_InteractWindowTopBG",
-    "ZO_InteractWindowBottomBG",
-    "ZO_InteractWindowTargetAreaTitle",
-    "ZO_InteractWindowTargetAreaBodyText",
-    "ZO_InteractWindowPlayerAreaOptions",
-    "ZO_InteractWindowPlayerAreaHighlight",
-    "ZO_InteractWindowCollapseContainerRewardArea",
-    "ZO_InteractWindow_GamepadBG",
-    "ZO_InteractWindow_GamepadContainerText",
-
-
 }
 
 -- Only working on initialize, mnay need to revise logic
+-- Replace your RegisterSceneCallbacks function with this:
 function CinematicCam:RegisterSceneCallbacks()
     local scenesToWatch = {
         "gameMenuInGame",       -- keyboard main menu
@@ -118,25 +111,68 @@ function CinematicCam:RegisterSceneCallbacks()
     for _, sceneName in ipairs(scenesToWatch) do
         local scene = SCENE_MANAGER:GetScene(sceneName)
         if scene then
-            d("Registering callback for scene: " .. sceneName)
             scene:RegisterCallback("StateChange", function(_, newState)
                 if newState == SCENE_HIDING then
-                    ReapplyCameraOnMenuClose()
+                    -- Reapply UI state after menu closes
+                    zo_callLater(function()
+                        self:ReapplyUIState()
+                    end, 100)
                 end
             end)
         end
     end
 end
 
-function CinematicCam:CameraZoom()
-    -- Zoom in the camera
-    local currentZoom = GetCameraZoom()
-    SetCameraZoom(currentZoom - 0.5) -- Adjust zoom speed as needed
+-- Add this new function to reapply your UI state:
+function CinematicCam:ReapplyUIState()
+    -- Reapply UI visibility based on saved setting
+    if not self.savedVars.uiVisible then
+        self:HideUI()
+    end
+
+    -- Reapply letterbox if it should be visible
+    if self.savedVars.letterboxVisible then
+        -- Don't animate, just show immediately
+        CinematicCam_Container:SetHidden(false)
+        CinematicCam_LetterboxTop:SetHidden(false)
+        CinematicCam_LetterboxBottom:SetHidden(false)
+    end
+end
+
+function CinematicCam:HideNPCText()
+    if ZO_InteractWindowTargetAreaBodyText then
+        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+    end
+end
+
+function CinematicCam:ShowNPCText()
+    if ZO_InteractWindowTargetAreaBodyText then
+        ZO_InteractWindowTargetAreaBodyText:SetHidden(false)
+    end
 end
 
 ---=============================================================================
 -- Manage Letterbox Bars
 --=============================================================================
+function CinematicCam:InitializeLetterboxSettings()
+    letterboxSettings = {
+        [INTERACTION_CONVERSATION] = self.savedVars.autoLetterboxConversation,
+        [INTERACTION_QUEST] = self.savedVars.autoLetterboxQuest,
+        [INTERACTION_VENDOR] = self.savedVars.autoLetterboxVendor,
+        [INTERACTION_STORE] = self.savedVars.autoLetterboxVendor,
+        [INTERACTION_BANK] = self.savedVars.autoLetterboxBank,
+        [INTERACTION_GUILDBANK] = self.savedVars.autoLetterboxBank,
+        [INTERACTION_TRADINGHOUSE] = self.savedVars.autoLetterboxVendor,
+        [INTERACTION_STABLE] = self.savedVars.autoLetterboxVendor,
+        [INTERACTION_CRAFT] = self.savedVars.autoLetterboxCrafting,
+        [INTERACTION_DYE_STATION] = self.savedVars.autoLetterboxCrafting,
+    }
+end
+
+function CinematicCam:ShouldApplyLetterbox(interactionType)
+    return letterboxSettings[interactionType] == true
+end
+
 function CinematicCam.ToggleLetterboxOnly()
     CinematicCam:ToggleLetterbox()
 end
@@ -288,6 +324,31 @@ function CinematicCam:CalculateLetterboxSize()
 end
 
 ---=============================================================================
+-- Cinematic Mounting
+--=============================================================================
+function CinematicCam:OnMountUp()
+    if self.savedVars.autoLetterboxMount then
+        if not self.savedVars.letterboxVisible then
+            wasMountLetterboxAutoShown = true
+            self:ShowLetterbox()
+        else
+            wasMountLetterboxAutoShown = false
+        end
+    end
+end
+
+function CinematicCam:OnMountDown()
+    if self.savedVars.autoLetterboxMount then
+        -- Only hide letterbox if we auto-showed it
+        if wasMountLetterboxAutoShown and self.savedVars.letterboxVisible then
+            self:HideLetterbox()
+        end
+        -- Reset tracking flag
+        wasMountLetterboxAutoShown = false
+    end
+end
+
+---=============================================================================
 -- Manage ESO UI Elements
 --=============================================================================
 function CinematicCam:HideUI()
@@ -342,6 +403,38 @@ end
 ---=============================================================================
 -- 3rd Person Questing
 --=============================================================================
+
+
+-- User preference settings
+function CinematicCam:InitializeInteractionSettings()
+    interactionSettings = {
+        [INTERACTION_CONVERSATION] = self.savedVars.forceThirdPersonDialogue,
+        [INTERACTION_QUEST] = self.savedVars.forceThirdPersonQuest,
+        [INTERACTION_VENDOR] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_STORE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_BANK] = self.savedVars.forceThirdPersonBank,
+        [INTERACTION_GUILDBANK] = self.savedVars.forceThirdPersonBank,
+        [INTERACTION_TRADINGHOUSE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_STABLE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_CRAFT] = self.savedVars.forceThirdPersonCrafting,
+        [INTERACTION_DYE_STATION] = self.savedVars.forceThirdPersonCrafting,
+    }
+end
+
+function CinematicCam:CheckInteractionStatus()
+    if isInBlockedInteraction then
+        local currentInteraction = GetInteractionType()
+        if currentInteraction == INTERACTION_NONE then
+            CinematicCam:OnInteractionEnd()
+        else
+            -- If still in interaction, check again after a delay
+            zo_callLater(function()
+                CinematicCam:CheckInteractionStatus()
+            end, 500)
+        end
+    end
+end
+
 function GetCameraDistance()
     return tonumber(GetSetting(SETTING_TYPE_CAMERA, CAMERA_SETTING_DISTANCE))
 end
@@ -361,22 +454,6 @@ function CinematicCam:RestoreCameraState()
     savedCameraState = {}
 end
 
-function CinematicCam:CheckInteractionStatus()
-    if isInBlockedInteraction then
-        local currentInteraction = GetInteractionType()
-        if currentInteraction == INTERACTION_NONE then
-            CinematicCam:OnInteractionEnd()
-        else
-            -- Still in interaction, check again in a bit
-            zo_callLater(function()
-                CinematicCam:CheckInteractionStatus()
-            end, 500)
-        end
-    end
-end
-
-local wasLetterboxAutoShown = false
-local wasUIAutoHidden = false
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
 
@@ -388,11 +465,15 @@ function CinematicCam:OnGameCameraDeactivated()
         -- Save current state
         self:SaveCameraState()
 
-        -- HIDE DIALOGUE PANELS IMMEDIATELY
-        self:HideDialoguePanels()
 
-        -- Track and show letterbox during dialogue if needed
-        if self.savedVars.autoLetterboxDialogue then
+
+        -- HIDE DIALOGUE PANELS ONLY IF SETTING IS ENABLED
+        if self.savedVars.hideDialoguePanels then
+            self:HideDialoguePanels()
+        end
+
+        -- Track and show letterbox IF this interaction type should have letterbox
+        if self:ShouldApplyLetterbox(interactionType) then
             if not self.savedVars.letterboxVisible then
                 wasLetterboxAutoShown = true
                 self:ShowLetterbox()
@@ -426,14 +507,43 @@ function CinematicCam:OnGameCameraActivated()
             if currentInteraction == INTERACTION_NONE then
                 CinematicCam:OnInteractionEnd()
             end
-        end, 100) -- Much shorter delay, just to let the interaction state update
+        end, 100) -- just to let the interaction state update
+    end
+end
+
+function CinematicCam:OnInteractionEnd()
+    if isInBlockedInteraction then
+        isInBlockedInteraction = false
+
+
+
+        -- RESTORE DIALOGUE PANELS ONLY IF THEY WERE HIDDEN
+        if self.savedVars.hideDialoguePanels then
+            self:ShowDialoguePanels()
+        end
+        -- Restore camera state
+        self:RestoreCameraState()
+
+        -- Only hide letterbox if we auto-showed it
+        if wasLetterboxAutoShown and self.savedVars.letterboxVisible then
+            self:HideLetterbox()
+        end
+
+        -- Only show UI if we auto-hid it
+        if wasUIAutoHidden and not self.savedVars.uiVisible then
+            self:ShowUI()
+        end
+
+        -- Reset tracking flags
+        wasLetterboxAutoShown = false
+        wasUIAutoHidden = false
     end
 end
 
 ---=============================================================================
 -- Hide Questing Dialoge Panels
 --=============================================================================
-
+-- Need to hide this: "ZO_KeybindStripButtonTemplate2"
 function CinematicCam:HideDialoguePanels()
     -- Main dialogue window elements
     if ZO_InteractWindowDivider then ZO_InteractWindowDivider:SetHidden(true) end
@@ -441,9 +551,12 @@ function CinematicCam:HideDialoguePanels()
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(true) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
 
-    -- Text elements
+    -- Text elements - handle title and body text separately
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(true) end
-    if ZO_InteractWindowTargetAreaBodyText then ZO_InteractWindowTargetAreaBodyText:SetHidden(true) end
+    -- Only hide NPC text if the hideNPCText setting is enabled
+    if ZO_InteractWindowTargetAreaBodyText then
+        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+    end
 
     -- Options and highlights
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(true) end
@@ -452,7 +565,10 @@ function CinematicCam:HideDialoguePanels()
 
     -- Gamepad elements
     if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(true) end
-    if ZO_InteractWindow_GamepadContainerText then ZO_InteractWindow_GamepadContainerText:SetHidden(true) end
+    if ZO_InteractWindow_GamepadContainerText then
+        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars
+            .hideNPCText)
+    end
 end
 
 function CinematicCam:ShowDialoguePanels()
@@ -464,7 +580,9 @@ function CinematicCam:ShowDialoguePanels()
 
     -- Text elements
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(false) end
-    if ZO_InteractWindowTargetAreaBodyText then ZO_InteractWindowTargetAreaBodyText:SetHidden(false) end
+
+    -- Only show NPC text if the hideNPCText setting is enabled
+    if ZO_InteractWindowTargetAreaBodyText then ZO_InteractWindowTargetAreaBodyText:SetHidden(true) end
 
     -- Options and highlights
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(false) end
@@ -473,15 +591,22 @@ function CinematicCam:ShowDialoguePanels()
 
     -- Gamepad elements
     if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(false) end
-    if ZO_InteractWindow_GamepadContainerText then ZO_InteractWindow_GamepadContainerText:SetHidden(false) end
+    if ZO_InteractWindow_GamepadContainerText then
+        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars
+            .hideNPCText)
+    end
 end
+
+---=============================================================================
+-- Font Book
+--=============================================================================
 
 ---=============================================================================
 -- Initialize
 --=============================================================================
 local function Initialize()
     -- Load saved variables
-    CinematicCam.savedVars = ZO_SavedVars:NewCharacterIdSettings("CinematicCamSavedVars", 1, nil, defaults)
+    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCamSavedVars", 2, nil, defaults)
 
     -- Init letterbox bars savedVars
     if CinematicCam.savedVars.letterboxVisible then
@@ -541,12 +666,7 @@ local function Initialize()
         CinematicCam:ToggleLetterbox()
     end
 
-    SLASH_COMMANDS["/ccdialogue"] = function()
-        CinematicCam:ToggleThirdPersonDialogue()
-    end
-
-
-
+    CinematicCam:InitializeLetterboxSettings()
     -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()
 
@@ -582,61 +702,21 @@ local function Initialize()
             CinematicCam:CalculateLetterboxSize()
         end, 500)
     end)
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function(eventCode, mounted)
+        if mounted then
+            CinematicCam:OnMountUp()
+        else
+            CinematicCam:OnMountDown()
+        end
+    end)
     zo_callLater(function()
         -- Create settings menu with LibAddonMenu-2.0
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks() -- Not doing anything
-        zo_callLater(function()
-            d("Cinematic Camera loaded - use /ccui to toggle UI, /ccbars to toggle letterbox bars")
-        end, 2000)
     end, 100)
 end
 
 
-function CinematicCam:OnInteractionEnd()
-    d("OnInteractionEnd called - isInBlockedInteraction: " .. tostring(isInBlockedInteraction))
-    if isInBlockedInteraction then
-        isInBlockedInteraction = false
-
-        -- RESTORE DIALOGUE PANELS FIRST
-        self:ShowDialoguePanels()
-
-        -- Restore camera state
-        self:RestoreCameraState()
-
-        -- Only hide letterbox if we auto-showed it
-        if wasLetterboxAutoShown and self.savedVars.letterboxVisible then
-            self:HideLetterbox()
-            for i = 1, 5 do
-                CameraZoomOut()
-            end
-        end
-
-        -- Only show UI if we auto-hid it
-        if wasUIAutoHidden and not self.savedVars.uiVisible then
-            self:ShowUI()
-        end
-
-        -- Reset tracking flags
-        wasLetterboxAutoShown = false
-        wasUIAutoHidden = false
-    end
-end
-
-function CinematicCam:InitializeInteractionSettings()
-    interactionSettings = {
-        [INTERACTION_CONVERSATION] = self.savedVars.forceThirdPersonDialogue,
-        [INTERACTION_QUEST] = self.savedVars.forceThirdPersonQuest,
-        [INTERACTION_VENDOR] = self.savedVars.forceThirdPersonVendor,
-        [INTERACTION_STORE] = self.savedVars.forceThirdPersonVendor,
-        [INTERACTION_BANK] = self.savedVars.forceThirdPersonBank,
-        [INTERACTION_GUILDBANK] = self.savedVars.forceThirdPersonBank,
-        [INTERACTION_TRADINGHOUSE] = self.savedVars.forceThirdPersonVendor,
-        [INTERACTION_STABLE] = self.savedVars.forceThirdPersonVendor,
-        [INTERACTION_CRAFT] = self.savedVars.forceThirdPersonCrafting,
-        [INTERACTION_DYE_STATION] = self.savedVars.forceThirdPersonCrafting,
-    }
-end
 
 local function OnPlayerActivated(eventCode)
     if not CinematicCam.hasPlayedIntro then

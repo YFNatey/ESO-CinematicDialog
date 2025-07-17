@@ -14,8 +14,8 @@ function CinematicCam:CreateSettingsMenu()
 
     local panelData = {
         type = "panel",
-        name = "Cinematic Camera",
-        displayName = "Cinematic Camera",
+        name = "Third Person Dialogue",
+        displayName = "Third Person Dialogue",
         author = "YFNatey",
         version = "1.0",
         slashCommand = "/cinematicsettings",
@@ -24,6 +24,103 @@ function CinematicCam:CreateSettingsMenu()
     }
 
     local optionsData = {
+
+        {
+            type = "header",
+            name = "3rd Person Dialogue Settings",
+        },
+        {
+            type = "checkbox",
+            name = "Hide NPC Dialogue UI Panels",
+            tooltip = "Hide the dialogue window, and choice panels during 3rd person dialogue",
+            getFunc = function() return self.savedVars.hideDialoguePanels end,
+            setFunc = function(value)
+                self.savedVars.hideDialoguePanels = value
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Hide NPC Subtitles",
+            getFunc = function() return self.savedVars.hideNPCText end,
+            setFunc = function(value)
+                self.savedVars.hideNPCText = value
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "3rd Person - NPC Dialogue",
+            tooltip = "Keep camera in 3rd person when talking to NPCs",
+            getFunc = function() return self.savedVars.forceThirdPersonDialogue end,
+            setFunc = function(value)
+                self.savedVars.forceThirdPersonDialogue = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "3rd Person - Vendors/Stores",
+            tooltip = "Keep camera in 3rd person when interacting with vendors and stores",
+            getFunc = function() return self.savedVars.forceThirdPersonVendor end,
+            setFunc = function(value)
+                self.savedVars.forceThirdPersonVendor = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "3rd Person - Banks",
+            tooltip = "Keep camera in 3rd person when using banks",
+            getFunc = function() return self.savedVars.forceThirdPersonBank end,
+            setFunc = function(value)
+                self.savedVars.forceThirdPersonBank = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "3rd Person - Quest Interactions",
+            tooltip = "Keep camera in 3rd person during quest interactions",
+            getFunc = function() return self.savedVars.forceThirdPersonQuest end,
+            setFunc = function(value)
+                self.savedVars.forceThirdPersonQuest = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "3rd Person - Crafting Stations",
+            tooltip = "Keep camera in 3rd person when using crafting stations",
+            getFunc = function() return self.savedVars.forceThirdPersonCrafting end,
+            setFunc = function(value)
+                self.savedVars.forceThirdPersonCrafting = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Auto black bars During Dialogue",
+            tooltip = "Automatically show black bars during 3rd person dialogue",
+            getFunc = function() return self.savedVars.autoLetterboxDialogue end,
+            setFunc = function(value)
+                self.savedVars.autoLetterboxDialogue = value
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Auto Black Bars on Mount",
+            tooltip = "Automatically show black bars when mounting",
+            getFunc = function() return CinematicCam.savedVars.autoLetterboxMount end,
+            setFunc = function(value) CinematicCam.savedVars.autoLetterboxMount = value end,
+            width = "full",
+        },
         {
             type = "header",
             name = "Black Bars Settings",
@@ -35,6 +132,16 @@ function CinematicCam:CreateSettingsMenu()
                 self:ToggleLetterbox()
             end,
             width = "half",
+        },
+        {
+            type = "description",
+            text = "Use /ccbars to toggle black bars on/off",
+            width = "full",
+        },
+        {
+            type = "description",
+            text = "Use /ccui to toggle UI elements on/off",
+            width = "full",
         },
         {
             type = "checkbox",
@@ -119,93 +226,24 @@ function CinematicCam:CreateSettingsMenu()
             width = "half",
         },
         {
+            type = "divider",
+            width = "full"
+        },
+        {
             type = "header",
-            name = "3rd Person Dialogue Settings",
+            name = "Support"
         },
         {
-            type = "checkbox",
-            name = "Hide NPC Dialogue UI Panels",
-            tooltip = "Hide the dialogue window, text, and choice panels during 3rd person dialogue",
-            getFunc = function() return self.savedVars.hideDialoguePanels end,
-            setFunc = function(value)
-                self.savedVars.hideDialoguePanels = value
-            end,
-            width = "full",
+            type = "description",
+            text = "If you find this addon useful, consider supporting its development!",
+            width = "full"
         },
         {
-            type = "checkbox",
-            name = "3rd Person - NPC Dialogue",
-            tooltip = "Keep camera in 3rd person when talking to NPCs",
-            getFunc = function() return self.savedVars.forceThirdPersonDialogue end,
-            setFunc = function(value)
-                self.savedVars.forceThirdPersonDialogue = value
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "3rd Person - Vendors/Stores",
-            tooltip = "Keep camera in 3rd person when interacting with vendors and stores",
-            getFunc = function() return self.savedVars.forceThirdPersonVendor end,
-            setFunc = function(value)
-                self.savedVars.forceThirdPersonVendor = value
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "3rd Person - Banks",
-            tooltip = "Keep camera in 3rd person when using banks",
-            getFunc = function() return self.savedVars.forceThirdPersonBank end,
-            setFunc = function(value)
-                self.savedVars.forceThirdPersonBank = value
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "3rd Person - Quest Interactions",
-            tooltip = "Keep camera in 3rd person during quest interactions",
-            getFunc = function() return self.savedVars.forceThirdPersonQuest end,
-            setFunc = function(value)
-                self.savedVars.forceThirdPersonQuest = value
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "3rd Person - Crafting Stations",
-            tooltip = "Keep camera in 3rd person when using crafting stations",
-            getFunc = function() return self.savedVars.forceThirdPersonCrafting end,
-            setFunc = function(value)
-                self.savedVars.forceThirdPersonCrafting = value
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Auto black bars During Dialogue",
-            tooltip = "Automatically show black bars during 3rd person dialogue",
-            getFunc = function() return self.savedVars.autoLetterboxDialogue end,
-            setFunc = function(value)
-                self.savedVars.autoLetterboxDialogue = value
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Auto Hide UI During Dialogue",
-            tooltip = "Automatically hide UI elements during 3rd person dialogue",
-            getFunc = function() return self.savedVars.autoHideUIDialogue end,
-            setFunc = function(value)
-                self.savedVars.autoHideUIDialogue = value
-            end,
-            width = "full",
+            type = "button",
+            name = "Hi",
+            tooltip = "paypal.me/yfnatey",
+            func = function() RequestOpenUnsafeURL("https://paypal.me/yfnatey") end,
+            width = "half"
         },
     }
 
