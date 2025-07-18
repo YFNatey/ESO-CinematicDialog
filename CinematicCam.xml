@@ -2,11 +2,11 @@
     <Controls>
         <!-- Main Container for Letterbox Bars -->
         <TopLevelControl name="CinematicCam_Container" mouseEnabled="false" 
-                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="0">
+                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="-5">
             <Controls>
                 <!-- Top Letterbox Bar -->
                 <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false" 
-                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="0">
+                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="-5">
                     <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
                     <Anchor point="TOPRIGHT" relativeTo="GuiRoot" relativePoint="TOPRIGHT" />
                     <Dimensions y="100" />

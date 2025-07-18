@@ -605,6 +605,12 @@ end
 function CinematicCam:HideDialoguePanels()
     -- Main dialogue window elements
     if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
+    if ZO_KeybindStripControlCenterParent then ZO_KeybindStripControlCenterParent:SetHidden(true) end
+    if ZO_KeybindStripControlCenter then ZO_KeybindStripControlCenter:SetHidden(true) end
+    if ZO_KeybindStripControl then ZO_KeybindStripControl:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate1 then ZO_KeybindStripButtonTemplate1:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate2 then ZO_KeybindStripButtonTemplate2:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate3 then ZO_KeybindStripButtonTemplate3:SetHidden(true) end
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(true) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
@@ -628,6 +634,13 @@ end
 
 function CinematicCam:ShowDialoguePanels()
     -- Main dialogue window elements
+    if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(false) end
+    if ZO_KeybindStripControlCenterParent then ZO_KeybindStripControlCenterParent:SetHidden(true) end
+    if ZO_KeybindStripControlCenter then ZO_KeybindStripControlCenter:SetHidden(true) end
+    if ZO_KeybindStripControl then ZO_KeybindStripControl:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate1 then ZO_KeybindStripButtonTemplate1:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate2 then ZO_KeybindStripButtonTemplate2:SetHidden(true) end
+    if ZO_KeybindStripButtonTemplate3 then ZO_KeybindStripButtonTemplate3:SetHidden(true) end
     if ZO_InteractWindowDivider then ZO_InteractWindowDivider:SetHidden(false) end
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(false) end
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
@@ -800,6 +813,12 @@ local repositionPresets = {
         end
     }
 }
+local npcTextContainer = ZO_InteractWindow_GamepadContainerText
+if npcTextContainer then
+    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+    local addedWidth = originalWidth + 100
+    local addedHeight = originalHeight + 100
+end
 function CinematicCam:ApplySubtleCenterRepositioning()
     zo_callLater(function()
         local screenWidth, screenHeight = GuiRoot:GetDimensions()
@@ -815,12 +834,12 @@ function CinematicCam:ApplySubtleCenterRepositioning()
             local originalWidth, originalHeight = npcTextContainer:GetDimensions()
 
             -- Calculate offset accounting for bottom-aligned text
-            local npcYOffset = screenHeight * 0.25 + (originalHeight * 0.5) -- Adjust for bottom alignment
+            local npcYOffset = screenHeight * 0.20 + (originalHeight * 0.5) -- Adjust for bottom alignment
 
             npcTextContainer:ClearAnchors()
             npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, 0, npcYOffset)
             npcTextContainer:SetWidth(originalWidth)
-            npcTextContainer:SetHeight(originalHeight)
+            npcTextContainer:SetHeight(addedHeight)
         end
 
         -- Dialogue options positioning with alignment consideration
@@ -828,7 +847,7 @@ function CinematicCam:ApplySubtleCenterRepositioning()
         local optionsYStart = screenHeight * 0.4
         local optionSpacing = 60
         local repositionedCount = 0
-    end, 300)
+    end)
 end
 
 -- Element state management
