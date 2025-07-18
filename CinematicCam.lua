@@ -10,6 +10,7 @@ local isInBlockedInteraction = false
 local wasMountLetterboxAutoShown = false
 local wasLetterboxAutoShown = false
 local wasUIAutoHidden = false
+local currentRepositionPreset = "default"
 
 -- Default settings
 local defaults = {
@@ -22,6 +23,8 @@ local defaults = {
     letterboxVisible = false,
     uiVisible = true,
     autoLetterboxMount = false,
+    dialogueLayoutPreset = "default",
+    coordinateWithLetterbox = true,
 
     -- 3rd Person Dialogue Settings
     forceThirdPersonDialogue = true,
@@ -38,12 +41,11 @@ local defaults = {
     autoLetterboxVendor = false,      -- Disable for vendors
     autoLetterboxBank = false,        -- Disable for banks
     autoLetterboxCrafting = false,    -- Disable for crafting stations
+
     selectedFont = "ESO_Standard",
-    customFontSize = 18,
+    customFontSize = 30,
     fontScale = 1.0,
-    selectedFont = "ESO_Standard",
-    customFontSize = 18,
-    fontScale = 1.0,
+
 }
 
 local letterboxSettings = {}
@@ -61,7 +63,7 @@ local uiElements = {
     "ZO_MinimapContainer",
     "ZO_PowerBlock",
     "ZO_BuffTracker",
-    "ZO_ReticleContainer",
+    "ZO_ReticleContainerReticle",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -114,16 +116,13 @@ local fontBook = {
         description = "Bold ESO font"
     },
     ["Handwritten"] = {
-        name = "Handwritten Style",
-        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|20|soft-shadow-thick",
+        name = "Handwritten",
+        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|soft-shadow-thick",
         description = "Handwritten-style font"
     },
 
 }
 
-
--- Only working on initialize, mnay need to revise logic
--- Replace your RegisterSceneCallbacks function with this:
 function CinematicCam:RegisterSceneCallbacks()
     local scenesToWatch = {
         "gameMenuInGame",       -- keyboard main menu
@@ -196,7 +195,13 @@ function CinematicCam:InitializeLetterboxSettings()
 end
 
 function CinematicCam:ShouldApplyLetterbox(interactionType)
-    return letterboxSettings[interactionType] == true
+    -- Simple master toggle for all dialogue types
+    local isDialogueInteraction = (
+        interactionType == INTERACTION_CONVERSATION or
+        interactionType == INTERACTION_QUEST
+    )
+
+    return isDialogueInteraction and self.savedVars.autoLetterboxDialogue
 end
 
 function CinematicCam.ToggleLetterboxOnly()
@@ -483,18 +488,29 @@ function CinematicCam:OnGameCameraDeactivated()
 
     if self:ShouldBlockInteraction(interactionType) then
         -- Prevent the camera switch to close-up interaction view
+
         SetInteractionUsingInteractCamera(false)
         isInBlockedInteraction = true
+        self:CaptureOriginalElementStates()
 
+        -- Apply repositioning based on current preset
+        self:ApplyDialogueRepositioning()
         -- Save current state
         self:SaveCameraState()
-
-
 
         -- HIDE DIALOGUE PANELS ONLY IF SETTING IS ENABLED
         if self.savedVars.hideDialoguePanels then
             self:HideDialoguePanels()
         end
+
+        -- ALWAYS apply NPC text visibility (regardless of panel setting)
+        if ZO_InteractWindowTargetAreaBodyText then
+            ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.hideNPCText)
+        end
+        if ZO_InteractWindow_GamepadContainerText then
+            ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.hideNPCText)
+        end
+
 
         -- Track and show letterbox IF this interaction type should have letterbox
         if self:ShouldApplyLetterbox(interactionType) then
@@ -577,10 +593,7 @@ function CinematicCam:HideDialoguePanels()
 
     -- Text elements - handle title and body text separately
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(true) end
-    -- Only hide NPC text if the hideNPCText setting is enabled
-    if ZO_InteractWindowTargetAreaBodyText then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-    end
+
 
     -- Options and highlights
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(true) end
@@ -649,7 +662,7 @@ function CinematicCam:ApplyFontToElement(element, fontSize)
 
     local fontPath = self:GetCurrentFont()
 
-    -- Let ESO use its default font
+    -- ESO default font
     if not fontPath then
         return
     end
@@ -715,7 +728,7 @@ function CinematicCam:ApplyFontsToUI()
 end
 
 function CinematicCam:SetupDialogueFontHooks()
-    -- Hook into the interaction window showing
+    -- Interaction window hook
     local originalSetupInteraction = ZO_InteractWindow_OnInteractionUpdated
     if originalSetupInteraction then
         ZO_InteractWindow_OnInteractionUpdated = function(...)
@@ -727,7 +740,7 @@ function CinematicCam:SetupDialogueFontHooks()
         end
     end
 
-    -- Also hook into chatter events for simple NPC dialogue
+    -- chatter events hook for simple NPC dialogue
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
         zo_callLater(function()
             CinematicCam:ApplyFontsToUI()
@@ -746,6 +759,174 @@ function CinematicCam:OnFontChanged()
     zo_callLater(function()
         self:ApplyFontsToUI()
     end, 100)
+end
+
+-- Repositioning preset system
+local repositionPresets = {
+    ["default"] = {
+        name = "Default ESO Layout",
+        applyFunction = function(self)
+            self:RestoreDefaultPositions()
+        end
+    },
+    ["subtle_center"] = {
+        name = "Subtle Center",
+        applyFunction = function(self)
+            self:ApplySubtleCenterRepositioning()
+        end
+    },
+    ["full_center"] = {
+        name = "Full Center Screen",
+        applyFunction = function(self)
+            self:ApplyFullCenterRepositioning()
+        end
+    }
+}
+
+-- Element state management
+local originalElementStates = {}
+
+
+function CinematicCam:CaptureOriginalElementStates()
+    local elementsToCapture = {
+        "ZO_InteractWindowDivider",
+        "ZO_InteractWindow_GamepadContainer",
+        "ZO_InteractWindow_GamepadContainerText",
+        "ZO_InteractWindowPlayerAreaOptions",
+        "ZO_InteractWindowPlayerAreaHighlight"
+    }
+
+    for _, elementName in ipairs(elementsToCapture) do
+        local element = _G[elementName]
+        if element then
+            originalElementStates[elementName] = {
+                isHidden = element:IsHidden(),
+                alpha = element:GetAlpha(),
+                -- Note: We can't directly capture anchors, but we can store reference positions
+                captured = true
+            }
+        end
+    end
+end
+
+function CinematicCam:GetStableDimensions(elementName, maxAttempts)
+    local element = _G[elementName]
+    if not element then return nil, nil end
+
+    maxAttempts = maxAttempts or 10
+    local attempts = 0
+    local lastWidth, lastHeight = 0, 0
+    local stableCount = 0
+
+    local function checkDimensions()
+        attempts = attempts + 1
+        local width, height = element:GetDimensions()
+
+        -- Check if dimensions are stable
+        if width == lastWidth and height == lastHeight and width > 0 and height > 0 then
+            stableCount = stableCount + 1
+            if stableCount >= 3 then -- 3 consecutive stable measurements
+                return width, height
+            end
+        else
+            stableCount = 0
+        end
+
+        lastWidth, lastHeight = width, height
+
+        -- Continue checking if not stable and under max attempts
+        if attempts < maxAttempts then
+            zo_callLater(checkDimensions, 50)
+        else
+            -- Return last known dimensions even if not perfectly stable
+            return width, height
+        end
+    end
+
+    return checkDimensions()
+end
+
+function CinematicCam:ApplySubtleCenterRepositioning()
+    zo_callLater(function()
+        -- Target the root window for unified system movement
+        local rootWindow = _G["ZO_InteractWindow_Gamepad"]
+
+        if rootWindow then
+            local screenWidth, screenHeight = GuiRoot:GetDimensions()
+            local originalWidth, originalHeight = rootWindow:GetDimensions()
+
+            -- Calculate subtle center offset (10% toward screen center)
+            local centerOffset = screenWidth * 0.1
+
+            -- Clear anchors and apply subtle repositioning
+            rootWindow:ClearAnchors()
+            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, -centerOffset, 0)
+
+            -- Preserve original dimensions
+            rootWindow:SetWidth(originalWidth)
+            rootWindow:SetHeight(originalHeight)
+        else
+            d("ERROR: Root window not found for repositioning")
+        end
+    end, 300) -- Timing based on our stability testing
+end
+
+function CinematicCam:ApplyFullCenterRepositioning()
+    d("Applying Full Center repositioning...")
+
+    zo_callLater(function()
+        local rootWindow = _G["ZO_InteractWindow_Gamepad"]
+
+        if rootWindow then
+            local screenWidth, screenHeight = GuiRoot:GetDimensions()
+            local originalWidth, originalHeight = rootWindow:GetDimensions()
+
+            local centerX = 0
+            local centerY = 0
+
+            -- Coordinate with letterbox if active
+            if self.savedVars.letterboxVisible then
+                centerY = self.savedVars.letterboxSize * 0.3 -- Position optimally within letterbox area
+            end
+
+            -- Apply full center positioning
+            rootWindow:ClearAnchors()
+            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
+
+            -- Set appropriate dimensions for center positioning
+            local maxWidth = math.min(originalWidth, screenWidth * 0.8)
+            rootWindow:SetWidth(maxWidth)
+            rootWindow:SetHeight(originalHeight)
+        else
+            d("ERROR: Root window not found for repositioning")
+        end
+    end, 300)
+end
+
+function CinematicCam:RestoreDefaultPositions()
+    local rootWindow = _G["ZO_InteractWindow_Gamepad"]
+
+    if rootWindow then
+        -- Clear custom anchors
+        rootWindow:ClearAnchors()
+
+        -- Restore ESO's default gamepad dialogue positioning
+        -- Based on our dimensional analysis: positioned on right side of screen
+        rootWindow:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
+
+        -- Restore original dimensions
+        rootWindow:SetWidth(683) -- From our measurements
+        rootWindow:SetHeight(1083)
+    else
+        d("ERROR: Root window not found for restoration")
+    end
+end
+
+function CinematicCam:ApplyDialogueRepositioning()
+    local preset = repositionPresets[currentRepositionPreset]
+    if preset and preset.applyFunction then
+        preset.applyFunction(self)
+    end
 end
 
 ---=============================================================================
@@ -811,15 +992,42 @@ local function Initialize()
             end
         end, 1600)
     end
+    -- Add a slash command to trigger debugging
+    SLASH_COMMANDS["/ccdebug"] = function()
+        CinematicCam:DebugDialogueElements()
+    end
+    SLASH_COMMANDS["/cchierarchy"] = function()
+        CinematicCam:DebugGamepadDialogueHierarchy()
+    end
     -- Register slash commands
     SLASH_COMMANDS["/ccui"] = function()
         CinematicCam:ToggleUI()
     end
+    SLASH_COMMANDS["/cctest"] = function(preset)
+        if not preset or preset == "" then
+            d("Usage: /cctest [default|subtle_center|full_center]")
+            return
+        end
 
+        if repositionPresets[preset] then
+            currentRepositionPreset = preset
+            CinematicCam.savedVars.dialogueLayoutPreset = preset
+            d("Testing preset: " .. preset)
+
+            local interactionType = GetInteractionType()
+            if interactionType ~= INTERACTION_NONE then
+                CinematicCam:ApplyDialogueRepositioning()
+            else
+                d("Start a dialogue with an NPC to test repositioning")
+            end
+        else
+            d("Invalid preset: " .. preset)
+        end
+    end
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
-
+    currentRepositionPreset = CinematicCam.savedVars.dialogueLayoutPreset or "default"
     CinematicCam:InitializeLetterboxSettings()
     -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()

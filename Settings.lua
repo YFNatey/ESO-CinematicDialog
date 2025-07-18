@@ -10,6 +10,7 @@ function CinematicCam:CreateSettingsMenu()
         return
     end
     local choices, choicesValues = self:GetFontChoices()
+
     local panelName = "CinematicCamOptions"
 
     local panelData = {
@@ -31,20 +32,20 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Hide NPC Dialogue UI Panels",
+            name = "NPC Dialogue UI Panels",
             tooltip = "Hide the dialogue window, and choice panels during 3rd person dialogue",
-            getFunc = function() return self.savedVars.hideDialoguePanels end,
+            getFunc = function() return not self.savedVars.hideDialoguePanels end,
             setFunc = function(value)
-                self.savedVars.hideDialoguePanels = value
+                self.savedVars.hideDialoguePanels = not value
             end,
             width = "full",
         },
         {
             type = "checkbox",
-            name = "Hide NPC Subtitles",
-            getFunc = function() return self.savedVars.hideNPCText end,
+            name = "Subtitles",
+            getFunc = function() return not self.savedVars.hideNPCText end,
             setFunc = function(value)
-                self.savedVars.hideNPCText = value
+                self.savedVars.hideNPCText = not value
             end,
             width = "full",
         },
@@ -105,8 +106,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto black bars During Dialogue",
-            tooltip = "Automatically show black bars during 3rd person dialogue",
+            name = "Auto Black Bars During Dialogue",
+            tooltip = "Automatically show black bars during dialogue interactions (conversations and quests)",
             getFunc = function() return self.savedVars.autoLetterboxDialogue end,
             setFunc = function(value)
                 self.savedVars.autoLetterboxDialogue = value
@@ -126,13 +127,9 @@ function CinematicCam:CreateSettingsMenu()
             name = "Font Settings",
         },
         {
-            type = "description",
-            text = "Customize the fonts used in dialogue and UI elements.",
-        },
-        {
             type = "dropdown",
             name = "Font",
-            tooltip = "Choose the font family for dialogue text",
+            tooltip = "Choose the font for the NPC dialogue text",
             choices = choices,
             choicesValues = choicesValues,
             getFunc = function() return self.savedVars.selectedFont end,
@@ -145,7 +142,6 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "slider",
             name = "Font Size",
-            tooltip = "Adjust the base font size for dialogue text",
             min = 10,
             max = 32,
             step = 1,
@@ -158,8 +154,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Font Scale",
-            tooltip = "Scale all fonts by this multiplier",
+            name = "Font Scale Multiplier",
             min = 0.5,
             max = 2.0,
             step = 0.1,
@@ -173,7 +168,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "button",
             name = "Reset Font Settings",
-            tooltip = "Reset font settings to defaults",
+            tooltip = "Reset font settings to default ESO style",
             func = function()
                 self.savedVars.selectedFont = "ESO_Standard"
                 self.savedVars.customFontSize = 18
@@ -184,8 +179,91 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
+            name = "Dialogue Layout Settings",
+        },
+        {
+            type = "description",
+            text = "Choose how dialogue elements are positioned on screen during 3rd person interactions.",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Layout Preset",
+            tooltip =
+            "Choose how dialogue elements are positioned:\n• Default: Original ESO positioning\n• Subtle Center: Slight adjustment toward screen center\n• Full Center: Complete center screen positioning",
+            choices = { "Default ESO Layout", "Subtle Center", "Full Center Screen" },
+            choicesValues = { "default", "subtle_center", "full_center" },
+            getFunc = function() return self.savedVars.dialogueLayoutPreset end,
+            setFunc = function(value)
+                self.savedVars.dialogueLayoutPreset = value
+                currentRepositionPreset = value
+                d("Dialogue layout preset changed to: " .. value)
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    zo_callLater(function()
+                        self:ApplyDialogueRepositioning()
+                    end, 100)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Coordinate with Black Bars",
+            tooltip = "Adjust dialogue positioning when black bars are active for optimal visual balance",
+            getFunc = function() return self.savedVars.coordinateWithLetterbox end,
+            setFunc = function(value)
+                self.savedVars.coordinateWithLetterbox = value
+            end,
+            width = "full",
+        },
+        {
+            type = "button",
+            name = "Preview Current Layout",
+            tooltip = "Test the current layout preset (requires being in dialogue with an NPC)",
+            func = function()
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    self:ApplyDialogueRepositioning()
+                    d("Applied current layout preset")
+                else
+                    d("Start a dialogue with an NPC to preview layout changes")
+                end
+            end,
+            width = "half",
+        },
+        {
+            type = "button",
+            name = "Reset to Default",
+            tooltip = "Reset dialogue layout to original ESO positioning",
+            func = function()
+                self.savedVars.dialogueLayoutPreset = "default"
+                currentRepositionPreset = "default"
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    zo_callLater(function()
+                        self:RestoreDefaultPositions()
+                    end, 100)
+                end
+
+                d("Dialogue layout reset to default")
+            end,
+            width = "half",
+        },
+        {
+            type = "divider",
+            width = "full"
+        },
+        width = "full",
+        {
+            type = "header",
             name = "Black Bars Settings",
         },
+
         {
             type = "button",
             name = "Toggle Black Bars",
@@ -194,16 +272,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "half",
         },
-        {
-            type = "description",
-            text = "Use /ccbars to toggle black bars on/off",
-            width = "full",
-        },
-        {
-            type = "description",
-            text = "Use /ccui to toggle UI elements on/off",
-            width = "full",
-        },
+
         {
             type = "checkbox",
             name = "Auto-size Black Bars",
@@ -301,9 +370,16 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "button",
-            name = "Hi",
+            name = "Paypal",
             tooltip = "paypal.me/yfnatey",
             func = function() RequestOpenUnsafeURL("https://paypal.me/yfnatey") end,
+            width = "half"
+        },
+        {
+            type = "button",
+            name = "Ko-fi",
+            tooltip = "Ko-fi.me/yfnatey",
+            func = function() RequestOpenUnsafeURL("https://Ko-fi.com/yfnatey") end,
             width = "half"
         },
     }
