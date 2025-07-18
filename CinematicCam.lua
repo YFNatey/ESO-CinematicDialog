@@ -64,6 +64,9 @@ local uiElements = {
     "ZO_PowerBlock",
     "ZO_BuffTracker",
     "ZO_ReticleContainerReticle",
+    "ZO_ReticleContainer",
+    "ZO_ReticleContainerStealthIcon",
+    "ZO_ReticleContainerNoneInteract",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -86,6 +89,13 @@ local uiElements = {
     "ZO_FriendsListKeyboard",
     "ZO_IgnoreListKeyboard",
     "ZO_GroupWindow",
+    "ZO_ChatMenu_Gamepad_TopLevel",
+    "ZO_GamepadTextChat",
+    "ZO_GamepadTextChatBg",
+    "ZO_GamepadTextChatScrollBar",
+    "ZO_GamepadTextChatWindowContainer",
+    "ZO_ChatWindowTab_Gamepad1",
+    "ZO_ChatMenu_Gamepad_TopLevelMask",
 
     -- Crafting UI
     "ZO_CraftingTopLevel",
@@ -386,7 +396,8 @@ function CinematicCam:HideUI()
     if not self.savedVars.uiVisible then
         return
     end
-
+    ZO_ReticleContainerReticle:SetHidden(true)
+    ZO_ReticleContainerReticle.SetHidden = function() end
     for _, elementName in ipairs(uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
@@ -412,6 +423,8 @@ function CinematicCam:ShowUI()
     if self.savedVars.uiVisible then
         return
     end
+    ZO_ReticleContainerReticle:SetHidden(false)
+    ZO_ReticleContainerReticle.SetHidden = function() end
     for elementName, _ in pairs(hiddenElements) do
         local element = _G[elementName]
         if element then
@@ -430,6 +443,11 @@ function CinematicCam:ToggleUI()
         self:ShowUI()
     end
 end
+
+-- THE INTERACT LIST CONTAINER FOR GAMEPAD IS
+-- ZO_InteractWindow_GamepadContainerInteract(List)
+-- ZO_InteractWindow_Gamepad
+
 
 ---=============================================================================
 -- 3rd Person Questing
@@ -586,7 +604,7 @@ end
 -- Need to hide this: "ZO_KeybindStripButtonTemplate2"
 function CinematicCam:HideDialoguePanels()
     -- Main dialogue window elements
-    if ZO_InteractWindowDivider then ZO_InteractWindowDivider:SetHidden(true) end
+    if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(true) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
@@ -744,7 +762,7 @@ function CinematicCam:SetupDialogueFontHooks()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
         zo_callLater(function()
             CinematicCam:ApplyFontsToUI()
-        end, 100)
+        end)
     end)
 end
 
@@ -782,6 +800,36 @@ local repositionPresets = {
         end
     }
 }
+function CinematicCam:ApplySubtleCenterRepositioning()
+    zo_callLater(function()
+        local screenWidth, screenHeight = GuiRoot:GetDimensions()
+        local effectiveWidth = screenWidth
+        if self.savedVars.letterboxVisible and self.savedVars.coordinateWithLetterbox then
+            -- Account for letterbox visual boundaries
+            effectiveWidth = screenWidth * 0.95 -- Leave small margins
+        end
+
+        -- NPC text positioning (accounting for bottom alignment)
+        local npcTextContainer = ZO_InteractWindow_GamepadContainerText
+        if npcTextContainer then
+            local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+
+            -- Calculate offset accounting for bottom-aligned text
+            local npcYOffset = screenHeight * 0.25 + (originalHeight * 0.5) -- Adjust for bottom alignment
+
+            npcTextContainer:ClearAnchors()
+            npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, 0, npcYOffset)
+            npcTextContainer:SetWidth(originalWidth)
+            npcTextContainer:SetHeight(originalHeight)
+        end
+
+        -- Dialogue options positioning with alignment consideration
+        local optionsXOffset = screenWidth * 0.15
+        local optionsYStart = screenHeight * 0.4
+        local optionSpacing = 60
+        local repositionedCount = 0
+    end, 300)
+end
 
 -- Element state management
 local originalElementStates = {}
@@ -802,7 +850,7 @@ function CinematicCam:CaptureOriginalElementStates()
             originalElementStates[elementName] = {
                 isHidden = element:IsHidden(),
                 alpha = element:GetAlpha(),
-                -- Note: We can't directly capture anchors, but we can store reference positions
+
                 captured = true
             }
         end
@@ -846,31 +894,6 @@ function CinematicCam:GetStableDimensions(elementName, maxAttempts)
     return checkDimensions()
 end
 
-function CinematicCam:ApplySubtleCenterRepositioning()
-    zo_callLater(function()
-        -- Target the root window for unified system movement
-        local rootWindow = _G["ZO_InteractWindow_Gamepad"]
-
-        if rootWindow then
-            local screenWidth, screenHeight = GuiRoot:GetDimensions()
-            local originalWidth, originalHeight = rootWindow:GetDimensions()
-
-            -- Calculate subtle center offset (10% toward screen center)
-            local centerOffset = screenWidth * 0.1
-
-            -- Clear anchors and apply subtle repositioning
-            rootWindow:ClearAnchors()
-            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, -centerOffset, 0)
-
-            -- Preserve original dimensions
-            rootWindow:SetWidth(originalWidth)
-            rootWindow:SetHeight(originalHeight)
-        else
-            d("ERROR: Root window not found for repositioning")
-        end
-    end, 300) -- Timing based on our stability testing
-end
-
 function CinematicCam:ApplyFullCenterRepositioning()
     d("Applying Full Center repositioning...")
 
@@ -900,7 +923,7 @@ function CinematicCam:ApplyFullCenterRepositioning()
         else
             d("ERROR: Root window not found for repositioning")
         end
-    end, 300)
+    end)
 end
 
 function CinematicCam:RestoreDefaultPositions()
@@ -1012,7 +1035,7 @@ local function Initialize()
         if repositionPresets[preset] then
             currentRepositionPreset = preset
             CinematicCam.savedVars.dialogueLayoutPreset = preset
-            d("Testing preset: " .. preset)
+
 
             local interactionType = GetInteractionType()
             if interactionType ~= INTERACTION_NONE then

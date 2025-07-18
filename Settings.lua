@@ -122,6 +122,7 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value) CinematicCam.savedVars.autoLetterboxMount = value end,
             width = "full",
         },
+        --- FONT SETTINGS
         {
             type = "header",
             name = "Font Settings",
@@ -177,13 +178,15 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "half",
         },
+        --- LAYOUT SETTINGS
         {
             type = "header",
             name = "Dialogue Layout Settings",
         },
         {
             type = "description",
-            text = "Choose how dialogue elements are positioned on screen during 3rd person interactions.",
+            text =
+            "Choose how dialogue elements are positioned on screen during 3rd person interactions (/reloadui for changes to take effect).",
             width = "full",
         },
         {
@@ -195,8 +198,10 @@ function CinematicCam:CreateSettingsMenu()
             choicesValues = { "default", "subtle_center", "full_center" },
             getFunc = function() return self.savedVars.dialogueLayoutPreset end,
             setFunc = function(value)
+                -- Update BOTH variables immediately
                 self.savedVars.dialogueLayoutPreset = value
                 currentRepositionPreset = value
+
                 d("Dialogue layout preset changed to: " .. value)
 
                 -- Apply immediately if in dialogue
@@ -204,7 +209,7 @@ function CinematicCam:CreateSettingsMenu()
                 if interactionType ~= INTERACTION_NONE then
                     zo_callLater(function()
                         self:ApplyDialogueRepositioning()
-                    end, 100)
+                    end, 50) -- Reduced delay for more immediate response
                 end
             end,
             width = "full",
