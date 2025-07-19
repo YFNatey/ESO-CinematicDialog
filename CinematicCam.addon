@@ -1,4 +1,4 @@
-## Title: 3rd Person Dialogue
+## Title: Cinematic Dialog
 ## Author: YFNatey
 ## Version: 1.0
 ## APIVersion: 101046
@@ -7,4 +7,5 @@
 
 CinematicCam.lua
 Settings.lua
+ChunkedDialog.lua
 CinematicCam.xml

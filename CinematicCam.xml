@@ -1,24 +1,30 @@
 <GuiXml>
     <Controls>
         <!-- Main Container for Letterbox Bars -->
-        <TopLevelControl name="CinematicCam_Container" mouseEnabled="false" 
-                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="-5">
+        <TopLevelControl name="CinematicCam_Container" mouseEnabled="false"
+                         layer="DL_BACKGROUND" tier="DT_LOW" level="-5">
             <Controls>
                 <!-- Top Letterbox Bar -->
-                <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false" 
-                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="-5">
+                <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier ="DT_LOW" level="-10">
                     <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
                     <Anchor point="TOPRIGHT" relativeTo="GuiRoot" relativePoint="TOPRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
                
                 <!-- Bottom Letterbox Bar -->
-                <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false" 
-                         drawLayer="DL_BACKGROUND" drawTier="DT_LOW" drawLevel="0">
+                <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false"
+                         drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="10">
                     <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" />
                     <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
+                
+                <!-- NEW: Chunked Dialogue Text Control -->
+                <Label name="CinematicCam_ChunkedText"  mouseEnabled="false">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" drawLevel = "5" />
+                    <Dimensions x="800" y="300" />
+                </Label>
             </Controls>
         </TopLevelControl>
     </Controls>
