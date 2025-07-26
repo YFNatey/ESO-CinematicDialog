@@ -6,7 +6,6 @@ function CinematicCam:CreateSettingsMenu()
     local LAM = LibAddonMenu2
 
     if not LAM then
-        d("LibAddonMenu-2.0 is required for the settings menu. You can still use slash commands.")
         return
     end
     local choices, choicesValues = self:GetFontChoices()
@@ -25,7 +24,6 @@ function CinematicCam:CreateSettingsMenu()
     }
 
     local optionsData = {
-
         {
             type = "header",
             name = "3rd Person Dialog Toggles",
@@ -75,9 +73,27 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+        --TODO: Dye Stations
         {
             type = "header",
             name = "Subtitle Settings",
+        },
+        {
+            type = "checkbox",
+            name = "Hide Player Options Until NPC Finishes",
+            tooltip = "Hide player dialogue options until the NPC finishes speaking for a more cinematic experience",
+            getFunc = function() return CinematicCam.savedVars.hidePlayerOptionsUntilComplete end,
+            setFunc = function(value) CinematicCam.savedVars.hidePlayerOptionsUntilComplete = value end,
+
+        },
+        {
+            type = "checkbox",
+            name = "Show Options on Last Sentence",
+            tooltip = "Show player options when the last sentence starts (vs when it finishes)",
+            getFunc = function() return CinematicCam.savedVars.showOptionsOnLastChunk end,
+            setFunc = function(value) CinematicCam.savedVars.showOptionsOnLastChunk = value end,
+
+            disabled = function() return not CinematicCam.savedVars.hidePlayerOptionsUntilComplete end,
         },
         {
             type = "checkbox",
@@ -85,6 +101,7 @@ function CinematicCam:CreateSettingsMenu()
             getFunc = function() return not self.savedVars.hideNPCText end,
             setFunc = function(value)
                 self.savedVars.hideNPCText = not value
+                self:UpdateChunkedTextVisibility()
             end,
             width = "full",
         },
@@ -92,9 +109,9 @@ function CinematicCam:CreateSettingsMenu()
             type = "dropdown",
             name = "Subtitle Location",
             tooltip =
-            "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered \n• Compact: slightly closer to the center",
-            choices = { "ESO Default", "Cinematic", "ESO Compact" },
-            choicesValues = { "default", "subtle_center", "full_center" },
+            "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
+            choices = { "Default", "Cinematic" },
+            choicesValues = { "default", "subtle_center" },
             getFunc = function() return self.savedVars.dialogueLayoutPreset end,
             setFunc = function(value)
                 -- Update BOTH variables immediately
@@ -102,8 +119,9 @@ function CinematicCam:CreateSettingsMenu()
                 currentRepositionPreset = value
 
                 -- Force hide dialogue panels for center layouts
-                if value == "subtle_center" or value == "full_center" then
+                if value == "subtle_center" then
                     self.savedVars.hideDialoguePanels = true
+                    self.savedVars.useChunkedDialogue = true
                 elseif value == "default" then
                     self.savedVars.hideDialoguePanels = false
                 end
@@ -117,58 +135,35 @@ function CinematicCam:CreateSettingsMenu()
                 end
             end,
             width = "full",
-        },
+        }, {
+        type = "description",
+        text = "/reloadui for location presets to take effect",
+    },
         {
-            type = "description",
-            text = "/Reloadui for subtitle location changes to take effect",
-            width = "full"
-        },
-        {
-            type = "header",
-            name = "Chunked Dialog",
-        },
-        {
-            type = "description",
-            text = "Break dialog into smaller segments for a more cinematic experience.",
-            width = "full"
-        },
-        {
-            type = "checkbox",
-            name = "Enable Chunked Dialog",
-            getFunc = function() return self.savedVars.useChunkedDialogue end,
+            type = "slider",
+            name = "Move Default Panel Position",
+            tooltip =
+            "Adjust the horizontal position of the dialogue window.",
+            min = 10,
+            max = 34,
+            step = 2,
+            getFunc = function()
+                return math.floor(self.savedVars.dialogueHorizontalOffset * 100)
+            end,
             setFunc = function(value)
-                self.savedVars.useChunkedDialogue = value
-                if value then
-                    self.savedVars.hideNPCText = true
+                self.savedVars.dialogueHorizontalOffset = value / 100
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    zo_callLater(function()
+                        self:ApplyDialogueRepositioning()
+                    end, 50)
                 end
             end,
             width = "full",
         },
 
-        {
-            type = "slider",
-            name = "Minimum Chunk Length",
-            tooltip = "Minimum number of characters per chunk to avoid very short segments",
-            min = 5,
-            max = 50,
-            step = 5,
-            getFunc = function() return self.savedVars.chunkMinLength end,
-            setFunc = function(value) self.savedVars.chunkMinLength = value end,
-            disabled = function() return not self.savedVars.useChunkedDialogue end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Maximum Chunk Length",
-            tooltip = "Maximum number of characters per chunk before forcing a break",
-            min = 100,
-            max = 400,
-            step = 25,
-            getFunc = function() return self.savedVars.chunkMaxLength end,
-            setFunc = function(value) self.savedVars.chunkMaxLength = value end,
-            disabled = function() return not self.savedVars.useChunkedDialogue end,
-            width = "full",
-        },
         --- FONT SETTINGS
         {
             type = "header",
@@ -256,26 +251,6 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "half",
         },
-
-        {
-            type = "checkbox",
-            name = "Auto-size Black Bars",
-            tooltip = "When enabled, black bars will be sized automatically to create a cinematic aspect ratio",
-            getFunc = function() return self.savedVars.autoSizeLetterbox end,
-            setFunc = function(value)
-                self.savedVars.autoSizeLetterbox = value
-                if value then
-                    -- Recalculate size now
-                    self:CalculateLetterboxSize()
-                    -- Apply if visible
-                    if not CinematicCam_LetterboxTop:IsHidden() then
-                        CinematicCam_LetterboxTop:SetHeight(self.savedVars.letterboxSize)
-                        CinematicCam_LetterboxBottom:SetHeight(self.savedVars.letterboxSize)
-                    end
-                end
-            end,
-            width = "full",
-        },
         {
             type = "slider",
             name = "Black Bar Size",
@@ -292,7 +267,6 @@ function CinematicCam:CreateSettingsMenu()
                     CinematicCam_LetterboxBottom:SetHeight(value)
                 end
             end,
-            disabled = function() return self.savedVars.autoSizeLetterbox end,
             width = "full",
         },
         {
