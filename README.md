@@ -9,11 +9,11 @@ In films, every element within the frame serves the narrative. The crackling hea
 This approach transforms routine interactions into memorable cinematic moments.
 
 ## Features for Players
-* **Cinematic Camera Control:** 
-• Dialogue Layout Presets - from subtle repositioning to full screen centering
-• Dynamic Letterbox Bars: Adds optional black bars that automatically animate in during interactions
-• Custom font options and sizing
-• Chunked Dialogue System: Presents NPC text in timed segments for more natural, paced conversations
+* **Cinematic Camera Control** 
+* **Dialogue Layout Presets** from subtle repositioning to full screen centering
+* **Dynamic Letterbox Bars** Adds optional black bars that automatically animate in during interactions
+* **Custom font options**
+* **Chunked Dialogue System** Presents NPC text in timed segments for more natural, paced conversations
 
 ## Technical Overview
 * **Event-Driven Architecture:** 

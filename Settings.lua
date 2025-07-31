@@ -1,3 +1,10 @@
+--[[ TODO
+Dye Stations toggle
+Allow npc text repositioning
+Allow options for npc name: appended or above text
+Allow reposition dialoge options
+Fix "images, coin, u46 descision images shopwing up as squares"
+--]]
 ---=============================================================================
 -- Settings Menu
 --=============================================================================
@@ -261,6 +268,7 @@ function CinematicCam:CreateSettingsMenu()
             getFunc = function() return self.savedVars.letterboxSize end,
             setFunc = function(value)
                 self.savedVars.letterboxSize = value
+                self.savedVars.autoSizeLetterbox = false
                 -- Apply new size if letterbox is visible
                 if not CinematicCam_LetterboxTop:IsHidden() then
                     CinematicCam_LetterboxTop:SetHeight(value)
