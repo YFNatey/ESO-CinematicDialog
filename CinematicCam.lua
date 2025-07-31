@@ -17,170 +17,187 @@ local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
 CinematicCam.savedVars = nil
 
-local hiddenElements = {}
-local interactionSettings = {}
-local isInBlockedInteraction = false
-local wasMountLetterboxAutoShown = false
-local wasLetterboxAutoShown = false
+local uiElementsMap = {}      -- table for hiding ui elements, used in HideUI()
+local interactionTypeMap = {} -- table for interaction type settings
+
+-- State tracking
+local isInteractionModified = false -- is default camera overridden?
+local mountLetterbox = false
+local dialogLetterbox = false
 local wasUIAutoHidden = false
-local currentRepositionPreset = "full_center"
+CinematicCam.currentRepositionPreset = "default"
 local lastDialogueText = ""
 local dialogueChangeCheckTimer = nil
 
 -- Default settings
 local defaults = {
     camEnabled = false,
-    letterboxSize = 100,
-    letterboxOpacity = 1.0,
-    autoSizeLetterbox = false,
-    customUiElements = {},
-    hideUiElements = {},
-    letterboxVisible = false,
-    uiVisible = true,
-    autoLetterboxMount = false,
-    dialogueLayoutPreset = "full_center",
-    coordinateWithLetterbox = true,
+    letterbox = {
+        size = 100,
+        opacity = 1.0,
+        isVisible = false,
+        letterboxVisible = false,
+        autoLetterboxMount = false,
+        coordinateWithLetterbox = true,
+        mountLetterboxDelay = 0,
 
-    -- 3rd Person Dialogue Settings
-    forceThirdPersonDialogue = true,
-    forceThirdPersonVendor = false,
-    forceThirdPersonBank = false,
-    forceThirdPersonQuest = true,
-    forceThirdPersonCrafting = false,
-    autoLetterboxDialogue = false,
-    autoHideUIDialogue = false,
-    hideDialoguePanels = false,
-    hideNPCText = false,
-    autoLetterboxConversation = true, -- Enable for regular dialogue
-    autoLetterboxQuest = true,        -- Enable for quest interactions
-    autoLetterboxVendor = false,      -- Disable for vendors
-    autoLetterboxBank = false,        -- Disable for banks
-    autoLetterboxCrafting = false,    -- Disable for crafting stations
-    mountLetterboxDelay = 0,
-
-    selectedFont = "ESO_Standard",
-    customFontSize = 36,
-    fontScale = 1.0,
-    dialogueHorizontalOffset = 0.34,
-
-    -- Chunked Dialogue
-    useChunkedDialogue = false,
-    chunkDisplayInterval = 3.0,
-    chunkDelimiters = { ".", "!", "?" },
-    chunkMinLength = 10,
-    chunkMaxLength = 200,
-    baseDisplayTime = 1.0,
-    timePerCharacter = 0.03,
-    minDisplayTime = 1.5,
-    maxDisplayTime = 8.0,
-    timingMode = "dynamic",
-    usePunctuationTiming = true,
-    hyphenPauseTime = 0.3,
-    commaPauseTime = 0.2,
-    semicolonPauseTime = 0.25,
-    colonPauseTime = 0.3,
-    dashPauseTime = 0.4,
-    ellipsisPauseTime = 0.5,
-
-    -- Global control settings
-    usePerInteractionSettings = false, -- Toggle between simple/advanced mode
-    -- Alternative timing modes
-    --wordsPerMinute = 150,
-    --useWordBasedTiming = false,
-
-    interactions = {
-        conversation = {
-            enabled = true,
-            forceThirdPerson = true,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "full_center"
-        },
-        quest = {
-            enabled = true,
-            forceThirdPerson = true,
-            autoLetterbox = true,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "full_center"
-        },
-        vendor = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        store = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        bank = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        guildbank = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        tradinghouse = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        stable = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        craft = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        },
-        dyestation = {
-            enabled = false,
-            forceThirdPerson = false,
-            autoLetterbox = false,
-            autoHideUI = false,
-            hideDialoguePanels = false,
-            hideNPCText = false,
-            layoutPreset = "default"
-        }
     },
+    interaction = {
+        forceThirdPersonDialogue = true,
+        forceThirdPersonVendor = false,
+        forceThirdPersonBank = false,
+        forceThirdPersonQuest = true,
+        forceThirdPersonCrafting = false,
+        hidePlayerOptions = false,
+        layoutPreset = "default",
+        ui = {
+            hidePanelsESO = false,
+        },
+        auto = {
+            autoLetterboxDialogue = false,
+            autoHideUIDialogue = false,
+            autoLetterboxConversation = true,
+            autoLetterboxQuest = true,
+            autoLetterboxVendor = false,
+            autoLetterboxBank = false,
+            autoLetterboxCrafting = false,
+        },
+
+        subtitles = {
+            isHidden = false,
+            useChunkedDialogue = false
+        },
+
+    },
+    interface = {
+        UiElementsVisible = true,
+        hideDialoguePanels = false,
+        selectedFont = "ESO_Standard",
+        customFontSize = 36,
+        fontScale = 1.0,
+        dialogueHorizontalOffset = 0.34,
+
+    },
+    hideUiElements = {},
+
+
+    chunkedDialog = {
+        useChunkedDialogue = false,
+        chunkDisplayInterval = 3.0,
+        chunkDelimiters = { ".", "!", "?" },
+        chunkMinLength = 10,
+        chunkMaxLength = 200,
+        baseDisplayTime = 1.0,
+        timePerCharacter = 0.03,
+        minDisplayTime = 1.5,
+        maxDisplayTime = 8.0,
+        timingMode = "dynamic",
+        usePunctuationTiming = true,
+        hyphenPauseTime = 0.3,
+        commaPauseTime = 0.2,
+        semicolonPauseTime = 0.25,
+        colonPauseTime = 0.3,
+        dashPauseTime = 0.4,
+        ellipsisPauseTime = 0.5,
+    },
+    -- Global control settings
+    usePerInteractionSettings = false,
+
+
 }
+CinematicCam.interaction = {
+    conversation = {
+        enabled = true,
+        forceThirdPerson = true,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    quest = {
+        enabled = true,
+        forceThirdPerson = true,
+        autoLetterbox = true,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    vendor = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    store = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    bank = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    guildbank = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    tradinghouse = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    stable = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    craft = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    },
+    dyestation = {
+        enabled = false,
+        forceThirdPerson = false,
+        autoLetterbox = false,
+        autoHideUI = false,
+        hideDialoguePanels = false,
+        hideNPCText = false,
+        layoutPreset = "default"
+    }
+}
+
 local chunkedDialogueData = {
     originalText = "",
     chunks = {},
@@ -190,7 +207,6 @@ local chunkedDialogueData = {
     displayTimer = nil
 }
 
-local letterboxSettings = {}
 -- UI elements to hide
 local uiElements = {
     "ZO_CompassFrame",
@@ -296,14 +312,13 @@ function CinematicCam:RegisterSceneCallbacks()
                     -- Reapply UI state after menu closes
                     zo_callLater(function()
                         self:ReapplyUIState()
-                    end, 100)
+                    end)
                 end
             end)
         end
     end
 end
 
--- Add this new function to reapply your UI state:
 function CinematicCam:ReapplyUIState()
     -- Reapply UI visibility based on saved setting
     if not self.savedVars.uiVisible then
@@ -327,7 +342,7 @@ end
 
 -- Show regular npc text using eso's ui and not usingthe cinematic mode
 function CinematicCam:ShowNPCText()
-    if ZO_InteractWindowTargetAreaBodyText and self.savedVars.dialogueLayoutPreset ~= "subtle_center" then
+    if ZO_InteractWindowTargetAreaBodyText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
         ZO_InteractWindowTargetAreaBodyText:SetHidden(false)
     end
 end
@@ -351,7 +366,6 @@ function CinematicCam:InitializeLetterboxSettings()
 end
 
 function CinematicCam:ShouldApplyLetterbox(interactionType)
-    -- Simple master toggle for all dialogue types
     local isDialogueInteraction = (
         interactionType == INTERACTION_CONVERSATION or
         interactionType == INTERACTION_QUEST
@@ -510,7 +524,7 @@ end
 function CinematicCam:OnMountUp()
     if self.savedVars.autoLetterboxMount then
         if not self.savedVars.letterboxVisible then
-            wasMountLetterboxAutoShown = true
+            mountLetterbox = true
 
 
             -- Apply delay
@@ -519,10 +533,10 @@ function CinematicCam:OnMountUp()
             if delayMs > 0 then
                 mountLetterboxTimer = zo_callLater(function()
                     -- Check if still mounted before showing
-                    if IsMounted() and wasMountLetterboxAutoShown then
+                    if IsMounted() and mountLetterbox then
                         self:ShowLetterbox()
                     else
-                        wasMountLetterboxAutoShown = false
+                        mountLetterbox = false
                     end
                     mountLetterboxTimer = nil
                 end, delayMs)
@@ -531,7 +545,7 @@ function CinematicCam:OnMountUp()
                 self:ShowLetterbox()
             end
         else
-            wasMountLetterboxAutoShown = false
+            mountLetterbox = false
         end
     end
 end
@@ -541,12 +555,12 @@ function CinematicCam:OnMountDown()
         -- Cancel any pending timer
 
         -- Only hide letterbox if we auto-showed it
-        if wasMountLetterboxAutoShown and self.savedVars.letterboxVisible then
+        if mountLetterbox and self.savedVars.letterboxVisible then
             self:HideLetterbox()
         end
 
         -- Reset tracking flag
-        wasMountLetterboxAutoShown = false
+        mountLetterbox = false
     end
 end
 
@@ -562,7 +576,7 @@ function CinematicCam:HideUI()
     for _, elementName in ipairs(uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
-            hiddenElements[elementName] = true
+            uiElementsMap[elementName] = true
             element:SetHidden(true)
         end
     end
@@ -571,7 +585,7 @@ function CinematicCam:HideUI()
         if shouldHide then
             local element = _G[elementName]
             if element and not element:IsHidden() then
-                hiddenElements[elementName] = true
+                uiElementsMap[elementName] = true
                 element:SetHidden(true)
             end
         end
@@ -586,13 +600,13 @@ function CinematicCam:ShowUI()
     end
     ZO_ReticleContainerReticle:SetHidden(false)
     ZO_ReticleContainerReticle.SetHidden = function() end
-    for elementName, _ in pairs(hiddenElements) do
+    for elementName, _ in pairs(uiElementsMap) do
         local element = _G[elementName]
         if element then
             element:SetHidden(false)
         end
     end
-    hiddenElements = {}
+    uiElementsMap = {}
     self.savedVars.uiVisible = true
 end
 
@@ -650,7 +664,7 @@ function CinematicCam:StartDialogueChangeMonitoring()
             self:CleanupChunkedDialogue()
 
             -- Try to start new chunked dialogue for the new text
-            if self.savedVars.dialogueLayoutPreset == "subtle_center" then
+            if self.savedVars.interaction.layoutPreset == "cinematic" then
                 self:InterceptDialogueForChunking()
             end
             return
@@ -662,13 +676,10 @@ function CinematicCam:StartDialogueChangeMonitoring()
             self:CleanupChunkedDialogue()
             return
         end
-
-        -- Schedule next check
-        dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200) -- Check every 200ms
     end
 
     -- Start the monitoring
-    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200)
+    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 20)
 end
 
 function CinematicCam:InitializeCompleteTextDisplay()
@@ -742,16 +753,12 @@ function CinematicCam:InterceptDialogueForChunking()
             self:StartDialogueChangeMonitoring()
             return self:InitializeChunkedDisplay()
         else
-            chunkedDialogueData.chunks = { originalText } -- Use full text as single chunk
+            chunkedDialogueData.chunks = { originalText }
             self:StartDialogueChangeMonitoring()
             return self:InitializeCompleteTextDisplay()
         end
-    else
-        -- Don't chunk, just show complete text in XML control
-        chunkedDialogueData.chunks = { originalText }
-        self:StartDialogueChangeMonitoring()
-        return self:InitializeCompleteTextDisplay()
     end
+    -- TODO: handle when use chunking is disabled
 end
 
 function CinematicCam:TrimString(str)
@@ -815,7 +822,6 @@ function CinematicCam:ProcessTextIntoChunks(fullText)
 
     -- Preview timing for all chunks
     if #chunks > 1 then
-        CinematicCam:DebugPrint("=== CHUNK TIMING PREVIEW ===")
         local totalTime = 0
         for i, chunk in ipairs(chunks) do
             local chunkTime = self:CalculateChunkDisplayTime(chunk)
@@ -910,23 +916,17 @@ end
 function CinematicCam:PositionChunkedTextControl(control)
     local preset = currentRepositionPreset or "default"
 
-    if preset == "full_center" then
-        -- Center screen positioning
-        control:ClearAnchors()
-        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, -100)
-        control:SetDimensions(800, 300)
-    elseif preset == "subtle_center" then
-        -- Subtle center positioning
-        control:ClearAnchors()
-        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, 100)
-        control:SetDimensions(700, 250)
-    else
-        -- Default: mimic original element position
+    if preset == "default" then
         if chunkedDialogueData.sourceElement then
             control:ClearAnchors()
             control:SetAnchor(CENTER, chunkedDialogueData.sourceElement, CENTER, 0, -100)
             control:SetDimensions(chunkedDialogueData.sourceElement:GetDimensions())
         end
+    elseif preset == "cinematic" then
+        -- Subtle center positioning
+        control:ClearAnchors()
+        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, 100)
+        control:SetDimensions(700, 250)
     end
 end
 
@@ -1258,8 +1258,6 @@ function CinematicCam:CleanupChunkedDialogue()
         displayTimer = nil,
         sourceElement = nil
     }
-
-    -- Clear last dialogue text tracking
     lastDialogueText = ""
 end
 
@@ -1269,7 +1267,7 @@ function CinematicCam:InitializeChunkedDialogueSystem()
     self.OnGameCameraDeactivated = function(self)
         originalOnGameCameraDeactivated(self)
 
-        if self.savedVars.dialogueLayoutPreset == "subtle_center" then
+        if self.savedVars.interaction.layoutPreset == "cinematic" then
             -- Add chunked dialogue initialization
             zo_callLater(function()
                 self:InterceptDialogueForChunking()
@@ -1283,80 +1281,32 @@ end
 --=============================================================================
 -- User preference settings
 function CinematicCam:InitializeInteractionSettings()
-    if self.savedVars.usePerInteractionSettings then
-        -- Use new per-interaction settings
-        interactionSettings = {
-            [INTERACTION_CONVERSATION] = self.savedVars.interactions.conversation.enabled and
-                self.savedVars.interactions.conversation.forceThirdPerson,
-            [INTERACTION_QUEST] = self.savedVars.interactions.quest.enabled and
-                self.savedVars.interactions.quest.forceThirdPerson,
-            [INTERACTION_VENDOR] = self.savedVars.interactions.vendor.enabled and
-                self.savedVars.interactions.vendor.forceThirdPerson,
-            [INTERACTION_STORE] = self.savedVars.interactions.store.enabled and
-                self.savedVars.interactions.store.forceThirdPerson,
-            [INTERACTION_BANK] = self.savedVars.interactions.bank.enabled and
-                self.savedVars.interactions.bank.forceThirdPerson,
-            [INTERACTION_GUILDBANK] = self.savedVars.interactions.guildbank.enabled and
-                self.savedVars.interactions.guildbank.forceThirdPerson,
-            [INTERACTION_TRADINGHOUSE] = self.savedVars.interactions.tradinghouse.enabled and
-                self.savedVars.interactions.tradinghouse.forceThirdPerson,
-            [INTERACTION_STABLE] = self.savedVars.interactions.stable.enabled and
-                self.savedVars.interactions.stable.forceThirdPerson,
-            [INTERACTION_CRAFT] = self.savedVars.interactions.craft.enabled and
-                self.savedVars.interactions.craft.forceThirdPerson,
-            [INTERACTION_DYE_STATION] = self.savedVars.interactions.dyestation.enabled and
-                self.savedVars.interactions.dyestation.forceThirdPerson,
-        }
-    else
-        -- Use legacy simple settings (your current implementation)
-        interactionSettings = {
-            [INTERACTION_CONVERSATION] = self.savedVars.forceThirdPersonDialogue,
-            [INTERACTION_QUEST] = self.savedVars.forceThirdPersonQuest,
-            [INTERACTION_VENDOR] = self.savedVars.forceThirdPersonVendor,
-            [INTERACTION_STORE] = self.savedVars.forceThirdPersonVendor,
-            [INTERACTION_BANK] = self.savedVars.forceThirdPersonBank,
-            [INTERACTION_GUILDBANK] = self.savedVars.forceThirdPersonBank,
-            [INTERACTION_TRADINGHOUSE] = self.savedVars.forceThirdPersonVendor,
-            [INTERACTION_STABLE] = self.savedVars.forceThirdPersonVendor,
-            [INTERACTION_CRAFT] = self.savedVars.forceThirdPersonCrafting,
-            [INTERACTION_DYE_STATION] = self.savedVars.forceThirdPersonCrafting,
+    interactionTypeMap = {
+        [INTERACTION_CONVERSATION] = self.savedVars.forceThirdPersonDialogue,
+        [INTERACTION_QUEST] = self.savedVars.forceThirdPersonQuest,
+        [INTERACTION_VENDOR] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_STORE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_BANK] = self.savedVars.forceThirdPersonBank,
+        [INTERACTION_GUILDBANK] = self.savedVars.forceThirdPersonBank,
+        [INTERACTION_TRADINGHOUSE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_STABLE] = self.savedVars.forceThirdPersonVendor,
+        [INTERACTION_CRAFT] = self.savedVars.forceThirdPersonCrafting,
+        [INTERACTION_DYE_STATION] = self.savedVars.forceThirdPersonCrafting,
 
-        }
-    end
-end
-
-function CinematicCam:GetInteractionConfig(interactionType)
-    if not self.savedVars.usePerInteractionSettings then
-        return nil -- Use legacy behavior
-    end
-
-    local configMap = {
-        [INTERACTION_CONVERSATION] = self.savedVars.interactions.conversation,
-        [INTERACTION_QUEST] = self.savedVars.interactions.quest,
-        [INTERACTION_VENDOR] = self.savedVars.interactions.vendor,
-        [INTERACTION_STORE] = self.savedVars.interactions.store,
-        [INTERACTION_BANK] = self.savedVars.interactions.bank,
-        [INTERACTION_GUILDBANK] = self.savedVars.interactions.guildbank,
-        [INTERACTION_TRADINGHOUSE] = self.savedVars.interactions.tradinghouse,
-        [INTERACTION_STABLE] = self.savedVars.interactions.stable,
-        [INTERACTION_CRAFT] = self.savedVars.interactions.craft,
-        [INTERACTION_DYE_STATION] = self.savedVars.interactions.dyestation,
     }
-
-    return configMap[interactionType]
 end
 
 function CinematicCam:CheckInteractionStatus()
-    if isInBlockedInteraction then
+    if isInteractionModified then
         local currentInteraction = GetInteractionType()
         if currentInteraction == INTERACTION_NONE then
             CinematicCam:OnInteractionEnd()
-        else
-            -- If still in interaction, check again after a delay
-            zo_callLater(function()
-                CinematicCam:CheckInteractionStatus()
-            end, 500)
+        elseif not interactionTypeMap[currentInteraction] then
+            CinematicCam:OnInteractionEnd()
         end
+        zo_callLater(function()
+            CinematicCam:CheckInteractionStatus()
+        end, 500)
     end
 end
 
@@ -1365,7 +1315,7 @@ function GetCameraDistance()
 end
 
 function CinematicCam:ShouldBlockInteraction(interactionType)
-    return interactionSettings[interactionType] == true
+    return interactionTypeMap[interactionType] == true
 end
 
 -- Save current camera state before interaction
@@ -1381,16 +1331,15 @@ end
 
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
-    local config = self:GetInteractionConfig(interactionType)
 
-    if self.savedVars.usePerInteractionSettings and config then
+    if not self.savedVars.usePerInteractionSettings and config then
         -- Use per-interaction settings
         if not config.enabled or not config.forceThirdPerson then
             return
         end
 
         SetInteractionUsingInteractCamera(false)
-        isInBlockedInteraction = true
+        isInteractionModified = true
         self:CaptureOriginalElementStates()
 
         -- Apply interaction-specific layout preset
@@ -1418,16 +1367,16 @@ function CinematicCam:OnGameCameraDeactivated()
         end
 
         -- ALWAYS intercept dialogue (for both chunked and non-chunked)
-        if self.savedVars.dialogueLayoutPreset == "subtle_center" then
+        if self.savedVars.interaction.layoutPreset == "cinematic" then
             self:InterceptDialogueForChunking()
         end
         -- Handle letterbox and UI
         if config.autoLetterbox then
             if not self.savedVars.letterboxVisible then
-                wasLetterboxAutoShown = true
+                dialogLetterbox = true
                 self:ShowLetterbox()
             else
-                wasLetterboxAutoShown = false
+                dialogLetterbox = false
             end
         end
 
@@ -1447,7 +1396,7 @@ function CinematicCam:OnGameCameraDeactivated()
         -- Legacy behavior
         if self:ShouldBlockInteraction(interactionType) then
             SetInteractionUsingInteractCamera(false)
-            isInBlockedInteraction = true
+            isInteractionModified = true
             self:CaptureOriginalElementStates()
 
             self:ApplyDialogueRepositioning()
@@ -1465,15 +1414,15 @@ function CinematicCam:OnGameCameraDeactivated()
             end
 
             -- ALWAYS intercept dialogue (for both chunked and non-chunked)
-            if self.savedVars.dialogueLayoutPreset == "subtle_center" then
+            if self.savedVars.interaction.layoutPreset == "cinematic" then
                 self:InterceptDialogueForChunking()
             end
             if self:ShouldApplyLetterbox(interactionType) then
                 if not self.savedVars.letterboxVisible then
-                    wasLetterboxAutoShown = true
+                    dialogLetterbox = true
                     self:ShowLetterbox()
                 else
-                    wasLetterboxAutoShown = false
+                    dialogLetterbox = false
                 end
             end
 
@@ -1530,7 +1479,7 @@ function CinematicCam:SetAllLayoutPreset(preset)
 end
 
 function CinematicCam:OnGameCameraActivated()
-    if isInBlockedInteraction then
+    if isInteractionModified then
         -- Check if we're actually out of interaction
         zo_callLater(function()
             local currentInteraction = GetInteractionType()
@@ -1542,8 +1491,8 @@ function CinematicCam:OnGameCameraActivated()
 end
 
 function CinematicCam:OnInteractionEnd()
-    if isInBlockedInteraction then
-        isInBlockedInteraction = false
+    if isInteractionModified then
+        isInteractionModified = false
 
         -- Always cleanup chunked dialogue when interaction ends
         if self.savedVars.useChunkedDialogue then
@@ -1558,7 +1507,7 @@ function CinematicCam:OnInteractionEnd()
         self:RestoreCameraState()
 
         -- Only hide letterbox if we auto-showed it
-        if wasLetterboxAutoShown and self.savedVars.letterboxVisible then
+        if dialogLetterbox and self.savedVars.letterboxVisible then
             self:HideLetterbox()
         end
 
@@ -1568,7 +1517,7 @@ function CinematicCam:OnInteractionEnd()
         end
 
         -- Reset tracking flags
-        wasLetterboxAutoShown = false
+        dialogLetterbox = false
         wasUIAutoHidden = false
 
         -- Clear dialogue tracking
@@ -1599,7 +1548,7 @@ function CinematicCam:HideDialoguePanels()
 
     -- Gamepad elements
     if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(true) end
-    if ZO_InteractWindow_GamepadContainerText and self.savedVars.dialogueLayoutPreset ~= "subtle_center" then
+    if ZO_InteractWindow_GamepadContainerText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
         ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.hideNPCText)
     end
 end
@@ -1626,7 +1575,7 @@ function CinematicCam:ShowDialoguePanels()
 
     -- Gamepad elements
     if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(false) end
-    if ZO_InteractWindow_GamepadContainerText and self.savedVars.dialogueLayoutPreset ~= "subtle_center" then
+    if ZO_InteractWindow_GamepadContainerText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
         ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.hideNPCText)
     end
 end
@@ -1819,13 +1768,13 @@ local repositionPresets = {
             self:RestoreDefaultPositions()
         end
     },
-    ["subtle_center"] = {
+    ["cinematic"] = {
         name = "Subtle Center",
         applyFunction = function(self)
             self:ApplySubtleCenterRepositioning()
         end
     },
-    ["full_center"] = {
+    ["default"] = {
         name = "Full Center Screen",
         applyFunction = function(self)
             self:ApplyFullCenterRepositioning()
@@ -2079,7 +2028,7 @@ function CinematicCam:InitializeChunkedTextControl()
     return control
 end
 
-function CinematicCam:OnDialogueLayoutPresetChanged(newPreset)
+function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
     -- Update the current preset
     currentRepositionPreset = newPreset
 
@@ -2096,12 +2045,12 @@ function CinematicCam:ApplyChunkedTextPositioning()
     local preset = currentRepositionPreset or "default"
 
 
-    if preset == "subtle_center" then
+    if preset == "cinematic" then
         control:ClearAnchors()
     end
-    -- Copy positioning logic from your ESO repositioning functions
-    if preset == "full_center" then
-        -- From ApplyFullCenterRepositioning
+
+
+    if preset == "default" then
         local screenWidth, screenHeight = GuiRoot:GetDimensions()
         local centerX = screenWidth * 0.27
         local centerY = 10
@@ -2112,7 +2061,7 @@ function CinematicCam:ApplyChunkedTextPositioning()
 
         control:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
         control:SetDimensions(683, 250) -- Appropriate for text
-    elseif preset == "subtle_center" then
+    elseif preset == "cinematic" then
         -- From ApplySubtleCenterRepositioning
         local screenWidth, screenHeight = GuiRoot:GetDimensions()
         local npcYOffset = screenHeight * 0.20 + (100 * 0.5)
@@ -2176,7 +2125,7 @@ local function Initialize()
             for _, elementName in ipairs(uiElements) do
                 local element = _G[elementName]
                 if element and not element:IsHidden() then
-                    hiddenElements[elementName] = true
+                    uiElementsMap[elementName] = true
                     element:SetHidden(true)
                 end
             end
@@ -2184,7 +2133,7 @@ local function Initialize()
                 if shouldHide then
                     local element = _G[elementName]
                     if element and not element:IsHidden() then
-                        hiddenElements[elementName] = true
+                        uiElementsMap[elementName] = true
                         element:SetHidden(true)
                     end
                 end
@@ -2200,51 +2149,13 @@ local function Initialize()
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
-    currentRepositionPreset = CinematicCam.savedVars.dialogueLayoutPreset or "default"
+    currentRepositionPreset = CinematicCam.savedVars.interaction.layoutPreset or "default"
     CinematicCam:InitializeLetterboxSettings()
     -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()
 
     -- Calculate letterbox size
     CinematicCam:CalculateLetterboxSize()
-
-
-    -- Register for camera events (for 3rd person dialogue)
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_DEACTIVATED, function()
-        CinematicCam:OnGameCameraDeactivated()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_ACTIVATED, function()
-        CinematicCam:OnGameCameraActivated()
-    end)
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CHATTER_END, function()
-        CinematicCam:OnInteractionEnd()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_QUEST_COMPLETE_DIALOG_END, function()
-        CinematicCam:OnInteractionEnd()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_STORE, function()
-        CinematicCam:OnInteractionEnd()
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_BANK, function()
-        CinematicCam:OnInteractionEnd()
-    end)
-    -- Register for screen resize
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_SCREEN_RESIZED, function()
-        zo_callLater(function()
-            CinematicCam:CalculateLetterboxSize()
-        end, 500)
-    end)
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function(eventCode, mounted)
-        if mounted then
-            CinematicCam:OnMountUp()
-        else
-            CinematicCam:OnMountDown()
-        end
-    end)
     zo_callLater(function()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks()
@@ -2254,23 +2165,15 @@ end
 local function OnPlayerActivated(eventCode)
     if not CinematicCam.hasPlayedIntro then
         CinematicCam.hasPlayedIntro = true
-        camEnabled = true
+        CinematicCam.savedVars.camEnabled = true
 
-        -- Smooth exit after a few seconds
         zo_callLater(function()
-            camEnabled = false
+            CinematicCam.savedVars.camEnabled = false
             CinematicCam:ShowUI()
         end, 100)
     end
 end
 
--- Keybind functions
-function CinematicCam.ToggleCinematicMode()
-    CinematicCam:ToggleUI()
-    CinematicCam:ToggleLetterbox()
-end
-
--- OnAddOnLoaded event
 local function OnAddOnLoaded(event, addonName)
     if addonName == ADDON_NAME then
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED)
@@ -2281,6 +2184,48 @@ end
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_PLAYER_ACTIVATED, OnPlayerActivated)
 
+
+---=============================================================================
+-- Events
+--=============================================================================
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_DEACTIVATED, function()
+    CinematicCam:OnGameCameraDeactivated()
+end)
+
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_ACTIVATED, function()
+    CinematicCam:OnGameCameraActivated()
+end)
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CHATTER_END, function()
+    CinematicCam:OnInteractionEnd()
+end)
+
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_QUEST_COMPLETE_DIALOG_END, function()
+    CinematicCam:OnInteractionEnd()
+end)
+
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_STORE, function()
+    CinematicCam:OnInteractionEnd()
+end)
+
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_BANK, function()
+    CinematicCam:OnInteractionEnd()
+end)
+-- Register for screen resize
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_SCREEN_RESIZED, function()
+    zo_callLater(function()
+        CinematicCam:CalculateLetterboxSize()
+    end, 500)
+end)
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function(eventCode, mounted)
+    if mounted then
+        CinematicCam:OnMountUp()
+    else
+        CinematicCam:OnMountDown()
+    end
+end)
+---=============================================================================
+-- Debug
+--=============================================================================
 function CinematicCam:DebugPrint()
     if self.savedVars and self.savedVars.showNotifications then
         d(message)
