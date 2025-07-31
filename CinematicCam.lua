@@ -613,8 +613,10 @@ function CinematicCam:InterceptDialogueForChunking()
         return false
     end
 
-    if sourceElement and self.savedVars.interaction.layoutPreset then
+    if sourceElement and self.savedVars.interaction.layoutPreset == "default" then
         sourceElement:SetHidden(false)
+    elseif sourceElement and self.savedVars.interaction.layoutPreset == "cinematic" then
+        sourceElement:SetHidden(true)
     end
 
     -- CLEANUP ANY EXISTING DISPLAY
@@ -1093,7 +1095,7 @@ function CinematicCam:InitializeChunkedDialogueSystem()
             -- Add chunked dialogue initialization
             zo_callLater(function()
                 self:InterceptDialogueForChunking()
-            end, 200)
+            end, 20)
         end
     end
 end
@@ -1149,6 +1151,17 @@ end
 
 function CinematicCam:RestoreCameraState()
     savedCameraState = {}
+end
+
+function CinematicCam:checkhid()
+    if self.savedVars.interaction.subtitles.isHidden or self.savedVars.interaction.layoutPreset == "cinematic" then
+        if ZO_InteractWindowTargetAreaBodyText then
+            ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+        end
+        if ZO_InteractWindow_GamepadContainerText then
+            ZO_InteractWindow_GamepadContainerText:SetHidden(true)
+        end
+    end
 end
 
 function CinematicCam:OnGameCameraDeactivated()
@@ -1722,7 +1735,6 @@ function CinematicCam:InitializeChunkedTextControl()
 end
 
 function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
-    -- If chunked dialogue is active, reapply positioning
     if chunkedDialogueData.isActive and chunkedDialogueData.customControl then
         self:ApplyChunkedTextPositioning()
     end
@@ -1746,12 +1758,16 @@ function CinematicCam:ApplyChunkedTextPositioning()
     end
 end
 
+function CinematicCam:InitSavedVars()
+    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, defaults)
+end
+
 ---=============================================================================
 -- Initialize
 --=============================================================================
 local function Initialize()
     -- Load saved variables
-    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, defaults)
+    CinematicCam:InitSavedVars()
 
     -- Apply fonts after UI elements are loaded
     CinematicCam:ApplyFontsToUI()
@@ -1760,30 +1776,26 @@ local function Initialize()
 
     --Letterbox
     if CinematicCam.savedVars.letterboxVisible then
-        zo_callLater(function()
-            CinematicCam_Container:SetHidden(false)
-            CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
-            CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
-            CinematicCam_LetterboxTop:SetHeight(CinematicCam.savedVars.letterbox.size)
-            CinematicCam_LetterboxTop:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
-            CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
-            CinematicCam_LetterboxTop:SetDrawLevel(5)
-            CinematicCam_LetterboxTop:SetHidden(false)
+        CinematicCam_Container:SetHidden(false)
+        CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
+        CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
+        CinematicCam_LetterboxTop:SetHeight(CinematicCam.savedVars.letterbox.size)
+        CinematicCam_LetterboxTop:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+        CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
+        CinematicCam_LetterboxTop:SetDrawLevel(5)
+        CinematicCam_LetterboxTop:SetHidden(false)
 
-            CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
-            CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
-            CinematicCam_LetterboxBottom:SetHeight(CinematicCam.savedVars.letterbox.size)
-            CinematicCam_LetterboxBottom:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
-            CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
-            CinematicCam_LetterboxBottom:SetDrawLevel(5)
-            CinematicCam_LetterboxBottom:SetHidden(false)
-        end, 1500) -- Wait for UI to be ready
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
+        CinematicCam_LetterboxBottom:SetHeight(CinematicCam.savedVars.letterbox.size)
+        CinematicCam_LetterboxBottom:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+        CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
+        CinematicCam_LetterboxBottom:SetDrawLevel(5)
+        CinematicCam_LetterboxBottom:SetHidden(false)
     else
-        zo_callLater(function()
-            CinematicCam_Container:SetHidden(false)
-            CinematicCam_LetterboxTop:SetHidden(true)
-            CinematicCam_LetterboxBottom:SetHidden(true)
-        end, 1500)
+        CinematicCam_Container:SetHidden(false)
+        CinematicCam_LetterboxTop:SetHidden(true)
+        CinematicCam_LetterboxBottom:SetHidden(true)
     end
 
     -- Init UI saved Vars
@@ -1827,6 +1839,7 @@ local function Initialize()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks()
     end, 100)
+    CinematicCam:checkhid()
 end
 
 local function OnPlayerActivated(eventCode)
