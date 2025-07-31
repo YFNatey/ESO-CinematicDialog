@@ -25,7 +25,7 @@ local isInteractionModified = false -- is default camera overridden?
 local mountLetterbox = false
 local dialogLetterbox = false
 local wasUIAutoHidden = false
-CinematicCam.currentRepositionPreset = "default"
+
 local lastDialogueText = ""
 local dialogueChangeCheckTimer = nil
 
@@ -798,7 +798,7 @@ function CinematicCam:CreateChunkedTextControl()
 end
 
 function CinematicCam:PositionChunkedTextControl(control)
-    local preset = currentRepositionPreset or "default"
+    local preset = self.savedVars.interaction.layoutPreset
 
     if preset == "default" then
         if chunkedDialogueData.sourceElement then
@@ -1165,8 +1165,7 @@ function CinematicCam:OnGameCameraDeactivated()
         self:CaptureOriginalElementStates()
 
         -- Apply interaction-specific layout preset
-        local oldPreset = currentRepositionPreset
-        currentRepositionPreset = self.savedVars.interaction.layoutPreset or "default"
+
 
 
         self:ApplyDialogueRepositioning()
@@ -1675,7 +1674,7 @@ function CinematicCam:ApplyDefaultPosition()
 end
 
 function CinematicCam:ApplyDialogueRepositioning()
-    local preset = repositionPresets[currentRepositionPreset]
+    local preset = self.savedVars.interaction.layoutPreset
     if preset and preset.applyFunction then
         preset.applyFunction(self)
     end
@@ -1723,9 +1722,6 @@ function CinematicCam:InitializeChunkedTextControl()
 end
 
 function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
-    -- Update the current preset
-    currentRepositionPreset = newPreset
-
     -- If chunked dialogue is active, reapply positioning
     if chunkedDialogueData.isActive and chunkedDialogueData.customControl then
         self:ApplyChunkedTextPositioning()
@@ -1735,37 +1731,18 @@ end
 function CinematicCam:ApplyChunkedTextPositioning()
     local control = chunkedDialogueData.customControl
     if not control then return end
-
-    local preset = currentRepositionPreset or "default"
-
-
-    if preset == "cinematic" then
-        control:ClearAnchors()
-    end
-
+    local preset = self.savedVars.interaction.layoutPreset
 
     if preset == "default" then
-        local screenWidth, screenHeight = GuiRoot:GetDimensions()
-        local centerX = screenWidth * 0.27
-        local centerY = 10
-
-        if self.savedVars.letterboxVisible then
-            centerY = self.savedVars.letterboxSize * 0.3
-        end
-
-        control:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
-        control:SetDimensions(683, 250) -- Appropriate for text
+        control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 7000)
+        control:SetDimensions(683, 550)
     elseif preset == "cinematic" then
-        -- From ApplyCinematicPreset
+        control:ClearAnchors()
         local screenWidth, screenHeight = GuiRoot:GetDimensions()
         local npcYOffset = screenHeight * 0.20 + (100 * 0.5)
 
         control:SetAnchor(CENTER, GuiRoot, CENTER, 0, npcYOffset)
-        control:SetDimensions(700, 200)
-    else -- default
-        -- From ApplyDefaultPosition
-        control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 7000)
-        control:SetDimensions(683, 550)
+        control:SetDimensions(800, 200)
     end
 end
 
@@ -1839,7 +1816,7 @@ local function Initialize()
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
-    currentRepositionPreset = CinematicCam.savedVars.interaction.layoutPreset or "default"
+
 
     -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()

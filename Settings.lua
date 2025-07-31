@@ -143,10 +143,7 @@ function CinematicCam:CreateSettingsMenu()
                 end
             end,
             width = "full",
-        }, {
-        type = "description",
-        text = "/reloadui for location presets to take effect",
-    },
+        },
         {
             type = "slider",
             name = "Move Default Panel Position",
