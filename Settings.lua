@@ -120,14 +120,14 @@ function CinematicCam:CreateSettingsMenu()
             tooltip =
             "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
             choices = { "Default", "Cinematic" },
-            choicesValues = { "default", "subtle_center" },
+            choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
                 self.savedVars.interaction.layoutPreset = value
                 currentRepositionPreset = value
 
                 -- Force hide dialogue panels for center layouts
-                if value == "subtle_center" then
+                if value == "cinematic" then
                     self.savedVars.interaction.ui.hidePanelsESO = true
                     self.savedVars.interaction.subtitles.useChunkedDialogue = true
                 elseif value == "default" then

@@ -911,29 +911,19 @@ function CinematicCam:CalculateChunkDisplayTime(chunkText)
 
     local displayTime
 
-    -- Check timing mode
-    if self.savedVars.timingMode == "fixed" then
-        -- Use the original fixed interval
-        displayTime = self.savedVars.chunkDisplayInterval or 3.0
-    elseif self.savedVars.useWordBasedTiming then
-        -- Calculate based on reading speed (words per minute)
-        local wordCount = self:CountWords(cleanText)
-        local wordsPerSecond = (self.savedVars.wordsPerMinute or 150) / 60
-        displayTime = wordCount / wordsPerSecond
-    else
-        -- Character-based dynamic timing (default)
-        local baseTime = 0.4
-        local timePerChar = 0.06
-        displayTime = baseTime + (textLength * timePerChar)
-    end
 
-    -- ADD PUNCTUATION TIMING (only for dynamic modes)
+    -- Character-based dynamic timing
+    local baseTime = 0.4
+    local timePerChar = 0.06
+    displayTime = baseTime + (textLength * timePerChar)
+
+
+    -- ADD PUNCTUATION TIMING
     if self.savedVars.timingMode ~= "fixed" and self.savedVars.usePunctuationTiming then
         local punctuationTime = self:CalculatePunctuationTime(cleanText)
         displayTime = displayTime + punctuationTime
     end
-
-    -- Apply min/max bounds (only for dynamic modes)
+    -- Apply min/max bounds
     if self.savedVars.timingMode ~= "fixed" then
         local minTime = self.savedVars.minDisplayTime or 1.5
         local maxTime = self.savedVars.maxDisplayTime or 8.0
@@ -949,19 +939,16 @@ function CinematicCam:CalculatePunctuationTime(text)
     end
 
     local totalPunctuationTime = 0
-
-    -- Count different punctuation marks and add time for each
     local punctuationCounts = {
-        ["-"] = 0, -- Hyphens
-        ["—"] = 0, -- Em-dashes
-        ["–"] = 0, -- En-dashes
-        [","] = 0, -- Commas
-        [";"] = 0, -- Semicolons
-        [":"] = 0, -- Colons
+        ["-"] = 0,
+        ["—"] = 0,
+        ["–"] = 0,
+        [","] = 0,
+        [";"] = 0,
+        [":"] = 0,
         ["."] = 0
     }
 
-    -- Count ellipsis separately (3 dots together)
     local ellipsisCount = 0
 
     -- Count each character
@@ -996,7 +983,6 @@ function CinematicCam:CalculatePunctuationTime(text)
         if punctuationCounts[":"] > 0 then table.insert(details, punctuationCounts[":"] .. " colons") end
         if ellipsisCount > 0 then table.insert(details, ellipsisCount .. " ellipsis") end
     end
-
     return totalPunctuationTime
 end
 
@@ -1009,11 +995,6 @@ function CinematicCam:CleanTextForTiming(text)
     -- Remove extra whitespace
     cleaned = string.gsub(cleaned, "%s+", " ")
     cleaned = self:TrimString(cleaned)
-
-    -- Remove common markup if present
-    cleaned = string.gsub(cleaned, "|[cC]%x%x%x%x%x%x", "") -- Color codes
-    cleaned = string.gsub(cleaned, "|[rR]", "")             -- Reset codes
-
     return cleaned
 end
 
@@ -1185,7 +1166,7 @@ function CinematicCam:OnGameCameraDeactivated()
 
         -- Apply interaction-specific layout preset
         local oldPreset = currentRepositionPreset
-        currentRepositionPreset = config.layoutPreset or "default"
+        currentRepositionPreset = self.savedVars.interaction.layoutPreset or "default"
 
 
         self:ApplyDialogueRepositioning()
@@ -1553,21 +1534,15 @@ local repositionPresets = {
     ["default"] = {
         name = "Default ESO Layout",
         applyFunction = function(self)
-            self:RestoreDefaultPositions()
+            self:ApplyDefaultPosition()
         end
     },
     ["cinematic"] = {
-        name = "Subtle Center",
+        name = "Cinematic",
         applyFunction = function(self)
-            self:ApplySubtleCenterRepositioning()
+            self:ApplyCinematicPreset()
         end
     },
-    ["default"] = {
-        name = "Full Center Screen",
-        applyFunction = function(self)
-            self:ApplyFullCenterRepositioning()
-        end
-    }
 }
 local npcTextContainer = ZO_InteractWindow_GamepadContainerText
 if npcTextContainer then
@@ -1579,7 +1554,7 @@ end
 ---=============================================================================
 -- Reposition UI
 --=============================================================================
-function CinematicCam:ApplySubtleCenterRepositioning()
+function CinematicCam:ApplyCinematicPreset()
     ZO_InteractWindow_GamepadContainerText:SetHidden(true)
     local screenWidth, screenHeight = GuiRoot:GetDimensions()
     local effectiveWidth = screenWidth
@@ -1589,7 +1564,6 @@ function CinematicCam:ApplySubtleCenterRepositioning()
     end
 
     -- NPC text positioning (accounting for bottom alignment)
-
     if npcTextContainer then
         local originalWidth, originalHeight = npcTextContainer:GetDimensions()
 
@@ -1607,46 +1581,6 @@ function CinematicCam:ApplySubtleCenterRepositioning()
     local optionsYStart = screenHeight * 0.4
     local optionSpacing = 60
     local repositionedCount = 0
-    --[[
-    local playerInteractContainer = _G["ZO_InteractWindow_Gamepad"] -- Verify exact name
-    if playerInteractContainer then
-        local originalWidth, originalHeight = playerInteractContainer:GetDimensions()
-
-        -- Calculate subtle center positioning for player interactions
-        local interactXOffset = screenWidth * -0.14 -- Slight movement toward center
-        local interactYOffset = screenHeight * .09  -- Vertical positioning adjustment
-
-        playerInteractContainer:ClearAnchors()
-        playerInteractContainer:SetAnchor(CENTER, GuiRoot, CENTER, -interactXOffset, interactYOffset)
-
-        -- Preserve or adjust dimensions as needed
-        playerInteractContainer:SetWidth(originalWidth)
-        playerInteractContainer:SetHeight(originalHeight)
-
-        d("Repositioned player interact container independently")
-    else
-        d("ERROR: Player interact container not found")
-    end
-    local playerInteractContainer = _G["ZO_InteractWindow_GamepadContainerInteractList"]
-    if playerInteractContainer then
-        local originalWidth, originalHeight = playerInteractContainer:GetDimensions()
-
-        -- Calculate subtle center positioning for player interactions
-        local interactXOffset = screenWidth * -0.28 -- Slight movement toward center
-        local interactYOffset = screenHeight * .03  -- Vertical positioning adjustment
-
-        playerInteractContainer:ClearAnchors()
-        playerInteractContainer:SetAnchor(CENTER, GuiRoot, CENTER, -interactXOffset, interactYOffset)
-
-        -- Preserve or adjust dimensions as needed
-        playerInteractContainer:SetWidth(originalWidth)
-        playerInteractContainer:SetHeight(originalHeight)
-
-        d("Repositioned player interact container independently")
-    else
-        d("ERROR: Player interact container not found")
-    end
-    --]]
 end
 
 -- Element state management
@@ -1712,35 +1646,7 @@ function CinematicCam:GetStableDimensions(elementName, maxAttempts)
     return checkDimensions()
 end
 
-function CinematicCam:ApplyFullCenterRepositioning()
-    ZO_InteractWindow_GamepadContainerText:SetHidden(false)
-    zo_callLater(function()
-        local rootWindow = _G["ZO_InteractWindow_Gamepad"]
-        if rootWindow then
-            local screenWidth, screenHeight = GuiRoot:GetDimensions()
-            local originalWidth, originalHeight = rootWindow:GetDimensions()
-
-            -- Use the slider value for horizontal positioning
-            local centerX = screenWidth * self.savedVars.interface.dialogueHorizontalOffset
-            local centerY = 0
-
-            -- Coordinate with letterbox if active
-            if self.savedVars.letterboxVisible then
-                centerY = self.savedVars.letterboxSize * 0.3
-            end
-
-            -- Apply positioning
-            rootWindow:ClearAnchors()
-            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
-
-            -- Set dimensions
-            rootWindow:SetWidth(683)
-            rootWindow:SetHeight(2000)
-        end
-    end)
-end
-
-function CinematicCam:RestoreDefaultPositions()
+function CinematicCam:ApplyDefaultPosition()
     ZO_InteractWindow_GamepadContainerText:SetHidden(false)
     zo_callLater(function()
         local rootWindow = _G["ZO_InteractWindow_Gamepad"]
@@ -1788,7 +1694,7 @@ function CinematicCam:InitializeChunkedTextControl()
         end
     end
     -- Basic visibility settings
-    control:SetColor(1, 1, 1, 1) -- White text
+    control:SetColor(1, 1, 1, 1)
     if self.savedVars.interaction.subtitles.isHidden == true then
         control:SetAlpha(0)
     elseif self.savedVars.interaction.subtitles.isHidden == false then
@@ -1807,7 +1713,7 @@ function CinematicCam:InitializeChunkedTextControl()
     control:SetFont(fontString)
 
     -- Start hidden
-    control:SetHidden(true)
+    control:SetHidden(false)
     control:SetText("")
 
     -- Store reference
@@ -1850,14 +1756,14 @@ function CinematicCam:ApplyChunkedTextPositioning()
         control:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
         control:SetDimensions(683, 250) -- Appropriate for text
     elseif preset == "cinematic" then
-        -- From ApplySubtleCenterRepositioning
+        -- From ApplyCinematicPreset
         local screenWidth, screenHeight = GuiRoot:GetDimensions()
         local npcYOffset = screenHeight * 0.20 + (100 * 0.5)
 
         control:SetAnchor(CENTER, GuiRoot, CENTER, 0, npcYOffset)
         control:SetDimensions(700, 200)
     else -- default
-        -- From RestoreDefaultPositions
+        -- From ApplyDefaultPosition
         control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 7000)
         control:SetDimensions(683, 550)
     end
