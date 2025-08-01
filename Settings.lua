@@ -212,6 +212,11 @@ function CinematicCam:CreateSettingsMenu()
             getFunc = function() return not self.savedVars.interaction.ui.hidePanelsESO end,
             setFunc = function(value)
                 self.savedVars.interaction.ui.hidePanelsESO = not value
+                if self.savedVars.interaction.ui.hidePanelsESO then
+                    CinematicCam:HideDialoguePanels()
+                else
+                    CinematicCam:ShowDialoguePanels()
+                end
             end,
             width = "full",
         },

@@ -256,8 +256,6 @@ end
 ---=============================================================================
 -- Manage Letterbox Bars
 --=============================================================================
-
-
 function CinematicCam:AutoShowLetterbox(interactionType)
     local interactionTypeMap = (
         interactionType == INTERACTION_CONVERSATION or
@@ -272,10 +270,8 @@ function CinematicCam:ShowLetterbox()
     end
     self.savedVars.letterboxVisible = true
 
-    -- Show XML Container
     CinematicCam_Container:SetHidden(false)
 
-    -- Set initial positions (bars start off-screen)
     local barHeight = self.savedVars.letterboxSize
 
     CinematicCam_LetterboxTop:ClearAnchors()
@@ -331,15 +327,15 @@ function CinematicCam:HideLetterbox()
     -- Create timeline for hide animation
     local timeline = ANIMATION_MANAGER:CreateTimeline()
 
-    -- Animate top bar sliding up (off-screen)
+    -- Top bar
     local topAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxTop)
-    topAnimation:SetTranslateOffsets(0, 0, 0, -barHeight) -- Move from current position to off-screen
-    topAnimation:SetDuration(3300)                        -- Slightly faster exit
+    topAnimation:SetTranslateOffsets(0, 0, 0, -barHeight)
+    topAnimation:SetDuration(3300)
     topAnimation:SetEasingFunction(ZO_EaseOutCubic)
-    -- Animate bottom bar sliding down (off-screen)
+    -- Bottom bar
     local bottomAnimation = timeline:InsertAnimation(ANIMATION_TRANSLATE, CinematicCam_LetterboxBottom)
-    bottomAnimation:SetTranslateOffsets(0, 0, 0, barHeight) -- Move from current position to off-screen
-    bottomAnimation:SetDuration(3300)                       -- Slightly faster exit
+    bottomAnimation:SetTranslateOffsets(0, 0, 0, barHeight)
+    bottomAnimation:SetDuration(3300)
     bottomAnimation:SetEasingFunction(ZO_EaseOutCubic)
 
     -- Hide bars after animation completes
@@ -369,40 +365,6 @@ function CinematicCam:ToggleLetterbox()
     end
 end
 
--- Calculate letterbox size for screen
-function CinematicCam:CalculateLetterboxSize()
-    -- Only auto-calculate if enabled in settings
-    if not self.savedVars.autoSizeLetterbox then
-        return
-    end
-
-    -- Get screen dimensions
-    local screenWidth = GuiRoot:GetWidth()
-    local screenHeight = GuiRoot:GetHeight()
-
-    -- Calculate letterbox size for a 2.35:1 aspect ratio
-    local targetAspectRatio = 2.35
-    local currentAspectRatio = screenWidth / screenHeight
-
-    if currentAspectRatio < targetAspectRatio then
-        -- Screen is too tall, calculate letterbox size
-        local idealHeight = screenWidth / targetAspectRatio
-        local letterboxSize = math.floor((screenHeight - idealHeight) / 2)
-
-        -- Update size
-        self.savedVars.letterboxSize = letterboxSize
-    else
-        -- Screen is already wider than cinematic ratio, use minimal letterbox
-        self.savedVars.letterboxSize = math.floor(screenHeight * 0.1) -- 10% of screen height
-    end
-
-    -- Apply the new size if letterbox is visible
-    if not CinematicCam_LetterboxTop:IsHidden() then
-        CinematicCam_LetterboxTop:SetHeight(self.savedVars.letterboxSize)
-        CinematicCam_LetterboxBottom:SetHeight(self.savedVars.letterboxSize)
-    end
-end
-
 ---=============================================================================
 -- Cinematic Mounting
 --=============================================================================
@@ -411,9 +373,8 @@ function CinematicCam:OnMountUp()
         if not self.savedVars.letterboxVisible then
             mountLetterbox = true
 
-
             -- Apply delay
-            local delayMs = self.savedVars.mountLetterboxDelay * 1000 -- Convert to milliseconds
+            local delayMs = self.savedVars.mountLetterboxDelay * 1000
 
             if delayMs > 0 then
                 mountLetterboxTimer = zo_callLater(function()
@@ -436,11 +397,11 @@ function CinematicCam:OnMountUp()
 end
 
 function CinematicCam:OnMountDown()
-    if self.savedVars.autoLetterboxMount then
+    if self.savedVars.letterbox.auto.autoLetterboxMount then
         -- Cancel any pending timer
 
         -- Only hide letterbox if we auto-showed it
-        if mountLetterbox and self.savedVars.letterboxVisible then
+        if mountLetterbox and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
         end
 
@@ -581,15 +542,11 @@ function CinematicCam:InitializeCompleteTextDisplay()
     if not control then
         return false
     end
-
-    -- Apply positioning based on current preset (same as ESO positioning)
     self:ApplyChunkedTextPositioning()
-
-    -- Initialize display state
     chunkedDialogueData.currentChunkIndex = 1
     chunkedDialogueData.isActive = true
 
-    -- Show the complete text immediately (no chunking animation)
+    -- Show the complete text immediately
     local completeText = chunkedDialogueData.chunks[1]
 
     -- Restore abbreviation periods
@@ -779,15 +736,14 @@ function CinematicCam:CreateChunkedTextControl()
     -- Create custom label control
     local control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
 
-    -- Apply your existing font system
-    self:ApplyFontToElement(control, self.savedVars.customFontSize)
+    self:ApplyFontToElement(control, self.savedVars.interface.customFontSize)
 
     -- Set text properties
     control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     control:SetVerticalAlignment(TEXT_ALIGN_TOP)
     control:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
 
-    -- Color customization (addressing your earlier note)
+    -- Color customization
     control:SetColor(0.9, 0.9, 0.8, 1.0) -- Slightly warmer than ESO default
 
     -- Position according to current layout preset
@@ -889,17 +845,6 @@ function CinematicCam:DisplayCurrentChunk()
     -- Set text and show
     control:SetText(chunkText)
     control:SetHidden(false)
-end
-
-function CinematicCam:CountWords(text)
-    if not text or text == "" then return 0 end
-
-    local wordCount = 0
-    for word in string.gmatch(text, "%S+") do
-        wordCount = wordCount + 1
-    end
-
-    return math.max(1, wordCount) -- At least 1 word to avoid division by zero
 end
 
 function CinematicCam:CalculateChunkDisplayTime(chunkText)
@@ -1175,9 +1120,7 @@ function CinematicCam:OnGameCameraDeactivated()
 
         SetInteractionUsingInteractCamera(false)
         isInteractionModified = true
-        self:CaptureOriginalElementStates()
 
-        -- Apply interaction-specific layout preset
 
 
 
@@ -1231,7 +1174,6 @@ function CinematicCam:OnGameCameraDeactivated()
         if self:ShouldBlockInteraction(interactionType) then
             SetInteractionUsingInteractCamera(false)
             isInteractionModified = true
-            self:CaptureOriginalElementStates()
 
             self:ApplyDialogueRepositioning()
             self:SaveCameraState()
@@ -1418,7 +1360,7 @@ function CinematicCam:GetFontChoices()
 end
 
 function CinematicCam:GetCurrentFont()
-    local fontData = fontBook[self.savedVars.selectedFont]
+    local fontData = fontBook[self.savedVars.interface.selectedFont]
     if fontData then
         return fontData.path
     end
@@ -1450,7 +1392,7 @@ end
 
 function CinematicCam:ApplyFontsToUI()
     -- Use the same size for all dialogue elements
-    local fontSize = self.savedVars.customFontSize
+    local fontSize = self.savedVars.interface.customFontSize
 
     if ZO_InteractWindowTargetAreaTitle then
         self:ApplyFontToElement(ZO_InteractWindowTargetAreaTitle, fontSize)
@@ -1482,7 +1424,6 @@ function CinematicCam:ApplyFontsToUI()
 end
 
 function CinematicCam:ParseFontPath(fontPath, newSize)
-    -- Safety check for nil fontPath
     if not fontPath or fontPath == "" then
         return nil
     end
@@ -1570,7 +1511,7 @@ function CinematicCam:ApplyCinematicPreset()
     ZO_InteractWindow_GamepadContainerText:SetHidden(true)
     local screenWidth, screenHeight = GuiRoot:GetDimensions()
     local effectiveWidth = screenWidth
-    if self.savedVars.letterboxVisible and self.savedVars.coordinateWithLetterbox then
+    if self.savedVars.letterbox.letterboxVisible and self.savedVars.letterbox.coordinateWithLetterbox then
         -- Account for letterbox visual boundaries
         effectiveWidth = screenWidth * 0.95 -- Leave small margins
     end
@@ -1593,69 +1534,6 @@ function CinematicCam:ApplyCinematicPreset()
     local optionsYStart = screenHeight * 0.4
     local optionSpacing = 60
     local repositionedCount = 0
-end
-
--- Element state management
-local originalElementStates = {}
-
-
-function CinematicCam:CaptureOriginalElementStates()
-    local elementsToCapture = {
-        "ZO_InteractWindowDivider",
-        "ZO_InteractWindow_GamepadContainer",
-        "ZO_InteractWindow_GamepadContainerText",
-        "ZO_InteractWindowPlayerAreaOptions",
-        "ZO_InteractWindowPlayerAreaHighlight"
-    }
-
-    for _, elementName in ipairs(elementsToCapture) do
-        local element = _G[elementName]
-        if element then
-            originalElementStates[elementName] = {
-                isHidden = element:IsHidden(),
-                alpha = element:GetAlpha(),
-
-                captured = true
-            }
-        end
-    end
-end
-
-function CinematicCam:GetStableDimensions(elementName, maxAttempts)
-    local element = _G[elementName]
-    if not element then return nil, nil end
-
-    maxAttempts = maxAttempts or 10
-    local attempts = 0
-    local lastWidth, lastHeight = 0, 0
-    local stableCount = 0
-
-    local function checkDimensions()
-        attempts = attempts + 1
-        local width, height = element:GetDimensions()
-
-        -- Check if dimensions are stable
-        if width == lastWidth and height == lastHeight and width > 0 and height > 0 then
-            stableCount = stableCount + 1
-            if stableCount >= 3 then -- 3 consecutive stable measurements
-                return width, height
-            end
-        else
-            stableCount = 0
-        end
-
-        lastWidth, lastHeight = width, height
-
-        -- Continue checking if not stable and under max attempts
-        if attempts < maxAttempts then
-            zo_callLater(checkDimensions, 50)
-        else
-            -- Return last known dimensions even if not perfectly stable
-            return width, height
-        end
-    end
-
-    return checkDimensions()
 end
 
 function CinematicCam:ApplyDefaultPosition()
@@ -1694,7 +1572,6 @@ function CinematicCam:ApplyDialogueRepositioning()
 end
 
 function CinematicCam:InitializeChunkedTextControl()
-    -- Try to get the XML-defined control first
     local control = _G["CinematicCam_ChunkedText"]
 
     if not control then
@@ -1799,7 +1676,7 @@ local function Initialize()
     end
 
     -- Init UI saved Vars
-    if not CinematicCam.savedVars.uiVisible then
+    if not CinematicCam.savedVars.interface.UiElementsVisible then
         zo_callLater(function()
             for _, elementName in ipairs(uiElements) do
                 local element = _G[elementName]
@@ -1829,12 +1706,7 @@ local function Initialize()
         CinematicCam:ToggleLetterbox()
     end
 
-
-    -- Initialize 3rd person dialogue settings
     CinematicCam:InitializeInteractionSettings()
-
-    -- Calculate letterbox size
-    CinematicCam:CalculateLetterboxSize()
     zo_callLater(function()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks()
@@ -1843,15 +1715,11 @@ local function Initialize()
 end
 
 local function OnPlayerActivated(eventCode)
-    if not CinematicCam.hasPlayedIntro then
-        CinematicCam.hasPlayedIntro = true
-        CinematicCam.savedVars.camEnabled = true
-
-        zo_callLater(function()
-            CinematicCam.savedVars.camEnabled = false
-            CinematicCam:ShowUI()
-        end, 100)
-    end
+    CinematicCam.savedVars.camEnabled = true
+    zo_callLater(function()
+        CinematicCam.savedVars.camEnabled = false
+        CinematicCam:ShowUI()
+    end, 100)
 end
 
 local function OnAddOnLoaded(event, addonName)
@@ -1890,12 +1758,7 @@ end)
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_BANK, function()
     CinematicCam:OnInteractionEnd()
 end)
--- Register for screen resize
-EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_SCREEN_RESIZED, function()
-    zo_callLater(function()
-        CinematicCam:CalculateLetterboxSize()
-    end, 500)
-end)
+
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function(eventCode, mounted)
     if mounted then
         CinematicCam:OnMountUp()
@@ -1908,20 +1771,17 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function
         end)
     end)
 
-
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CONVERSATION_UPDATED, function()
         zo_callLater(function()
             CinematicCam:ApplyFontsToUI()
         end)
     end)
 
-
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_QUEST_COMPLETE_DIALOG, function()
         zo_callLater(function()
             CinematicCam:ApplyFontsToUI()
         end)
     end)
-
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_INTERACTION_UPDATED, function()
         zo_callLater(function()
