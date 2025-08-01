@@ -64,7 +64,8 @@ local defaults = {
 
         subtitles = {
             isHidden = false,
-            useChunkedDialogue = false
+            useChunkedDialogue = false,
+            posY = 1000
         },
 
     },
@@ -215,10 +216,7 @@ function CinematicCam:RegisterSceneCallbacks()
         if scene then
             scene:RegisterCallback("StateChange", function(_, newState)
                 if newState == SCENE_HIDING then
-                    -- Reapply UI state after menu closes
-                    zo_callLater(function()
-                        self:ReapplyUIState()
-                    end)
+                    self:ReapplyUIState()
                 end
             end)
         end
@@ -227,12 +225,12 @@ end
 
 function CinematicCam:ReapplyUIState()
     -- Reapply UI visibility based on saved setting
-    if not self.savedVars.uiVisible then
+    if not self.savedVars.interface.uiElementsVisible then
         self:HideUI()
     end
 
     -- Reapply letterbox if it should be visible
-    if self.savedVars.letterboxVisible then
+    if self.savedVars.letterbox.letterboxVisible then
         -- Don't animate, just show immediately
         CinematicCam_Container:SetHidden(false)
         CinematicCam_LetterboxTop:SetHidden(false)
@@ -309,7 +307,6 @@ function CinematicCam:ShowLetterbox()
     bottomAnimation:SetTranslateOffsets(0, barHeight, 0, 0)
     bottomAnimation:SetDuration(2600)
 
-    -- Start the animation
     timeline:PlayFromStart()
 end
 
@@ -324,7 +321,6 @@ function CinematicCam:HideLetterbox()
 
     local barHeight = self.savedVars.letterbox.size
 
-    -- Create timeline for hide animation
     local timeline = ANIMATION_MANAGER:CreateTimeline()
 
     -- Top bar
@@ -338,11 +334,9 @@ function CinematicCam:HideLetterbox()
     bottomAnimation:SetDuration(3300)
     bottomAnimation:SetEasingFunction(ZO_EaseOutCubic)
 
-    -- Hide bars after animation completes
     timeline:SetHandler('OnStop', function()
         CinematicCam_LetterboxTop:SetHidden(true)
         CinematicCam_LetterboxBottom:SetHidden(true)
-        -- Reset positions for next time
         CinematicCam_LetterboxTop:ClearAnchors()
         CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
         CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
@@ -351,12 +345,9 @@ function CinematicCam:HideLetterbox()
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
         self.savedVars.letterbox.letterboxVisible = false
     end)
-
-    -- Start the animation
     timeline:PlayFromStart()
 end
 
--- Toggle letterbox visibility
 function CinematicCam:ToggleLetterbox()
     if self.savedVars.letterbox.letterboxVisible then
         self:HideLetterbox()
@@ -369,7 +360,7 @@ end
 -- Cinematic Mounting
 --=============================================================================
 function CinematicCam:OnMountUp()
-    if self.savedVars.interaction.autoLetterboxMount then
+    if self.savedVars.letterbox.autoLetterboxMount then
         if not self.savedVars.letterbox.letterboxVisible then
             mountLetterbox = true
 
@@ -378,7 +369,6 @@ function CinematicCam:OnMountUp()
 
             if delayMs > 0 then
                 mountLetterboxTimer = zo_callLater(function()
-                    -- Check if still mounted before showing
                     if IsMounted() and mountLetterbox then
                         self:ShowLetterbox()
                     else
@@ -387,7 +377,6 @@ function CinematicCam:OnMountUp()
                     mountLetterboxTimer = nil
                 end, delayMs)
             else
-                -- Instant (no delay)
                 self:ShowLetterbox()
             end
         else
@@ -398,14 +387,9 @@ end
 
 function CinematicCam:OnMountDown()
     if self.savedVars.letterbox.autoLetterboxMount then
-        -- Cancel any pending timer
-
-        -- Only hide letterbox if we auto-showed it
         if mountLetterbox and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
         end
-
-        -- Reset tracking flag
         mountLetterbox = false
     end
 end
@@ -844,6 +828,10 @@ function CinematicCam:DisplayCurrentChunk()
 
     -- Set text and show
     control:SetText(chunkText)
+    local interactionType = GetInteractionType()
+    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT then
+        control:SetText("")
+    end
     control:SetHidden(false)
 end
 
@@ -1111,7 +1099,6 @@ end
 
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
-
     if not self.savedVars.usePerInteractionSettings and config then
         -- Use per-interaction settings
         if not config.enabled or not config.forceThirdPerson then
@@ -1509,31 +1496,60 @@ end
 --=============================================================================
 function CinematicCam:ApplyCinematicPreset()
     ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-    local screenWidth, screenHeight = GuiRoot:GetDimensions()
-    local effectiveWidth = screenWidth
-    if self.savedVars.letterbox.letterboxVisible and self.savedVars.letterbox.coordinateWithLetterbox then
-        -- Account for letterbox visual boundaries
-        effectiveWidth = screenWidth * 0.95 -- Leave small margins
-    end
-
-    -- NPC text positioning (accounting for bottom alignment)
     if npcTextContainer then
         local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+        npcTextContainer:SetWidth(originalWidth)
+        npcTextContainer:SetHeight(originalHeight + 100)
+    end
+    self:ApplySubtitlePosition()
+end
 
-        -- Calculate offset accounting for bottom-aligned text
-        local npcYOffset = screenHeight * 0.20 + (originalHeight * 0.5) -- Adjust for bottom alignment
+function CinematicCam:ApplySubtitlePosition()
+    local targetY = self.savedVars.interaction.subtitles.posY or self:CalculateDefaultPosition()
 
+    if npcTextContainer then
         npcTextContainer:ClearAnchors()
         npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, 0, 1000)
-        npcTextContainer:SetWidth(originalWidth)
-        npcTextContainer:SetHeight(addedHeight)
     end
 
-    -- Dialogue options positioning with alignment consideration
-    local optionsXOffset = screenWidth * 0.15
-    local optionsYStart = screenHeight * 0.4
-    local optionSpacing = 60
-    local repositionedCount = 0
+    -- Apply to custom chunked dialogue control
+    if chunkedDialogueData.customControl then
+        chunkedDialogueData.customControl:ClearAnchors()
+        chunkedDialogueData.customControl:SetAnchor(CENTER, GuiRoot, CENTER, 0, 1000)
+    end
+end
+
+function CinematicCam:ApplyChunkedTextPositioning()
+    local control = chunkedDialogueData.customControl
+    if not control then return end
+
+    local preset = self.savedVars.interaction.layoutPreset
+
+    if preset == "cinematic" then
+        -- Use the same positioning logic as native subtitles
+        local targetY = self:ConvertToScreenCoordinates(
+            self.savedVars.interaction.subtitles.posY or 0.7
+        )
+
+        control:ClearAnchors()
+        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        control:SetDimensions(800, 200)
+    else
+        -- Default positioning for non-cinematic presets
+        control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
+        control:SetDimensions(683, 550)
+    end
+end
+
+function CinematicCam:OnSubtitlePositionChanged(newY)
+    -- Real-time position updates
+    self.savedVars.interaction.subtitles.posY = newY
+
+    -- Immediate application if dialogue is active
+    local interactionType = GetInteractionType()
+    if interactionType ~= INTERACTION_NONE then
+        self:ApplySubtitlePosition()
+    end
 end
 
 function CinematicCam:ApplyDefaultPosition()
@@ -1544,7 +1560,7 @@ function CinematicCam:ApplyDefaultPosition()
             local screenWidth, screenHeight = GuiRoot:GetDimensions()
             local originalWidth, originalHeight = rootWindow:GetDimensions()
 
-            -- Use the slider value for horizontal positioning (same as full center now)
+            -- Use the slider value for horizontal positioning
             local centerX = screenWidth * self.savedVars.interface.dialogueHorizontalOffset
             local centerY = 0
 
@@ -1589,8 +1605,8 @@ function CinematicCam:InitializeChunkedTextControl()
     elseif self.savedVars.interaction.subtitles.isHidden == false then
         control:SetAlpha(1.0)
     end
-    control:SetDrawLayer(DL_TEXT)
-    control:SetDrawLevel(2)
+    control:SetDrawLayer(DL_OVERLAY)
+    control:SetDrawLevel(6)
 
     -- Text properties
     control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
@@ -1614,24 +1630,6 @@ end
 function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
     if chunkedDialogueData.isActive and chunkedDialogueData.customControl then
         self:ApplyChunkedTextPositioning()
-    end
-end
-
-function CinematicCam:ApplyChunkedTextPositioning()
-    local control = chunkedDialogueData.customControl
-    if not control then return end
-    local preset = self.savedVars.interaction.layoutPreset
-
-    if preset == "default" then
-        control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 7000)
-        control:SetDimensions(683, 550)
-    elseif preset == "cinematic" then
-        control:ClearAnchors()
-        local screenWidth, screenHeight = GuiRoot:GetDimensions()
-        local npcYOffset = screenHeight * 0.20 + (100 * 0.5)
-
-        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, npcYOffset)
-        control:SetDimensions(800, 200)
     end
 end
 

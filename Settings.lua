@@ -116,11 +116,11 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Subtitle Location",
+            name = "Subtitle Style",
             tooltip =
             "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
             choices = { "Default", "Cinematic" },
-            choicesValues = { "default", "cinematic" },
+            choicesValues = { "defeault", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
                 self.savedVars.interaction.layoutPreset = value
@@ -141,6 +141,23 @@ function CinematicCam:CreateSettingsMenu()
                         self:ApplyDialogueRepositioning()
                     end, 50)
                 end
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Cinematic Subtitle Position",
+            tooltip = "Adjust vertical position of dialogue text (0% = top, 100% = bottom)",
+            min = 0,
+            max = 100,
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedY = value / 100
+                self:OnSubtitlePositionChanged(normalizedY)
             end,
             width = "full",
         },
@@ -235,8 +252,8 @@ function CinematicCam:CreateSettingsMenu()
             type = "checkbox",
             name = "Auto Black Bars on Mount",
             tooltip = "Automatically show black bars when riding",
-            getFunc = function() return CinematicCam.savedVars.interaction.autoLetterboxMount end,
-            setFunc = function(value) CinematicCam.savedVars.interaction.autoLetterboxMount = value end,
+            getFunc = function() return CinematicCam.savedVars.letterbox.autoLetterboxMount end,
+            setFunc = function(value) CinematicCam.savedVars.letterbox.autoLetterboxMount = value end,
             width = "full",
         },
         {
@@ -248,7 +265,7 @@ function CinematicCam:CreateSettingsMenu()
             step = 20,
             getFunc = function() return CinematicCam.savedVars.letterbox.mountLetterboxDelay end,
             setFunc = function(value)
-                CinematicCam.savedVars.mountLetterboxDelay = value
+                CinematicCam.savedVars.letterbox.mountLetterboxDelay = value
             end,
             disabled = function() return not CinematicCam.savedVars.letterbox.autoLetterboxMount end,
             width = "full",
@@ -337,4 +354,16 @@ function CinematicCam:CreateSettingsMenu()
 
     LAM:RegisterAddonPanel(panelName, panelData)
     LAM:RegisterOptionControls(panelName, optionsData)
+end
+
+function CinematicCam:ConvertToScreenCoordinates(normalizedY)
+    -- Normalize input range [0.0, 1.0] to screen coordinates
+    local screenHeight = GuiRoot:GetHeight()
+    return math.floor(normalizedY * screenHeight)
+end
+
+function CinematicCam:ConvertFromScreenCoordinates(pixelY)
+    -- Convert absolute pixels back to normalized range
+    local screenHeight = GuiRoot:GetHeight()
+    return pixelY / screenHeight
 end

@@ -10,16 +10,17 @@
                     <Dimensions y="100" />
                 </Texture>
                 <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false"
-                         drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="10">
+                         drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="9">
                     <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" />
                     <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
                 <Label name="CinematicCam_ChunkedText"  mouseEnabled="false">
-                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" layer = "DL_TEXT" level = "5" />
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="10" />
                     <Dimensions x="800" y="300" />
                 </Label>
             </Controls>
         </TopLevelControl>
+        
     </Controls>
 </GuiXml>
