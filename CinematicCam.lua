@@ -261,18 +261,18 @@ function CinematicCam:AutoShowLetterbox(interactionType)
         interactionType == INTERACTION_CONVERSATION or
         interactionType == INTERACTION_QUEST
     )
-    return interactionTypeMap and self.savedVars.autoLetterboxDialogue
+    return interactionTypeMap and self.savedVars.interaction.auto.autoLetterboxDialogue
 end
 
 function CinematicCam:ShowLetterbox()
-    if self.savedVars.letterboxVisible then
+    if self.savedVars.letterbox.letterboxVisible then
         return
     end
-    self.savedVars.letterboxVisible = true
+    self.savedVars.letterbox.letterboxVisible = true
 
     CinematicCam_Container:SetHidden(false)
 
-    local barHeight = self.savedVars.letterboxSize
+    local barHeight = self.savedVars.letterbox.size
 
     CinematicCam_LetterboxTop:ClearAnchors()
     CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, 0, -barHeight)
@@ -285,8 +285,8 @@ function CinematicCam:ShowLetterbox()
     CinematicCam_LetterboxBottom:SetHeight(barHeight)
 
     -- Set color and draw properties
-    CinematicCam_LetterboxTop:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
-    CinematicCam_LetterboxBottom:SetColor(0, 0, 0, self.savedVars.letterboxOpacity)
+    CinematicCam_LetterboxTop:SetColor(0, 0, 0, self.savedVars.letterbox.opacity)
+    CinematicCam_LetterboxBottom:SetColor(0, 0, 0, self.savedVars.letterbox.opacity)
     CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
     CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
     CinematicCam_LetterboxTop:SetDrawLevel(5)
@@ -315,14 +315,14 @@ end
 
 -- Hide letterbox bars
 function CinematicCam:HideLetterbox()
-    if not self.savedVars.letterboxVisible then
+    if not self.savedVars.letterbox.letterboxVisible then
         return
     end
     if CinematicCam_LetterboxTop:IsHidden() then
         return
     end
 
-    local barHeight = self.savedVars.letterboxSize
+    local barHeight = self.savedVars.letterbox.size
 
     -- Create timeline for hide animation
     local timeline = ANIMATION_MANAGER:CreateTimeline()
@@ -349,7 +349,7 @@ function CinematicCam:HideLetterbox()
         CinematicCam_LetterboxBottom:ClearAnchors()
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
-        self.savedVars.letterboxVisible = false
+        self.savedVars.letterbox.letterboxVisible = false
     end)
 
     -- Start the animation
@@ -358,7 +358,7 @@ end
 
 -- Toggle letterbox visibility
 function CinematicCam:ToggleLetterbox()
-    if self.savedVars.letterboxVisible then
+    if self.savedVars.letterbox.letterboxVisible then
         self:HideLetterbox()
     else
         self:ShowLetterbox()
@@ -369,12 +369,12 @@ end
 -- Cinematic Mounting
 --=============================================================================
 function CinematicCam:OnMountUp()
-    if self.savedVars.autoLetterboxMount then
-        if not self.savedVars.letterboxVisible then
+    if self.savedVars.interaction.autoLetterboxMount then
+        if not self.savedVars.letterbox.letterboxVisible then
             mountLetterbox = true
 
             -- Apply delay
-            local delayMs = self.savedVars.mountLetterboxDelay * 1000
+            local delayMs = self.savedVars.letterbox.mountLetterboxDelay * 1000
 
             if delayMs > 0 then
                 mountLetterboxTimer = zo_callLater(function()
@@ -397,7 +397,7 @@ function CinematicCam:OnMountUp()
 end
 
 function CinematicCam:OnMountDown()
-    if self.savedVars.letterbox.auto.autoLetterboxMount then
+    if self.savedVars.letterbox.autoLetterboxMount then
         -- Cancel any pending timer
 
         -- Only hide letterbox if we auto-showed it
@@ -441,7 +441,7 @@ end
 
 -- Show UI elements
 function CinematicCam:ShowUI()
-    if self.savedVars.uiVisible then
+    if self.savedVars.interface.UiElementsVisible then
         return
     end
     ZO_ReticleContainerReticle:SetHidden(false)
@@ -453,12 +453,12 @@ function CinematicCam:ShowUI()
         end
     end
     uiElementsMap = {}
-    self.savedVars.uiVisible = true
+    self.savedVars.interface.UiElementsVisible = true
 end
 
 -- Toggle UI
 function CinematicCam:ToggleUI()
-    if self.savedVars.uiVisible then
+    if self.savedVars.interface.UiElementsVisible then
         self:HideUI()
     else
         self:ShowUI()
@@ -1149,7 +1149,7 @@ function CinematicCam:OnGameCameraDeactivated()
         end
         -- Handle letterbox and UI
         if config.autoLetterbox then
-            if not self.savedVars.letterboxVisible then
+            if not self.savedVars.letterbox.letterboxVisible then
                 dialogLetterbox = true
                 self:ShowLetterbox()
             else
@@ -1158,7 +1158,7 @@ function CinematicCam:OnGameCameraDeactivated()
         end
 
         if config.autoHideUI then
-            if self.savedVars.uiVisible then
+            if self.savedVars.interface.uiElementsVisible then
                 wasUIAutoHidden = true
                 self:HideUI()
             else
@@ -1194,7 +1194,7 @@ function CinematicCam:OnGameCameraDeactivated()
                 self:InterceptDialogueForChunking()
             end
             if self:AutoShowLetterbox(interactionType) then
-                if not self.savedVars.letterboxVisible then
+                if not self.savedVars.letterbox.letterboxVisible then
                     dialogLetterbox = true
                     self:ShowLetterbox()
                 else
@@ -1202,8 +1202,8 @@ function CinematicCam:OnGameCameraDeactivated()
                 end
             end
 
-            if self.savedVars.autoHideUIDialogue then
-                if self.savedVars.uiVisible then
+            if self.savedVars.interaction.auto.autoHideUIDialogue then
+                if self.savedVars.interface.uiElementsVisible then
                     wasUIAutoHidden = true
                     self:HideUI()
                 else
@@ -1271,12 +1271,12 @@ function CinematicCam:OnInteractionEnd()
         self:RestoreCameraState()
 
         -- Only hide letterbox if we auto-showed it
-        if dialogLetterbox and self.savedVars.letterboxVisible then
+        if dialogLetterbox and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
         end
 
         -- Only show UI if we auto-hid it
-        if wasUIAutoHidden and not self.savedVars.uiVisible then
+        if wasUIAutoHidden and not self.savedVars.interface.uiElementsVisible then
             self:ShowUI()
         end
 
@@ -1549,8 +1549,8 @@ function CinematicCam:ApplyDefaultPosition()
             local centerY = 0
 
             -- Coordinate with letterbox if active
-            if self.savedVars.letterboxVisible then
-                centerY = self.savedVars.letterboxSize * 0.3
+            if self.savedVars.letterbox.letterboxVisible then
+                centerY = self.savedVars.letterbox.size * 0.3
             end
 
             -- Apply positioning
@@ -1652,7 +1652,7 @@ local function Initialize()
     CinematicCam:InitializeChunkedTextControl()
 
     --Letterbox
-    if CinematicCam.savedVars.letterboxVisible then
+    if CinematicCam.savedVars.letterbox.letterboxVisible then
         CinematicCam_Container:SetHidden(false)
         CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
         CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)

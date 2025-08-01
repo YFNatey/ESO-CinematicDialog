@@ -235,8 +235,8 @@ function CinematicCam:CreateSettingsMenu()
             type = "checkbox",
             name = "Auto Black Bars on Mount",
             tooltip = "Automatically show black bars when riding",
-            getFunc = function() return CinematicCam.savedVars.interaction.auto.autoLetterboxMount end,
-            setFunc = function(value) CinematicCam.savedVars.interaction.auto.autoLetterboxMount = value end,
+            getFunc = function() return CinematicCam.savedVars.interaction.autoLetterboxMount end,
+            setFunc = function(value) CinematicCam.savedVars.interaction.autoLetterboxMount = value end,
             width = "full",
         },
         {
