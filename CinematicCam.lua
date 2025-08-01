@@ -452,6 +452,7 @@ end
 -- THE INTERACT LIST CONTAINER FOR GAMEPAD IS
 -- ZO_InteractWindow_GamepadContainerInteract(List)
 -- ZO_InteractWindow_Gamepad
+-- ZO_InteractWindow_GamepadTitle
 
 function CinematicCam:GetDialogueText()
     local sources = {
@@ -585,7 +586,6 @@ function CinematicCam:InterceptDialogueForChunking()
             return self:InitializeCompleteTextDisplay()
         end
     end
-    -- TODO: handle when use chunking is disabled
 end
 
 function CinematicCam:TrimString(str)
@@ -823,13 +823,12 @@ function CinematicCam:DisplayCurrentChunk()
     local fontString = self:BuildUserFontString()
     control:SetFont(fontString)
 
-    -- NEW: Update visibility based on current setting
     self:UpdateChunkedTextVisibility()
 
     -- Set text and show
     control:SetText(chunkText)
     local interactionType = GetInteractionType()
-    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT then
+    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT or interactionType == INTERACTION_NONE then
         control:SetText("")
     end
     control:SetHidden(false)
@@ -1694,7 +1693,9 @@ local function Initialize()
             end
         end, 1600)
     end
-
+    zo_callLater(function()
+        CinematicCam:InitializePreviewSystem()
+    end, 200)
     -- Register slash commands
     SLASH_COMMANDS["/ccui"] = function()
         CinematicCam:ToggleUI()

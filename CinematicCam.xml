@@ -21,6 +21,23 @@
                 </Label>
             </Controls>
         </TopLevelControl>
-        
+          <TopLevelControl name="CinematicCam_PreviewContainer" mouseEnabled="false"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="15">
+            <Controls>
+                <!-- Background box for preview text -->
+                <Texture name="CinematicCam_PreviewBackground" mouseEnabled="false"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="15">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="820" y="120" />
+                </Texture>
+                
+                <!-- Preview text label -->
+                <Label name="CinematicCam_PreviewText" mouseEnabled="false"
+                       layer="DL_OVERLAY" tier="DT_HIGH" level="16">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="800" y="100" />
+                </Label>
+            </Controls>
+        </TopLevelControl>
     </Controls>
 </GuiXml>

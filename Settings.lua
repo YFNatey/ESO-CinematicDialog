@@ -147,7 +147,8 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "slider",
             name = "Cinematic Subtitle Position",
-            tooltip = "Adjust vertical position of dialogue text (0% = top, 100% = bottom)",
+            tooltip =
+            "Adjust vertical position of dialogue text (0% = top, 100% = bottom). Move the slider to see a preview.",
             min = 0,
             max = 100,
             step = 1,
@@ -157,7 +158,17 @@ function CinematicCam:CreateSettingsMenu()
             end,
             setFunc = function(value)
                 local normalizedY = value / 100
+                self.savedVars.interaction.subtitles.posY = normalizedY
                 self:OnSubtitlePositionChanged(normalizedY)
+
+                -- Show preview when slider changes
+                self:ShowSubtitlePreview(value)
+            end,
+            -- Real-time preview while dragging (if supported by your settings library)
+            onValueChanged = function(value)
+                if isPreviewActive then
+                    self:UpdatePreviewPosition(value)
+                end
             end,
             width = "full",
         },
@@ -366,4 +377,149 @@ function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()
     return pixelY / screenHeight
+end
+
+-- Preview system for subtitle positioning
+local previewTimer = nil
+local isPreviewActive = false
+
+-- Helper function to convert normalized position to screen coordinates
+function CinematicCam:ConvertToScreenCoordinates(normalizedY)
+    -- This should match the positioning logic used in your actual chunked dialogue
+    -- Based on your ApplyChunkedTextPositioning function
+    local screenHeight = GuiRoot:GetHeight()
+
+    -- For cinematic preset, you use a fixed offset from center
+    if self.savedVars.interaction.layoutPreset == "cinematic" then
+        -- Convert 0-1 range to actual screen position
+        -- 0.5 (50%) should be center (0 offset)
+        -- 0.0 (0%) should be top
+        -- 1.0 (100%) should be bottom
+        local centerOffset = (normalizedY - 0.5) * screenHeight * 0.8 -- 0.8 to keep within reasonable bounds
+        return centerOffset
+    else
+        -- For default preset, match your existing logic
+        return (normalizedY * screenHeight) - (screenHeight / 2)
+    end
+end
+
+function CinematicCam:ShowSubtitlePreview(yPosition)
+    if not CinematicCam_PreviewContainer or not CinematicCam_PreviewText or not CinematicCam_PreviewBackground then
+        return
+    end
+
+    isPreviewActive = true
+
+    -- Convert percentage to screen coordinates to match actual chunked dialogue positioning
+    local screenHeight = GuiRoot:GetHeight()
+    local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+
+    -- Position the background box
+    CinematicCam_PreviewBackground:ClearAnchors()
+    CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+
+    -- Set background properties (slightly opaque dark background)
+    CinematicCam_PreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
+    CinematicCam_PreviewBackground:SetDrawLayer(DL_CONTROLS)
+    CinematicCam_PreviewBackground:SetDrawLevel(5)
+
+    -- Position the preview text
+    CinematicCam_PreviewText:ClearAnchors()
+    CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+
+    -- Set preview text properties
+    CinematicCam_PreviewText:SetText("Preview: Dialogue text will appear here during conversations")
+    CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
+    CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    CinematicCam_PreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Apply current font settings to preview
+    local fontString = self:BuildUserFontString()
+    CinematicCam_PreviewText:SetFont(fontString)
+
+    -- Show the preview container
+    CinematicCam_PreviewContainer:SetHidden(false)
+    CinematicCam_PreviewBackground:SetHidden(false)
+    CinematicCam_PreviewText:SetHidden(false)
+
+    -- Clear any existing timer
+    if previewTimer then
+        zo_removeCallLater(previewTimer)
+    end
+
+    -- Auto-hide preview after 3 seconds
+    previewTimer = zo_callLater(function()
+        self:HideSubtitlePreview()
+    end, 3000)
+end
+
+function CinematicCam:HideSubtitlePreview()
+    if not isPreviewActive then
+        return
+    end
+
+    isPreviewActive = false
+
+    -- Clear timer
+    if previewTimer then
+        zo_removeCallLater(previewTimer)
+        previewTimer = nil
+    end
+
+    -- Hide preview elements
+    if CinematicCam_PreviewContainer then
+        CinematicCam_PreviewContainer:SetHidden(true)
+    end
+    if CinematicCam_PreviewBackground then
+        CinematicCam_PreviewBackground:SetHidden(true)
+    end
+    if CinematicCam_PreviewText then
+        CinematicCam_PreviewText:SetHidden(true)
+    end
+end
+
+function CinematicCam:UpdatePreviewPosition(yPosition)
+    if isPreviewActive then
+        -- Update position in real-time while slider is being moved
+        local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+
+        if CinematicCam_PreviewBackground then
+            CinematicCam_PreviewBackground:ClearAnchors()
+            CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        end
+
+        if CinematicCam_PreviewText then
+            CinematicCam_PreviewText:ClearAnchors()
+            CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        end
+
+        -- Reset the auto-hide timer
+        if previewTimer then
+            zo_removeCallLater(previewTimer)
+        end
+        previewTimer = zo_callLater(function()
+            self:HideSubtitlePreview()
+        end, 3000)
+    end
+end
+
+-- Initialize preview system
+function CinematicCam:InitializePreviewSystem()
+    -- Ensure preview container starts hidden
+    if CinematicCam_PreviewContainer then
+        CinematicCam_PreviewContainer:SetHidden(true)
+    end
+
+    -- Register for scene changes to hide preview when settings close
+    local function hidePreviewOnSceneChange()
+        self:HideSubtitlePreview()
+    end
+
+    -- Hook into various scene changes that might close settings
+    SCENE_MANAGER:RegisterCallback("SceneStateChanged", function(scene, oldState, newState)
+        if newState == SCENE_HIDING or newState == SCENE_HIDDEN then
+            hidePreviewOnSceneChange()
+        end
+    end)
 end
