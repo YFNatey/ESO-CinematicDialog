@@ -16,7 +16,8 @@ Reposition:
 local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
 CinematicCam.savedVars = nil
-
+local playerOptionsPreviewTimer = nil
+local isPlayerOptionsPreviewActive = false
 local uiElementsMap = {}      -- table for hiding ui elements, used in HideUI()
 local interactionTypeMap = {} -- table for interaction type settings
 
@@ -28,10 +29,22 @@ local wasUIAutoHidden = false
 
 local lastDialogueText = ""
 local dialogueChangeCheckTimer = nil
-
+local npcNameData = {
+    originalName = "",
+    customNameControl = nil,
+    currentPreset = "default"
+}
+local namePresetDefaults = {
+    npcNamePreset = "default",                             -- "default", "prepended", "above"
+    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- Warm gold color for NPC names
+    npcNameFontSize = 38,                                  -- Slightly larger than dialogue text
+}
 -- Default settings
 local defaults = {
     camEnabled = false,
+    npcNamePreset = "default",                             -- "default", "prepended", "above"
+    npcNameColor = { r = 1.0, g = 0.8, b = 0.6, a = 1.0 }, -- Warm gold color
+    npcNameFontSize = 38,                                  -- Slightly larger than dialogue text
     letterbox = {
         size = 100,
         opacity = 1.0,
@@ -65,7 +78,8 @@ local defaults = {
         subtitles = {
             isHidden = false,
             useChunkedDialogue = false,
-            posY = 1000
+            posY = 28,
+
         },
 
     },
@@ -200,6 +214,108 @@ local fontBook = {
         description = "Handwritten-style font"
     },
 }
+
+function CinematicCam:ShowPlayerOptionsPreview(xPosition)
+    if not CinematicCam_PlayerOptionsPreviewContainer or not CinematicCam_PlayerOptionsPreviewText or not CinematicCam_PlayerOptionsPreviewBackground then
+        return
+    end
+
+    isPlayerOptionsPreviewActive = true
+
+    -- Convert percentage to screen coordinates
+    local screenWidth = GuiRoot:GetWidth()
+    local targetX = screenWidth * (xPosition / 100)
+
+    -- Position the background box
+    CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
+    CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+
+    -- Set background properties (slightly opaque dark background)
+    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
+    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLayer(DL_CONTROLS)
+    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLevel(5)
+
+    -- Position the preview text
+    CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
+    CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+
+    -- Set preview text properties
+    CinematicCam_PlayerOptionsPreviewText:SetText("Preview: Player dialogue options will appear here")
+    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1) -- White text
+    CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    CinematicCam_PlayerOptionsPreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Apply current font settings to preview
+    local fontString = self:BuildUserFontString()
+    CinematicCam_PlayerOptionsPreviewText:SetFont(fontString)
+
+    -- Show the preview container
+    CinematicCam_PlayerOptionsPreviewContainer:SetHidden(false)
+    CinematicCam_PlayerOptionsPreviewBackground:SetHidden(false)
+    CinematicCam_PlayerOptionsPreviewText:SetHidden(false)
+
+    -- Clear any existing timer
+    if playerOptionsPreviewTimer then
+        zo_removeCallLater(playerOptionsPreviewTimer)
+    end
+
+    -- Auto-hide preview after 3 seconds
+    playerOptionsPreviewTimer = zo_callLater(function()
+        self:HidePlayerOptionsPreview()
+    end, 3000)
+end
+
+function CinematicCam:HidePlayerOptionsPreview()
+    if not isPlayerOptionsPreviewActive then
+        return
+    end
+
+    isPlayerOptionsPreviewActive = false
+
+    -- Clear timer
+    if playerOptionsPreviewTimer then
+        zo_removeCallLater(playerOptionsPreviewTimer)
+        playerOptionsPreviewTimer = nil
+    end
+
+    -- Hide preview elements
+    if CinematicCam_PlayerOptionsPreviewContainer then
+        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
+    end
+    if CinematicCam_PlayerOptionsPreviewBackground then
+        CinematicCam_PlayerOptionsPreviewBackground:SetHidden(true)
+    end
+    if CinematicCam_PlayerOptionsPreviewText then
+        CinematicCam_PlayerOptionsPreviewText:SetHidden(true)
+    end
+end
+
+function CinematicCam:UpdatePlayerOptionsPreviewPosition(xPosition)
+    if isPlayerOptionsPreviewActive then
+        -- Update position in real-time while slider is being moved
+        local screenWidth = GuiRoot:GetWidth()
+        local targetX = (xPosition / 100) * screenWidth - (screenWidth / 2)
+
+        if CinematicCam_PlayerOptionsPreviewBackground then
+            CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
+            CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+        end
+
+        if CinematicCam_PlayerOptionsPreviewText then
+            CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
+            CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+        end
+
+        -- Reset the auto-hide timer
+        if playerOptionsPreviewTimer then
+            zo_removeCallLater(playerOptionsPreviewTimer)
+        end
+        playerOptionsPreviewTimer = zo_callLater(function()
+            self:HidePlayerOptionsPreview()
+        end, 3000)
+    end
+end
 
 function CinematicCam:RegisterSceneCallbacks()
     local scenesToWatch = {
@@ -555,6 +671,16 @@ function CinematicCam:InterceptDialogueForChunking()
         return false
     end
 
+    -- Apply NPC name preset first
+    self:ApplyNPCNamePreset()
+
+    -- Process dialogue text based on name preset
+    local processedText = self:ProcessNPCNameForPreset(
+        originalText,
+        npcNameData.originalName,
+        self.savedVars.npcNamePreset
+    )
+
     if sourceElement and self.savedVars.interaction.layoutPreset == "default" then
         sourceElement:SetHidden(false)
     elseif sourceElement and self.savedVars.interaction.layoutPreset == "cinematic" then
@@ -566,22 +692,19 @@ function CinematicCam:InterceptDialogueForChunking()
         self:CleanupChunkedDialogue()
     end
 
-    -- Store the new dialogue text
-    lastDialogueText = originalText
-
-    -- Store original data
-    chunkedDialogueData.originalText = originalText
+    -- Store the processed dialogue text
+    lastDialogueText = processedText
+    chunkedDialogueData.originalText = processedText
     chunkedDialogueData.sourceElement = sourceElement
 
-
     if self.savedVars.interaction.subtitles.useChunkedDialogue then
-        -- Process into chunks
-        chunkedDialogueData.chunks = self:ProcessTextIntoChunks(originalText)
+        -- Process into chunks using the processed text (with or without name)
+        chunkedDialogueData.chunks = self:ProcessTextIntoChunks(processedText)
         if #chunkedDialogueData.chunks >= 1 then
             self:StartDialogueChangeMonitoring()
             return self:InitializeChunkedDisplay()
         else
-            chunkedDialogueData.chunks = { originalText }
+            chunkedDialogueData.chunks = { processedText }
             self:StartDialogueChangeMonitoring()
             return self:InitializeCompleteTextDisplay()
         end
@@ -657,6 +780,328 @@ function CinematicCam:ProcessTextIntoChunks(fullText)
     end
 
     return chunks
+end
+
+-- Preview system for subtitle positioning
+local previewTimer = nil
+local isPreviewActive = false
+
+-- Helper function to convert normalized position to screen coordinates
+function CinematicCam:ConvertToScreenCoordinates(normalizedY)
+    -- This should match the positioning logic used in your actual chunked dialogue
+    -- Based on your ApplyChunkedTextPositioning function
+    local screenHeight = GuiRoot:GetHeight()
+
+    -- For cinematic preset, you use a fixed offset from center
+    if self.savedVars.interaction.layoutPreset == "cinematic" then
+        -- Convert 0-1 range to actual screen position
+        -- 0.5 (50%) should be center (0 offset)
+        -- 0.0 (0%) should be top
+        -- 1.0 (100%) should be bottom
+        local centerOffset = (normalizedY - 0.5) * screenHeight * 0.8 -- 0.8 to keep within reasonable bounds
+        return centerOffset
+    else
+        -- For default preset, match your existing logic
+        return (normalizedY * screenHeight) - (screenHeight / 2)
+    end
+end
+
+function CinematicCam:ShowSubtitlePreview(yPosition)
+    if not CinematicCam_PreviewContainer or not CinematicCam_PreviewText or not CinematicCam_PreviewBackground then
+        return
+    end
+
+    isPreviewActive = true
+
+    -- Convert percentage to screen coordinates to match actual chunked dialogue positioning
+    local screenHeight = GuiRoot:GetHeight()
+    local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+
+    -- Position the background box
+    CinematicCam_PreviewBackground:ClearAnchors()
+    CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+
+    -- Set background properties (slightly opaque dark background)
+    CinematicCam_PreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
+    CinematicCam_PreviewBackground:SetDrawLayer(DL_CONTROLS)
+    CinematicCam_PreviewBackground:SetDrawLevel(5)
+
+    -- Position the preview text
+    CinematicCam_PreviewText:ClearAnchors()
+    CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+
+    -- Set preview text properties
+    CinematicCam_PreviewText:SetText("Preview: Dialogue text will appear here during conversations")
+    CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
+    CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    CinematicCam_PreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Apply current font settings to preview
+    local fontString = self:BuildUserFontString()
+    CinematicCam_PreviewText:SetFont(fontString)
+
+    -- Show the preview container
+    CinematicCam_PreviewContainer:SetHidden(false)
+    CinematicCam_PreviewBackground:SetHidden(false)
+    CinematicCam_PreviewText:SetHidden(false)
+
+    -- Clear any existing timer
+    if previewTimer then
+        zo_removeCallLater(previewTimer)
+    end
+
+    -- Auto-hide preview after 3 seconds
+    previewTimer = zo_callLater(function()
+        self:HideSubtitlePreview()
+    end, 3000)
+end
+
+function CinematicCam:HideSubtitlePreview()
+    if not isPreviewActive then
+        return
+    end
+
+    isPreviewActive = false
+
+    -- Clear timer
+    if previewTimer then
+        zo_removeCallLater(previewTimer)
+        previewTimer = nil
+    end
+
+    -- Hide preview elements
+    if CinematicCam_PreviewContainer then
+        CinematicCam_PreviewContainer:SetHidden(true)
+    end
+    if CinematicCam_PreviewBackground then
+        CinematicCam_PreviewBackground:SetHidden(true)
+    end
+    if CinematicCam_PreviewText then
+        CinematicCam_PreviewText:SetHidden(true)
+    end
+end
+
+function CinematicCam:UpdatePreviewPosition(yPosition)
+    if isPreviewActive then
+        -- Update position in real-time while slider is being moved
+        local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+
+        if CinematicCam_PreviewBackground then
+            CinematicCam_PreviewBackground:ClearAnchors()
+            CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        end
+
+        if CinematicCam_PreviewText then
+            CinematicCam_PreviewText:ClearAnchors()
+            CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        end
+
+        -- Reset the auto-hide timer
+        if previewTimer then
+            zo_removeCallLater(previewTimer)
+        end
+        previewTimer = zo_callLater(function()
+            self:HideSubtitlePreview()
+        end, 3000)
+    end
+end
+
+-- Initialize preview system
+function CinematicCam:InitializePreviewSystem()
+    -- Ensure preview containers start hidden
+    if CinematicCam_PreviewContainer then
+        CinematicCam_PreviewContainer:SetHidden(true)
+    end
+
+    if CinematicCam_PlayerOptionsPreviewContainer then
+        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
+    end
+
+    -- Register for scene changes to hide preview when settings close
+    local function hidePreviewOnSceneChange()
+        self:HideSubtitlePreview()
+        self:HidePlayerOptionsPreview()
+    end
+
+    -- Hook into various scene changes that might close settings
+    SCENE_MANAGER:RegisterCallback("SceneStateChanged", function(scene, oldState, newState)
+        if newState == SCENE_HIDING or newState == SCENE_HIDDEN then
+            hidePreviewOnSceneChange()
+        end
+    end)
+end
+
+function CinematicCam:GetNPCName()
+    local sources = {
+        ZO_InteractWindow_GamepadTitle,
+        ZO_InteractWindowTargetAreaTitle
+    }
+
+    for _, element in ipairs(sources) do
+        if element then
+            local name = element.text or element:GetText() or ""
+            if string.len(name) > 0 then
+                return name, element
+            end
+        end
+    end
+
+    return nil, nil
+end
+
+function CinematicCam:CreateNPCNameControl()
+    if npcNameData.customNameControl then
+        return npcNameData.customNameControl
+    end
+
+    -- Create custom label control for NPC name
+    local control = CreateControl("CinematicCam_NPCName", GuiRoot, CT_LABEL)
+
+    -- Set text properties
+    control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    control:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    control:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Apply NPC name color
+    local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+    control:SetColor(color.r, color.g, color.b, color.a)
+
+    -- Apply font (slightly larger than dialogue text)
+    local fontSize = self.savedVars.npcNameFontSize or namePresetDefaults.npcNameFontSize
+    self:ApplyFontToElement(control, fontSize)
+
+    -- Set draw properties
+    control:SetDrawLayer(DL_OVERLAY)
+    control:SetDrawLevel(7) -- Above chunked text (level 6) but below UI
+
+    -- Start hidden
+    control:SetHidden(true)
+    control:SetText("")
+
+    npcNameData.customNameControl = control
+    return control
+end
+
+function CinematicCam:RGBToHexString(r, g, b)
+    -- Convert 0-1 float values to 0-255 integer values
+    local red = math.floor(r * 255)
+    local green = math.floor(g * 255)
+    local blue = math.floor(b * 255)
+
+    -- Convert to hex and ensure 2-digit format
+    return string.format("%02X%02X%02X", red, green, blue)
+end
+
+function CinematicCam:ProcessNPCNameForPreset(dialogueText, npcName, preset)
+    if not npcName or npcName == "" then
+        return dialogueText
+    end
+
+    preset = preset or self.savedVars.npcNamePreset or "default"
+
+    if preset == "prepended" then
+        -- Add colored name to beginning of dialogue: "|cFFFFFFJohn|r: Hello there!"
+        local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+        local hexColor = self:RGBToHexString(color.r, color.g, color.b)
+        local coloredName = "|c" .. hexColor .. npcName .. ": |r"
+        return coloredName .. dialogueText
+    elseif preset == "above" then
+        -- Name will be displayed separately above, return original text
+        return dialogueText
+    else
+        -- Default: return original text unchanged
+        return dialogueText
+    end
+end
+
+function CinematicCam:PositionNPCNameControl(preset)
+    local control = npcNameData.customNameControl
+    if not control then return end
+
+    preset = preset or self.savedVars.npcNamePreset or "default"
+
+    if preset == "above" then
+        -- Position above the dialogue text
+        local dialogueControl = chunkedDialogueData.customControl
+        if dialogueControl and self.savedVars.interaction.layoutPreset == "cinematic" then
+            -- Get dialogue position and place name above it
+            local _, dialogueY = dialogueControl:GetCenter()
+            control:ClearAnchors()
+            control:SetAnchor(CENTER, GuiRoot, CENTER, 0, dialogueY - 80) -- 80 pixels above dialogue
+            control:SetDimensions(800, 60)
+        else
+            -- Fallback positioning for non-cinematic mode
+            control:ClearAnchors()
+            control:SetAnchor(CENTER, GuiRoot, CENTER, 0, -200)
+            control:SetDimensions(600, 60)
+        end
+    end
+end
+
+function CinematicCam:ApplyNPCNamePreset(preset)
+    preset = preset or self.savedVars.npcNamePreset or "default"
+    npcNameData.currentPreset = preset
+
+    local npcName, originalElement = self:GetNPCName()
+
+    if preset == "default" then
+        -- Show original ESO name element
+        if originalElement then
+            originalElement:SetHidden(false)
+            --originalElement:SetText(GetUnitName("player"))
+        end
+        -- Hide custom name control
+        if npcNameData.customNameControl then
+            npcNameData.customNameControl:SetHidden(true)
+        end
+    elseif preset == "prepended" then
+        -- Hide original name element
+        if originalElement then
+            originalElement:SetHidden(true)
+        end
+        -- Hide custom name control (name will be in dialogue text)
+        if npcNameData.customNameControl then
+            npcNameData.customNameControl:SetHidden(true)
+        end
+    elseif preset == "above" then
+        -- Hide original name element
+        if originalElement then
+            originalElement:SetHidden(true)
+        end
+
+        -- Show custom name control
+        if not npcNameData.customNameControl then
+            self:CreateNPCNameControl()
+        end
+
+        local control = npcNameData.customNameControl
+        if control and npcName then
+            control:SetText(npcName)
+            self:PositionNPCNameControl(preset)
+            control:SetHidden(false)
+        end
+    end
+
+    -- Store the NPC name for use in dialogue processing
+    npcNameData.originalName = npcName or ""
+end
+
+function CinematicCam:UpdateNPCNameFont()
+    local control = npcNameData.customNameControl
+    if control then
+        local fontSize = self.savedVars.npcNameFontSize or namePresetDefaults.npcNameFontSize
+        self:ApplyFontToElement(control, fontSize)
+    end
+end
+
+-- Function to update NPC name color
+function CinematicCam:UpdateNPCNameColor()
+    local control = npcNameData.customNameControl
+    if control then
+        local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+        control:SetColor(color.r, color.g, color.b, color.a)
+    end
 end
 
 function CinematicCam:UpdateChunkedTextVisibility()
@@ -993,15 +1438,29 @@ function CinematicCam:CleanupChunkedDialogue()
         dialogueChangeCheckTimer = nil
     end
 
-    -- Hide custom control
+    -- Hide custom controls
     if chunkedDialogueData.customControl then
         chunkedDialogueData.customControl:SetHidden(true)
         chunkedDialogueData.customControl:SetText("")
     end
 
-    -- Restore original element
+    -- Hide custom NPC name control
+    if npcNameData.customNameControl then
+        npcNameData.customNameControl:SetHidden(true)
+        npcNameData.customNameControl:SetText("")
+    end
+
+    -- Restore original elements based on current settings
     if chunkedDialogueData.sourceElement then
         chunkedDialogueData.sourceElement:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    end
+
+    -- Restore NPC name element for default preset
+    if npcNameData.currentPreset == "default" then
+        local _, originalNameElement = self:GetNPCName()
+        if originalNameElement then
+            originalNameElement:SetHidden(false)
+        end
     end
 
     -- Reset state
@@ -1014,6 +1473,9 @@ function CinematicCam:CleanupChunkedDialogue()
         displayTimer = nil,
         sourceElement = nil
     }
+
+    npcNameData.originalName = ""
+    npcNameData.currentPreset = "default"
     lastDialogueText = ""
 end
 
@@ -1164,7 +1626,7 @@ function CinematicCam:OnGameCameraDeactivated()
             self:ApplyDialogueRepositioning()
             self:SaveCameraState()
 
-            if self.savedVars.hideDialoguePanels then
+            if self.savedVars.interaction.ui.hidePanelsESO then
                 self:HideDialoguePanels()
             end
 
@@ -1249,7 +1711,7 @@ function CinematicCam:OnInteractionEnd()
             self:CleanupChunkedDialogue()
         end
 
-        if self.savedVars.hideDialoguePanels then
+        if self.savedVars.interaction.ui.hidePanelsESO then
             self:ShowDialoguePanels()
         end
 
@@ -1284,6 +1746,7 @@ function CinematicCam:HideDialoguePanels()
     if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
 
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
+
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(true) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
 

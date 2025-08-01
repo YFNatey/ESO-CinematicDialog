@@ -21,21 +21,43 @@
                 </Label>
             </Controls>
         </TopLevelControl>
-          <TopLevelControl name="CinematicCam_PreviewContainer" mouseEnabled="false"
-                         layer="DL_OVERLAY" tier="DT_HIGH" level="15">
+        
+        <!-- Subtitle Preview Container -->
+        <TopLevelControl name="CinematicCam_PreviewContainer" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
             <Controls>
                 <!-- Background box for preview text -->
                 <Texture name="CinematicCam_PreviewBackground" mouseEnabled="false"
-                         layer="DL_OVERLAY" tier="DT_HIGH" level="15">
+                         layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
                 
                 <!-- Preview text label -->
                 <Label name="CinematicCam_PreviewText" mouseEnabled="false"
-                       layer="DL_OVERLAY" tier="DT_HIGH" level="16">
+                       layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="800" y="100" />
+                </Label>
+            </Controls>
+        </TopLevelControl>
+        
+        <!-- Player Options Preview Container -->
+        <TopLevelControl name="CinematicCam_PlayerOptionsPreviewContainer" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
+            <Controls>
+                <!-- Background box for player options preview -->
+                <Texture name="CinematicCam_PlayerOptionsPreviewBackground" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="720" y="200" />
+                </Texture>
+                
+                <!-- Player options preview text label -->
+                <Label name="CinematicCam_PlayerOptionsPreviewText" mouseEnabled="false"
+                       layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="700" y="1080" />
                 </Label>
             </Controls>
         </TopLevelControl>

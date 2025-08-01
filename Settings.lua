@@ -53,7 +53,7 @@ function CinematicCam:CreateSettingsMenu()
             tooltip = "Keep camera in 3rd person when using vendors, stores, trading house, and stables",
             getFunc = function() return self.savedVars.interaction.forceThirdPersonVendor end,
             setFunc = function(value)
-                self.savedVars.forceThirdPersonVendor = value
+                self.savedVars.interaction.forceThirdPersonVendor = value
                 self:InitializeInteractionSettings()
             end,
             width = "full",
@@ -80,30 +80,11 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        --TODO: Dye Stations
+
         {
             type = "header",
             name = "Subtitle Settings",
         },
-        --[[TODO hide player options
-        {
-            type = "checkbox",
-            name = "Hide Player Options Until NPC Finishes",
-            tooltip = "Hide player dialogue options until the NPC finishes speaking for a more cinematic experience",
-            getFunc = function() return CinematicCam.savedVars.hidePlayerOptionsUntilComplete end,
-            setFunc = function(value) CinematicCam.savedVars.hidePlayerOptionsUntilComplete = value end,
-
-        },
-        {
-            type = "checkbox",
-            name = "Show Options on Last Sentence",
-            tooltip = "Show player options when the last sentence starts (vs when it finishes)",
-            getFunc = function() return CinematicCam.savedVars.showOptionsOnLastChunk end,
-            setFunc = function(value) CinematicCam.savedVars.showOptionsOnLastChunk = value end,
-
-            disabled = function() return not CinematicCam.savedVars.hidePlayerOptionsUntilComplete end,
-        },
-        --]]
         {
             type = "checkbox",
             name = "Subtitles",
@@ -129,9 +110,13 @@ function CinematicCam:CreateSettingsMenu()
                 -- Force hide dialogue panels for center layouts
                 if value == "cinematic" then
                     self.savedVars.interaction.ui.hidePanelsESO = true
+                    if self.savedVars.interaction.ui.hidePanelsESO then
+                        CinematicCam:HideDialoguePanels()
+                    end
                     self.savedVars.interaction.subtitles.useChunkedDialogue = true
                 elseif value == "default" then
                     self.savedVars.interaction.ui.hidePanelsESO = false
+                    CinematicCam:ShowDialoguePanels()
                 end
 
                 -- Apply immediately if in dialogue
@@ -148,9 +133,9 @@ function CinematicCam:CreateSettingsMenu()
             type = "slider",
             name = "Cinematic Subtitle Position",
             tooltip =
-            "Adjust vertical position of dialogue text (0% = top, 100% = bottom). Move the slider to see a preview.",
+            "Adjust vertical position of dialogue text.",
             min = 0,
-            max = 100,
+            max = 130,
             step = 1,
             getFunc = function()
                 local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
@@ -174,9 +159,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Move Default Panel Position",
-            tooltip =
-            "Adjust the horizontal position of the dialogue window.",
+            name = "Player Dialog Position",
+            tooltip = "Adjust the horizontal position of the dialogue window. Move the slider to see a preview.",
             min = 10,
             max = 34,
             step = 2,
@@ -185,13 +169,29 @@ function CinematicCam:CreateSettingsMenu()
             end,
             setFunc = function(value)
                 self.savedVars.interface.dialogueHorizontalOffset = value / 100
-
-                -- Apply immediately if in dialogue
-                local interactionType = GetInteractionType()
-                if interactionType ~= INTERACTION_NONE then
-                    zo_callLater(function()
-                        self:ApplyDialogueRepositioning()
-                    end, 50)
+                self:ApplyDefaultPosition()
+                -- Show preview when slider changes
+                self:ShowPlayerOptionsPreview(value)
+            end,
+            -- Real-time preview while dragging (if supported by your settings library)
+            onValueChanged = function(value)
+                if isPlayerOptionsPreviewActive then
+                    self:UpdatePlayerOptionsPreviewPosition(value)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "UI Panels",
+            tooltip = "Hide the default ESO UI panels",
+            getFunc = function() return not self.savedVars.interaction.ui.hidePanelsESO end,
+            setFunc = function(value)
+                self.savedVars.interaction.ui.hidePanelsESO = not value
+                if self.savedVars.interaction.ui.hidePanelsESO then
+                    CinematicCam:HideDialoguePanels()
+                else
+                    CinematicCam:ShowDialoguePanels()
                 end
             end,
             width = "full",
@@ -205,7 +205,6 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "dropdown",
             name = "Font",
-            tooltip = "Choose the font for the NPC dialogue text",
             choices = choices,
             choicesValues = choicesValues,
             getFunc = function() return self.savedVars.interface.selectedFont end,
@@ -232,22 +231,56 @@ function CinematicCam:CreateSettingsMenu()
             type = "header",
             name = "Cinematic Settings",
         },
-
         {
-            type = "checkbox",
-            name = "UI Panels",
-            tooltip = "Hide the default ESO UI panels",
-            getFunc = function() return not self.savedVars.interaction.ui.hidePanelsESO end,
+            type = "dropdown",
+            name = "NPC Name Display",
+
+            choices = { "Default", "Attached" },
+            choicesValues = { "default", "prepended", "above" },
+            getFunc = function()
+                return self.savedVars.npcNamePreset or "default"
+            end,
             setFunc = function(value)
-                self.savedVars.interaction.ui.hidePanelsESO = not value
-                if self.savedVars.interaction.ui.hidePanelsESO then
-                    CinematicCam:HideDialoguePanels()
-                else
-                    CinematicCam:ShowDialoguePanels()
+                self.savedVars.npcNamePreset = value
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    self:ApplyNPCNamePreset(value)
                 end
             end,
             width = "full",
         },
+        {
+
+        },
+        {
+            type = "colorpicker",
+            name = "NPC Name Color",
+            tooltip = "Color for NPC names when using 'Prepended to Text' or 'Above Subtitles' mode",
+            getFunc = function()
+                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
+                self:UpdateNPCNameColor()
+
+                -- If we're in prepended mode and dialogue is active, refresh the text
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
+                        -- Re-process the dialogue with the new color
+                        self:InterceptDialogueForChunking()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },
+
+
 
         {
             type = "checkbox",
@@ -368,158 +401,21 @@ function CinematicCam:CreateSettingsMenu()
 end
 
 function CinematicCam:ConvertToScreenCoordinates(normalizedY)
-    -- Normalize input range [0.0, 1.0] to screen coordinates
     local screenHeight = GuiRoot:GetHeight()
-    return math.floor(normalizedY * screenHeight)
+
+    if self.savedVars.interaction.layoutPreset == "cinematic" then
+        -- For cinematic mode, convert the slider value (0-100) to screen position
+        -- The slider saves as posY (0-100), so we need to convert to actual Y offset
+        local targetY = (normalizedY - 0.5) * screenHeight * 0.8 -- Center-based positioning
+        return targetY
+    else
+        -- For default preset, use direct screen positioning
+        return (normalizedY * screenHeight) - (screenHeight / 2)
+    end
 end
 
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()
     return pixelY / screenHeight
-end
-
--- Preview system for subtitle positioning
-local previewTimer = nil
-local isPreviewActive = false
-
--- Helper function to convert normalized position to screen coordinates
-function CinematicCam:ConvertToScreenCoordinates(normalizedY)
-    -- This should match the positioning logic used in your actual chunked dialogue
-    -- Based on your ApplyChunkedTextPositioning function
-    local screenHeight = GuiRoot:GetHeight()
-
-    -- For cinematic preset, you use a fixed offset from center
-    if self.savedVars.interaction.layoutPreset == "cinematic" then
-        -- Convert 0-1 range to actual screen position
-        -- 0.5 (50%) should be center (0 offset)
-        -- 0.0 (0%) should be top
-        -- 1.0 (100%) should be bottom
-        local centerOffset = (normalizedY - 0.5) * screenHeight * 0.8 -- 0.8 to keep within reasonable bounds
-        return centerOffset
-    else
-        -- For default preset, match your existing logic
-        return (normalizedY * screenHeight) - (screenHeight / 2)
-    end
-end
-
-function CinematicCam:ShowSubtitlePreview(yPosition)
-    if not CinematicCam_PreviewContainer or not CinematicCam_PreviewText or not CinematicCam_PreviewBackground then
-        return
-    end
-
-    isPreviewActive = true
-
-    -- Convert percentage to screen coordinates to match actual chunked dialogue positioning
-    local screenHeight = GuiRoot:GetHeight()
-    local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
-
-    -- Position the background box
-    CinematicCam_PreviewBackground:ClearAnchors()
-    CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
-
-    -- Set background properties (slightly opaque dark background)
-    CinematicCam_PreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
-    CinematicCam_PreviewBackground:SetDrawLayer(DL_CONTROLS)
-    CinematicCam_PreviewBackground:SetDrawLevel(5)
-
-    -- Position the preview text
-    CinematicCam_PreviewText:ClearAnchors()
-    CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
-
-    -- Set preview text properties
-    CinematicCam_PreviewText:SetText("Preview: Dialogue text will appear here during conversations")
-    CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
-    CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
-    CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
-    CinematicCam_PreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-
-    -- Apply current font settings to preview
-    local fontString = self:BuildUserFontString()
-    CinematicCam_PreviewText:SetFont(fontString)
-
-    -- Show the preview container
-    CinematicCam_PreviewContainer:SetHidden(false)
-    CinematicCam_PreviewBackground:SetHidden(false)
-    CinematicCam_PreviewText:SetHidden(false)
-
-    -- Clear any existing timer
-    if previewTimer then
-        zo_removeCallLater(previewTimer)
-    end
-
-    -- Auto-hide preview after 3 seconds
-    previewTimer = zo_callLater(function()
-        self:HideSubtitlePreview()
-    end, 3000)
-end
-
-function CinematicCam:HideSubtitlePreview()
-    if not isPreviewActive then
-        return
-    end
-
-    isPreviewActive = false
-
-    -- Clear timer
-    if previewTimer then
-        zo_removeCallLater(previewTimer)
-        previewTimer = nil
-    end
-
-    -- Hide preview elements
-    if CinematicCam_PreviewContainer then
-        CinematicCam_PreviewContainer:SetHidden(true)
-    end
-    if CinematicCam_PreviewBackground then
-        CinematicCam_PreviewBackground:SetHidden(true)
-    end
-    if CinematicCam_PreviewText then
-        CinematicCam_PreviewText:SetHidden(true)
-    end
-end
-
-function CinematicCam:UpdatePreviewPosition(yPosition)
-    if isPreviewActive then
-        -- Update position in real-time while slider is being moved
-        local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
-
-        if CinematicCam_PreviewBackground then
-            CinematicCam_PreviewBackground:ClearAnchors()
-            CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
-        end
-
-        if CinematicCam_PreviewText then
-            CinematicCam_PreviewText:ClearAnchors()
-            CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
-        end
-
-        -- Reset the auto-hide timer
-        if previewTimer then
-            zo_removeCallLater(previewTimer)
-        end
-        previewTimer = zo_callLater(function()
-            self:HideSubtitlePreview()
-        end, 3000)
-    end
-end
-
--- Initialize preview system
-function CinematicCam:InitializePreviewSystem()
-    -- Ensure preview container starts hidden
-    if CinematicCam_PreviewContainer then
-        CinematicCam_PreviewContainer:SetHidden(true)
-    end
-
-    -- Register for scene changes to hide preview when settings close
-    local function hidePreviewOnSceneChange()
-        self:HideSubtitlePreview()
-    end
-
-    -- Hook into various scene changes that might close settings
-    SCENE_MANAGER:RegisterCallback("SceneStateChanged", function(scene, oldState, newState)
-        if newState == SCENE_HIDING or newState == SCENE_HIDDEN then
-            hidePreviewOnSceneChange()
-        end
-    end)
 end
