@@ -1,17 +1,3 @@
---[[ TODO
-Zarith-Var - Slow talker
-Dye Station - separate tgoggle
-Clean up dialogue when using crtafting stations stations
-Force remvoe black bars more accresively
-Ignore font images: use default
-Add another font
-Reposition:
- - Player choices - adjust x-y
-  - Npc Name (appened or above text or original)
-  - Show dialogue after npc is done talking.
-  0 fade in dialogue choices
---]]
-
 -- Cinematic Camera with UI Hiding and Letterbox
 local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
@@ -37,14 +23,16 @@ local npcNameData = {
 local namePresetDefaults = {
     npcNamePreset = "default",                             -- "default", "prepended", "above"
     npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- Warm gold color for NPC names
-    npcNameFontSize = 38,                                  -- Slightly larger than dialogue text
+    npcNameFontSize = 42,                                  -- Slightly larger than dialogue text
 }
+
 -- Default settings
 local defaults = {
     camEnabled = false,
     npcNamePreset = "default",                             -- "default", "prepended", "above"
-    npcNameColor = { r = 1.0, g = 0.8, b = 0.6, a = 1.0 }, -- Warm gold color
-    npcNameFontSize = 38,                                  -- Slightly larger than dialogue text
+    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- Warm gold color
+    npcNameFontSize = 42,
+    -- Slightly larger than dialogue text
     letterbox = {
         size = 100,
         opacity = 1.0,
@@ -78,7 +66,8 @@ local defaults = {
         subtitles = {
             isHidden = false,
             useChunkedDialogue = false,
-            posY = 28,
+            posY = .8,
+            posX = .5
 
         },
 
@@ -87,9 +76,10 @@ local defaults = {
         UiElementsVisible = true,
         hideDialoguePanels = false,
         selectedFont = "ESO_Standard",
-        customFontSize = 36,
+        customFontSize = 42,
         fontScale = 1.0,
         dialogueHorizontalOffset = 0.34,
+        dialogueVerticallOffset = 0.34,
 
     },
     hideUiElements = {},
@@ -231,7 +221,7 @@ function CinematicCam:ShowPlayerOptionsPreview(xPosition)
     CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
 
     -- Set background properties (slightly opaque dark background)
-    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
+    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- (r,g,b,opacity)
     CinematicCam_PlayerOptionsPreviewBackground:SetDrawLayer(DL_CONTROLS)
     CinematicCam_PlayerOptionsPreviewBackground:SetDrawLevel(5)
 
@@ -240,8 +230,8 @@ function CinematicCam:ShowPlayerOptionsPreview(xPosition)
     CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
 
     -- Set preview text properties
-    CinematicCam_PlayerOptionsPreviewText:SetText("Preview: Player dialogue options will appear here")
-    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1) -- White text
+    CinematicCam_PlayerOptionsPreviewText:SetText("")
+    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1)
     CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
     CinematicCam_PlayerOptionsPreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
@@ -260,7 +250,7 @@ function CinematicCam:ShowPlayerOptionsPreview(xPosition)
         zo_removeCallLater(playerOptionsPreviewTimer)
     end
 
-    -- Auto-hide preview after 3 seconds
+    -- Hide preview after 3 seconds
     playerOptionsPreviewTimer = zo_callLater(function()
         self:HidePlayerOptionsPreview()
     end, 3000)
@@ -293,7 +283,7 @@ end
 
 function CinematicCam:UpdatePlayerOptionsPreviewPosition(xPosition)
     if isPlayerOptionsPreviewActive then
-        -- Update position in real-time while slider is being moved
+        -- Update position while slider is being moved
         local screenWidth = GuiRoot:GetWidth()
         local targetX = (xPosition / 100) * screenWidth - (screenWidth / 2)
 
@@ -341,7 +331,7 @@ end
 
 function CinematicCam:ReapplyUIState()
     -- Reapply UI visibility based on saved setting
-    if not self.savedVars.interface.uiElementsVisible then
+    if not self.savedVars.interface.UiElementsVisible then
         self:HideUI()
     end
 
@@ -360,7 +350,7 @@ function CinematicCam:HideNPCText()
     end
 end
 
--- Show regular npc text using eso's ui and not usingthe cinematic mode
+-- Show regular npc text using eso's ui and not using the cinematic mode
 function CinematicCam:ShowNPCText()
     if ZO_InteractWindowTargetAreaBodyText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
         ZO_InteractWindowTargetAreaBodyText:SetHidden(false)
@@ -514,7 +504,7 @@ end
 -- Manage ESO UI Elements
 --=============================================================================
 function CinematicCam:HideUI()
-    if not self.savedVars.uiVisible then
+    if not self.savedVars.interface.UiElementsVisible then
         return
     end
     ZO_ReticleContainerReticle:SetHidden(true)
@@ -536,7 +526,7 @@ function CinematicCam:HideUI()
             end
         end
     end
-    self.savedVars.uiVisible = false
+    self.savedVars.interface.UiElementsVisible = false
 end
 
 -- Show UI elements
@@ -588,238 +578,56 @@ function CinematicCam:GetDialogueText()
     return nil, nil
 end
 
-function CinematicCam:StartDialogueChangeMonitoring()
-    -- Cancel any existing monitoring
-    if dialogueChangeCheckTimer then
-        zo_removeCallLater(dialogueChangeCheckTimer)
-        dialogueChangeCheckTimer = nil
-    end
-
-    -- Start periodic checking for dialogue changes
-    local function checkForDialogueChange()
-        if not chunkedDialogueData.isActive then
-            -- Stop monitoring if chunked dialogue is not active
-            dialogueChangeCheckTimer = nil
-            return
-        end
-
-        local currentText, _ = self:GetDialogueText()
-
-        -- Check if dialogue text has changed
-        if currentText and currentText ~= lastDialogueText then
-            -- Cleanup current chunked dialogue
-            self:CleanupChunkedDialogue()
-
-            -- Try to start new chunked dialogue for the new text
-            if self.savedVars.interaction.layoutPreset == "cinematic" then
-                self:InterceptDialogueForChunking()
-            end
-            return
-        end
-
-        -- Check if interaction has ended
-        local interactionType = GetInteractionType()
-        if interactionType == INTERACTION_NONE then
-            self:CleanupChunkedDialogue()
-            return
-        end
-    end
-
-    -- Start the monitoring
-    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 20)
-end
-
-function CinematicCam:InitializeCompleteTextDisplay()
-    if #chunkedDialogueData.chunks == 0 then
-        return false
-    end
-
-    -- Ensure control is ready
-    if not chunkedDialogueData.customControl then
-        self:InitializeChunkedTextControl()
-    end
-
-    local control = chunkedDialogueData.customControl
-    if not control then
-        return false
-    end
-    self:ApplyChunkedTextPositioning()
-    chunkedDialogueData.currentChunkIndex = 1
-    chunkedDialogueData.isActive = true
-
-    -- Show the complete text immediately
-    local completeText = chunkedDialogueData.chunks[1]
-
-    -- Restore abbreviation periods
-    completeText = string.gsub(completeText, "§ABBREV§", ".")
-
-    -- Apply font
-    local fontString = self:BuildUserFontString()
-    control:SetFont(fontString)
-
-    -- Set text and show
-    control:SetText(completeText)
-    control:SetHidden(false)
-
-    return true
-end
-
-function CinematicCam:InterceptDialogueForChunking()
-    local originalText, sourceElement = self:GetDialogueText()
-
-    if not originalText or string.len(originalText) == 0 then
-        return false
-    end
-
-    -- Apply NPC name preset first
-    self:ApplyNPCNamePreset()
-
-    -- Process dialogue text based on name preset
-    local processedText = self:ProcessNPCNameForPreset(
-        originalText,
-        npcNameData.originalName,
-        self.savedVars.npcNamePreset
-    )
-
-    if sourceElement and self.savedVars.interaction.layoutPreset == "default" then
-        sourceElement:SetHidden(false)
-    elseif sourceElement and self.savedVars.interaction.layoutPreset == "cinematic" then
-        sourceElement:SetHidden(true)
-    end
-
-    -- CLEANUP ANY EXISTING DISPLAY
-    if chunkedDialogueData.isActive then
-        self:CleanupChunkedDialogue()
-    end
-
-    -- Store the processed dialogue text
-    lastDialogueText = processedText
-    chunkedDialogueData.originalText = processedText
-    chunkedDialogueData.sourceElement = sourceElement
-
-    if self.savedVars.interaction.subtitles.useChunkedDialogue then
-        -- Process into chunks using the processed text (with or without name)
-        chunkedDialogueData.chunks = self:ProcessTextIntoChunks(processedText)
-        if #chunkedDialogueData.chunks >= 1 then
-            self:StartDialogueChangeMonitoring()
-            return self:InitializeChunkedDisplay()
-        else
-            chunkedDialogueData.chunks = { processedText }
-            self:StartDialogueChangeMonitoring()
-            return self:InitializeCompleteTextDisplay()
-        end
-    end
-end
-
-function CinematicCam:TrimString(str)
-    if not str or type(str) ~= "string" then
-        return ""
-    end
-    local trimmed = string.gsub(str, "^%s*", "")
-    trimmed = string.gsub(trimmed, "%s*$", "")
-    return trimmed
-end
-
-function CinematicCam:ProcessTextIntoChunks(fullText)
-    if not fullText or fullText == "" then
-        return {}
-    end
-
-    local chunks = {}
-    local delimiters = self.savedVars.chunkedDialog.chunkDelimiters
-    local minLength = self.savedVars.chunkedDialog.chunkMinLength
-    local maxLength = self.savedVars.chunkedDialog.chunkMaxLength
-
-    local processedText = self:PreprocessTextForChunking(fullText)
-
-    local currentChunk = ""
-    local i = 1
-
-    while i <= #processedText do
-        local char = processedText:sub(i, i)
-        currentChunk = currentChunk .. char
-
-        local foundDelimiter = false
-        for _, delimiter in ipairs(delimiters) do
-            if char == delimiter then
-                if self:IsValidChunkBoundary(processedText, i, currentChunk, minLength) then
-                    local trimmedChunk = self:TrimString(currentChunk)
-                    if string.len(trimmedChunk) >= minLength then
-                        table.insert(chunks, trimmedChunk)
-                        currentChunk = ""
-                        foundDelimiter = true
-                        break
-                    end
-                end
-            end
-        end
-
-        if not foundDelimiter and string.len(currentChunk) >= maxLength then
-            local breakPoint = self:FindWordBoundary(currentChunk, maxLength)
-            if breakPoint > minLength then
-                table.insert(chunks, self:TrimString(currentChunk:sub(1, breakPoint)))
-                currentChunk = currentChunk:sub(breakPoint + 1)
-            end
-        end
-
-        i = i + 1
-    end
-
-    local finalChunk = self:TrimString(currentChunk)
-    if string.len(finalChunk) > 0 then
-        table.insert(chunks, finalChunk)
-    end
-
-    -- Preview timing for all chunks
-    if #chunks > 1 then
-        local totalTime = 0
-        for i, chunk in ipairs(chunks) do
-            local chunkTime = self:CalculateChunkDisplayTime(chunk)
-            totalTime = totalTime + chunkTime
-        end
-    end
-
-    return chunks
-end
-
 -- Preview system for subtitle positioning
 local previewTimer = nil
 local isPreviewActive = false
 
--- Helper function to convert normalized position to screen coordinates
-function CinematicCam:ConvertToScreenCoordinates(normalizedY)
-    -- This should match the positioning logic used in your actual chunked dialogue
-    -- Based on your ApplyChunkedTextPositioning function
+function CinematicCam:ConvertToScreenCoordinates(normalizedX, normalizedY)
+    local screenWidth = GuiRoot:GetWidth()
     local screenHeight = GuiRoot:GetHeight()
 
-    -- For cinematic preset, you use a fixed offset from center
-    if self.savedVars.interaction.layoutPreset == "cinematic" then
+    local targetX = 0 -- Default to center for X
+    local targetY = 0 -- Default to center for Y
+
+    if normalizedX then
         -- Convert 0-1 range to actual screen position
         -- 0.5 (50%) should be center (0 offset)
-        -- 0.0 (0%) should be top
-        -- 1.0 (100%) should be bottom
-        local centerOffset = (normalizedY - 0.5) * screenHeight * 0.8 -- 0.8 to keep within reasonable bounds
-        return centerOffset
-    else
-        -- For default preset, match your existing logic
-        return (normalizedY * screenHeight) - (screenHeight / 2)
+        -- 0.0 (0%) should be left, 1.0 (100%) should be right
+        targetX = (normalizedX - 0.5) * screenWidth * 0.8 -- 0.8 to keep within reasonable bounds
     end
+
+    if normalizedY then
+        -- For cinematic preset, you use a fixed offset from center
+        if self.savedVars.interaction.layoutPreset == "cinematic" then
+            -- Convert 0-1 range to actual screen position
+            -- 0.5 (50%) should be center (0 offset)
+            -- 0.0 (0%) should be top, 1.0 (100%) should be bottom
+            targetY = (normalizedY - 0.5) * screenHeight * 0.8 -- 0.8 to keep within reasonable bounds
+        else
+            -- For default preset, match your existing logic
+            targetY = (normalizedY * screenHeight) - (screenHeight / 2)
+        end
+    end
+
+    return targetX, targetY
 end
 
-function CinematicCam:ShowSubtitlePreview(yPosition)
+function CinematicCam:ShowSubtitlePreview(xPosition, yPosition)
     if not CinematicCam_PreviewContainer or not CinematicCam_PreviewText or not CinematicCam_PreviewBackground then
         return
     end
 
     isPreviewActive = true
 
-    -- Convert percentage to screen coordinates to match actual chunked dialogue positioning
-    local screenHeight = GuiRoot:GetHeight()
-    local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+    -- Convert percentage to screen coordinates
+    local normalizedX = xPosition and (xPosition / 100) or (self.savedVars.interaction.subtitles.posX or 0.5)
+    local normalizedY = yPosition and (yPosition / 100) or (self.savedVars.interaction.subtitles.posY or 0.7)
+
+    local targetX, targetY = self:ConvertToScreenCoordinates(normalizedX, normalizedY)
 
     -- Position the background box
     CinematicCam_PreviewBackground:ClearAnchors()
-    CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+    CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
 
     -- Set background properties (slightly opaque dark background)
     CinematicCam_PreviewBackground:SetColor(0, 0, 0, 0.7) -- Dark background with 70% opacity
@@ -828,10 +636,10 @@ function CinematicCam:ShowSubtitlePreview(yPosition)
 
     -- Position the preview text
     CinematicCam_PreviewText:ClearAnchors()
-    CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+    CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
 
     -- Set preview text properties
-    CinematicCam_PreviewText:SetText("Preview: Dialogue text will appear here during conversations")
+    CinematicCam_PreviewText:SetText("Sample Dialogue Text Preview")
     CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
     CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
@@ -882,19 +690,22 @@ function CinematicCam:HideSubtitlePreview()
     end
 end
 
-function CinematicCam:UpdatePreviewPosition(yPosition)
+function CinematicCam:UpdatePreviewPosition(xPosition, yPosition)
     if isPreviewActive then
         -- Update position in real-time while slider is being moved
-        local targetY = self:ConvertToScreenCoordinates(yPosition / 100)
+        local normalizedX = xPosition and (xPosition / 100) or (self.savedVars.interaction.subtitles.posX or 0.5)
+        local normalizedY = yPosition and (yPosition / 100) or (self.savedVars.interaction.subtitles.posY or 0.7)
+
+        local targetX, targetY = self:ConvertToScreenCoordinates(normalizedX, normalizedY)
 
         if CinematicCam_PreviewBackground then
             CinematicCam_PreviewBackground:ClearAnchors()
-            CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+            CinematicCam_PreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
         end
 
         if CinematicCam_PreviewText then
             CinematicCam_PreviewText:ClearAnchors()
-            CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+            CinematicCam_PreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
         end
 
         -- Reset the auto-hide timer
@@ -1026,9 +837,12 @@ function CinematicCam:PositionNPCNameControl(preset)
         local dialogueControl = chunkedDialogueData.customControl
         if dialogueControl and self.savedVars.interaction.layoutPreset == "cinematic" then
             -- Get dialogue position and place name above it
-            local _, dialogueY = dialogueControl:GetCenter()
+            local targetX, targetY = self:ConvertToScreenCoordinates(
+                self.savedVars.interaction.subtitles.posX or 0.5,
+                self.savedVars.interaction.subtitles.posY or 0.7
+            )
             control:ClearAnchors()
-            control:SetAnchor(CENTER, GuiRoot, CENTER, 0, dialogueY - 80) -- 80 pixels above dialogue
+            control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY - 80) -- 80 pixels above dialogue
             control:SetDimensions(800, 60)
         else
             -- Fallback positioning for non-cinematic mode
@@ -1104,65 +918,14 @@ function CinematicCam:UpdateNPCNameColor()
     end
 end
 
-function CinematicCam:UpdateChunkedTextVisibility()
-    local control = chunkedDialogueData.customControl
-    if control then
-        if self.savedVars.interaction.subtitles.isHidden then
-            control:SetAlpha(0)
-        else
-            control:SetAlpha(1.0)
-        end
-    end
-end
-
-function CinematicCam:PreprocessTextForChunking(text)
-    local abbreviations = {
-        "Mr%.", "Mrs%.", "Ms%.", "Dr%.", "Prof%.",
-        "U%.S%.A%.", "etc%.", "vs%.", "e%.g%.", "i%.e%."
-    }
-
-    local processed = text
-    for _, abbrev in ipairs(abbreviations) do
-        processed = string.gsub(processed, abbrev, function(match)
-            return string.gsub(match, "%.", "§ABBREV§")
-        end)
-    end
-
-    return processed
-end
-
-function CinematicCam:IsValidChunkBoundary(text, position, currentChunk, minLength)
-    if string.len(currentChunk) < minLength then
-        return false
-    end
-
-    local nextChar = text:sub(position + 1, position + 1)
-    if nextChar == " " or nextChar == "\n" or nextChar == "\t" or nextChar == "" then
-        return true
-    end
-
-    if string.match(nextChar, "%w") then
-        return false
-    end
-
-    return true
-end
-
-function CinematicCam:FindWordBoundary(text, maxPosition)
-    for i = maxPosition, 1, -1 do
-        if text:sub(i, i) == " " then
-            return i - 1
-        end
-    end
-    return maxPosition
-end
-
+---=============================================================================
+-- Chunked Text
+--=============================================================================
+-- Create XML element
 function CinematicCam:CreateChunkedTextControl()
     if chunkedDialogueData.customControl then
         return chunkedDialogueData.customControl
     end
-
-    -- Create custom label control
     local control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
 
     self:ApplyFontToElement(control, self.savedVars.interface.customFontSize)
@@ -1173,9 +936,7 @@ function CinematicCam:CreateChunkedTextControl()
     control:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
 
     -- Color customization
-    control:SetColor(0.9, 0.9, 0.8, 1.0) -- Slightly warmer than ESO default
-
-    -- Position according to current layout preset
+    control:SetColor(0.9, 0.9, 0.8, 1.0)
     self:PositionChunkedTextControl(control)
 
     control:SetHidden(true)
@@ -1201,56 +962,260 @@ function CinematicCam:PositionChunkedTextControl(control)
     end
 end
 
-function CinematicCam:InitializeChunkedDisplay()
-    if #chunkedDialogueData.chunks == 0 then
+function CinematicCam:StartDialogueChangeMonitoring()
+    -- Cancel any existing monitoring
+    if dialogueChangeCheckTimer then
+        zo_removeCallLater(dialogueChangeCheckTimer)
+        dialogueChangeCheckTimer = nil
+    end
+
+    -- Start periodic checking for dialogue changes
+    local function checkForDialogueChange()
+        if not chunkedDialogueData.isActive then
+            -- Stop monitoring if chunked dialogue is not active
+            dialogueChangeCheckTimer = nil
+            return
+        end
+
+        local currentRawText, _ = self:GetDialogueText()
+
+        -- Compare RAW text instead of processed text
+        if currentRawText and currentRawText ~= chunkedDialogueData.rawDialogueText then
+            -- Only cleanup if there's actually new dialogue content
+            if string.len(currentRawText) > 10 then
+                -- Cleanup current chunked dialogue
+                self:CleanupChunkedDialogue()
+
+                -- Try to start new chunked dialogue for the new text
+                if self.savedVars.interaction.layoutPreset == "cinematic" then
+                    self:InterceptDialogueForChunking()
+                end
+                return
+            end
+        end
+        local interactionType = GetInteractionType()
+        if interactionType == INTERACTION_NONE then
+            self:CleanupChunkedDialogue()
+            return
+        end
+
+        -- Schedule next check
+        dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200)
+    end
+
+    -- Start the monitoring
+    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200)
+end
+
+function CinematicCam:InterceptDialogueForChunking()
+    local originalText, sourceElement = self:GetDialogueText()
+
+    if not originalText or string.len(originalText) == 0 then
         return false
     end
 
-    -- Hide original text element
-    if chunkedDialogueData.sourceElement then
-        chunkedDialogueData.sourceElement:SetHidden(true)
+    self:ApplyNPCNamePreset()
+
+    local textForTiming = originalText
+    local processedTextForDisplay = self:ProcessNPCNameForPreset(
+        originalText,
+        npcNameData.originalName,
+        self.savedVars.npcNamePreset
+    )
+
+    if sourceElement and self.savedVars.interaction.layoutPreset == "default" then
+        sourceElement:SetHidden(false)
+    elseif sourceElement and self.savedVars.interaction.layoutPreset == "cinematic" then
+        sourceElement:SetHidden(true)
     end
 
-    -- Ensure control is ready
-    if not chunkedDialogueData.customControl then
-        self:InitializeChunkedTextControl()
+    -- CLEANUP ANY EXISTING DISPLAY
+    if chunkedDialogueData.isActive then
+        self:CleanupChunkedDialogue()
     end
 
-    local control = chunkedDialogueData.customControl
-    if not control then
-        return false
+    -- Store both versions
+    chunkedDialogueData.originalText = processedTextForDisplay
+    chunkedDialogueData.sourceElement = sourceElement
+    chunkedDialogueData.rawDialogueText = originalText
+
+    if self.savedVars.interaction.subtitles.useChunkedDialogue then
+        chunkedDialogueData.chunks = self:ProcessTextIntoChunks(textForTiming)
+        chunkedDialogueData.displayChunks = self:ProcessTextIntoDisplayChunks(processedTextForDisplay)
+
+        function CinematicCam:InitializeChunkedDisplay()
+            if #chunkedDialogueData.chunks == 0 then
+                return false
+            end
+            if chunkedDialogueData.sourceElement then
+                chunkedDialogueData.sourceElement:SetHidden(true)
+            end
+            if not chunkedDialogueData.customControl then
+                self:InitializeChunkedTextControl()
+            end
+            local control = chunkedDialogueData.customControl
+            if not control then
+                return false
+            end
+            self:ApplyChunkedTextPositioning()
+            chunkedDialogueData.currentChunkIndex = 1
+            chunkedDialogueData.isActive = true
+            self:DisplayCurrentChunk()
+            if #chunkedDialogueData.chunks >= 1 then
+                self:ScheduleNextChunk()
+            end
+
+            return true
+        end
+
+        if #chunkedDialogueData.chunks >= 1 then
+            self:StartDialogueChangeMonitoring()
+            return self:InitializeChunkedDisplay()
+        else
+            chunkedDialogueData.chunks = { textForTiming }
+            chunkedDialogueData.displayChunks = { processedTextForDisplay }
+            self:StartDialogueChangeMonitoring()
+            return self:InitializeCompleteTextDisplay()
+        end
+    end
+end
+
+function CinematicCam:ProcessTextIntoDisplayChunks(fullText)
+    -- This follows the same chunking logic as ProcessTextIntoChunks
+    -- but uses the text that already has the name prepended
+    if not fullText or fullText == "" then
+        return {}
     end
 
-    self:ApplyChunkedTextPositioning()
+    local chunks = {}
+    local delimiters = self.savedVars.chunkedDialog.chunkDelimiters
+    local minLength = self.savedVars.chunkedDialog.chunkMinLength
+    local maxLength = self.savedVars.chunkedDialog.chunkMaxLength
 
-    -- Initialize display state
-    chunkedDialogueData.currentChunkIndex = 1
-    chunkedDialogueData.isActive = true
+    local processedText = self:PreprocessTextForChunking(fullText)
 
+    local currentChunk = ""
+    local i = 1
 
+    while i <= #processedText do
+        local char = processedText:sub(i, i)
+        currentChunk = currentChunk .. char
 
-    -- Show first chunk immediately
-    self:DisplayCurrentChunk()
+        local foundDelimiter = false
+        for _, delimiter in ipairs(delimiters) do
+            if char == delimiter then
+                if self:IsValidChunkBoundary(processedText, i, currentChunk, minLength) then
+                    local trimmedChunk = self:TrimString(currentChunk)
+                    if string.len(trimmedChunk) >= minLength then
+                        table.insert(chunks, trimmedChunk)
+                        currentChunk = ""
+                        foundDelimiter = true
+                        break
+                    end
+                end
+            end
+        end
 
-    -- Schedule next chunk if there are more
-    if #chunkedDialogueData.chunks >= 1 then
-        self:ScheduleNextChunk()
+        if not foundDelimiter and string.len(currentChunk) >= maxLength then
+            local breakPoint = self:FindWordBoundary(currentChunk, maxLength)
+            if breakPoint > minLength then
+                table.insert(chunks, self:TrimString(currentChunk:sub(1, breakPoint)))
+                currentChunk = currentChunk:sub(breakPoint + 1)
+            end
+        end
+
+        i = i + 1
     end
 
-    return true
+    local finalChunk = self:TrimString(currentChunk)
+    if string.len(finalChunk) > 0 then
+        table.insert(chunks, finalChunk)
+    end
+
+    return chunks
+end
+
+function CinematicCam:TrimString(str)
+    if not str or type(str) ~= "string" then
+        return ""
+    end
+    local trimmed = string.gsub(str, "^%s*", "")
+    trimmed = string.gsub(trimmed, "%s*$", "")
+    return trimmed
+end
+
+function CinematicCam:ProcessTextIntoChunks(fullText)
+    if not fullText or fullText == "" then
+        return {}
+    end
+
+    local chunks = {}
+    local delimiters = self.savedVars.chunkedDialog.chunkDelimiters
+    local minLength = self.savedVars.chunkedDialog.chunkMinLength
+    local maxLength = self.savedVars.chunkedDialog.chunkMaxLength
+
+    local processedText = self:PreprocessTextForChunking(fullText)
+
+    local currentChunk = ""
+    local i = 1
+
+    while i <= #processedText do
+        local char = processedText:sub(i, i)
+        currentChunk = currentChunk .. char
+
+        local foundDelimiter = false
+        for _, delimiter in ipairs(delimiters) do
+            if char == delimiter then
+                if self:IsValidChunkBoundary(processedText, i, currentChunk, minLength) then
+                    local trimmedChunk = self:TrimString(currentChunk)
+                    if string.len(trimmedChunk) >= minLength then
+                        table.insert(chunks, trimmedChunk)
+                        currentChunk = ""
+                        foundDelimiter = true
+                        break
+                    end
+                end
+            end
+        end
+
+        if not foundDelimiter and string.len(currentChunk) >= maxLength then
+            local breakPoint = self:FindWordBoundary(currentChunk, maxLength)
+            if breakPoint > minLength then
+                table.insert(chunks, self:TrimString(currentChunk:sub(1, breakPoint)))
+                currentChunk = currentChunk:sub(breakPoint + 1)
+            end
+        end
+
+        i = i + 1
+    end
+
+    local finalChunk = self:TrimString(currentChunk)
+    if string.len(finalChunk) > 0 then
+        table.insert(chunks, finalChunk)
+    end
+
+    -- Preview timing for all chunks
+    if #chunks > 1 then
+        local totalTime = 0
+        for i, chunk in ipairs(chunks) do
+            local chunkTime = self:CalculateChunkDisplayTime(chunk)
+            totalTime = totalTime + chunkTime
+        end
+    end
+
+    return chunks
 end
 
 function CinematicCam:UpdateChunkedTextFont()
     local control = chunkedDialogueData.customControl
     if control then
-        self:ApplyFontToElement(control, self.savedVars.customFontSize)
+        self:ApplyFontToElement(control, self.savedVars.interface.customFontSize)
     end
 end
 
 function CinematicCam:DisplayCurrentChunk()
     local control = chunkedDialogueData.customControl
     local chunkIndex = chunkedDialogueData.currentChunkIndex
-
     if not control then
         return
     end
@@ -1259,12 +1224,10 @@ function CinematicCam:DisplayCurrentChunk()
         return
     end
 
-    local chunkText = chunkedDialogueData.chunks[chunkIndex]
+    local displayChunks = chunkedDialogueData.displayChunks or chunkedDialogueData.chunks
+    local chunkText = displayChunks[chunkIndex]
 
-    -- Restore abbreviation periods
     chunkText = string.gsub(chunkText, "§ABBREV§", ".")
-
-    -- REAPPLY FONT DIRECTLY
     local fontString = self:BuildUserFontString()
     control:SetFont(fontString)
 
@@ -1273,141 +1236,10 @@ function CinematicCam:DisplayCurrentChunk()
     -- Set text and show
     control:SetText(chunkText)
     local interactionType = GetInteractionType()
-    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT or interactionType == INTERACTION_NONE then
+    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT or interactionType == INTERACTION_NONE or interactionType == INTERACTION_LOCKPICK then
         control:SetText("")
     end
     control:SetHidden(false)
-end
-
-function CinematicCam:CalculateChunkDisplayTime(chunkText)
-    if not chunkText or chunkText == "" then
-        return self.savedVars.baseDisplayTime or 1.0
-    end
-
-    -- Remove markup and clean the text for accurate length calculation
-    local cleanText = self:CleanTextForTiming(chunkText)
-    local textLength = string.len(cleanText)
-
-    local displayTime
-
-
-    -- Character-based dynamic timing
-    local baseTime = 0.4
-    local timePerChar = 0.06
-    displayTime = baseTime + (textLength * timePerChar)
-
-
-    -- ADD PUNCTUATION TIMING
-    if self.savedVars.timingMode ~= "fixed" and self.savedVars.usePunctuationTiming then
-        local punctuationTime = self:CalculatePunctuationTime(cleanText)
-        displayTime = displayTime + punctuationTime
-    end
-    -- Apply min/max bounds
-    if self.savedVars.timingMode ~= "fixed" then
-        local minTime = self.savedVars.minDisplayTime or 1.5
-        local maxTime = self.savedVars.maxDisplayTime or 8.0
-        displayTime = math.max(minTime, displayTime)
-        displayTime = math.min(maxTime, displayTime)
-    end
-    return displayTime
-end
-
-function CinematicCam:CalculatePunctuationTime(text)
-    if not text or not self.savedVars.usePunctuationTiming then
-        return 0
-    end
-
-    local totalPunctuationTime = 0
-    local punctuationCounts = {
-        ["-"] = 0,
-        ["—"] = 0,
-        ["–"] = 0,
-        [","] = 0,
-        [";"] = 0,
-        [":"] = 0,
-        ["."] = 0
-    }
-
-    local ellipsisCount = 0
-
-    -- Count each character
-    for i = 1, #text do
-        local char = text:sub(i, i)
-        if punctuationCounts[char] ~= nil then
-            punctuationCounts[char] = punctuationCounts[char] + 1
-        end
-    end
-
-    -- Count ellipsis (handle both ... and …)
-    ellipsisCount = ellipsisCount + select(2, string.gsub(text, "%.%.%.", "")) -- Three dots
-    ellipsisCount = ellipsisCount + select(2, string.gsub(text, "…", "")) -- Unicode ellipsis
-
-    -- Calculate total punctuation time
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["-"] * (0.3))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["—"] * (0.4))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["–"] * (0.4))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[","] * (0.7))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[";"] * (0.25))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[":"] * (0.3))
-    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["."] * (0.3))
-    totalPunctuationTime = totalPunctuationTime + (ellipsisCount * (self.savedVars.ellipsisPauseTime or 0.5))
-
-    -- Debug output
-    if totalPunctuationTime > 0 then
-        local details = {}
-        if punctuationCounts["-"] > 0 then table.insert(details, punctuationCounts["-"] .. " hyphens") end
-        if punctuationCounts["—"] > 0 then table.insert(details, punctuationCounts["—"] .. " em-dashes") end
-        if punctuationCounts[","] > 0 then table.insert(details, punctuationCounts[","] .. " commas") end
-        if punctuationCounts[";"] > 0 then table.insert(details, punctuationCounts[";"] .. " semicolons") end
-        if punctuationCounts[":"] > 0 then table.insert(details, punctuationCounts[":"] .. " colons") end
-        if ellipsisCount > 0 then table.insert(details, ellipsisCount .. " ellipsis") end
-    end
-    return totalPunctuationTime
-end
-
-function CinematicCam:CleanTextForTiming(text)
-    if not text then return "" end
-
-    -- Remove abbreviation markers
-    local cleaned = string.gsub(text, "§ABBREV§", ".")
-
-    -- Remove extra whitespace
-    cleaned = string.gsub(cleaned, "%s+", " ")
-    cleaned = self:TrimString(cleaned)
-    return cleaned
-end
-
-function CinematicCam:ScheduleNextChunk()
-    if chunkedDialogueData.displayTimer then
-        zo_removeCallLater(chunkedDialogueData.displayTimer)
-    end
-
-    -- Calculate timing for the CURRENT chunk (the one being displayed)
-    local currentChunkIndex = chunkedDialogueData.currentChunkIndex
-    local currentChunk = chunkedDialogueData.chunks[currentChunkIndex]
-    local displayTime = self:CalculateChunkDisplayTime(currentChunk)
-
-    -- Convert to milliseconds for zo_callLater
-    local displayTimeMs = displayTime * 1000
-
-    chunkedDialogueData.displayTimer = zo_callLater(function()
-        self:AdvanceToNextChunk()
-    end, displayTimeMs)
-
-    CinematicCam:DebugPrint("Scheduled next chunk in " .. string.format("%.1f", displayTime) .. " seconds")
-end
-
-function CinematicCam:AdvanceToNextChunk()
-    chunkedDialogueData.currentChunkIndex = chunkedDialogueData.currentChunkIndex + 1
-
-    if chunkedDialogueData.currentChunkIndex <= #chunkedDialogueData.chunks then
-        self:DisplayCurrentChunk()
-
-        -- Only schedule next chunk if chunking is enabled and there are multiple chunks
-        if self.savedVars.interaction.subtitles.useChunkedDialogue and #chunkedDialogueData.chunks > 1 then
-            self:ScheduleNextChunk()
-        end
-    end
 end
 
 function CinematicCam:OnChunkedDialogueComplete()
@@ -1471,27 +1303,192 @@ function CinematicCam:CleanupChunkedDialogue()
         isActive = false,
         customControl = chunkedDialogueData.customControl, -- Preserve control
         displayTimer = nil,
-        sourceElement = nil
+        sourceElement = nil,
+        rawDialogueText = ""
     }
-
     npcNameData.originalName = ""
     npcNameData.currentPreset = "default"
-    lastDialogueText = ""
 end
 
-function CinematicCam:InitializeChunkedDialogueSystem()
-    -- Hook into your existing dialogue detection
-    local originalOnGameCameraDeactivated = self.OnGameCameraDeactivated
-    self.OnGameCameraDeactivated = function(self)
-        originalOnGameCameraDeactivated(self)
+-- CHUNKED Timing
+function CinematicCam:CalculateChunkDisplayTime(chunkText)
+    local timingChunks = chunkedDialogueData.chunks
+    local chunkIndex = chunkedDialogueData.currentChunkIndex
 
-        if self.savedVars.interaction.layoutPreset == "cinematic" then
-            -- Add chunked dialogue initialization
-            zo_callLater(function()
-                self:InterceptDialogueForChunking()
-            end, 20)
+    local timingText = timingChunks[chunkIndex]
+
+    if not timingText or timingText == "" then
+        return self.savedVars.chunkedDialog.baseDisplayTime or 1.0
+    end
+
+    local cleanText = self:CleanTextForTiming(timingText)
+    local textLength = string.len(cleanText)
+    local displayTime
+
+    local baseTime = 0.4
+    local timePerChar = 0.06
+    displayTime = baseTime + (textLength * timePerChar)
+
+    if self.savedVars.chunkedDialog.timingMode ~= "fixed" and self.savedVars.chunkedDialog.usePunctuationTiming then
+        local punctuationTime = self:CalculatePunctuationTime(cleanText)
+        displayTime = displayTime + punctuationTime
+    end
+
+    if self.savedVars.chunkedDialog.timingMode ~= "fixed" then
+        local minTime = self.savedVars.chunkedDialog.minDisplayTime or 1.5
+        local maxTime = self.savedVars.chunkedDialog.maxDisplayTime or 8.0
+        displayTime = math.max(minTime, displayTime)
+        displayTime = math.min(maxTime, displayTime)
+    end
+    return displayTime
+end
+
+function CinematicCam:CalculatePunctuationTime(text)
+    if not text or not self.savedVars.chunkedDialog.usePunctuationTiming then
+        return 0
+    end
+
+    local totalPunctuationTime = 0
+    local punctuationCounts = {
+        ["-"] = 0,
+        ["—"] = 0,
+        ["–"] = 0,
+        [","] = 0,
+        [";"] = 0,
+        [":"] = 0,
+        ["."] = 0
+    }
+
+    local ellipsisCount = 0
+
+    -- Count each character
+    for i = 1, #text do
+        local char = text:sub(i, i)
+        if punctuationCounts[char] ~= nil then
+            punctuationCounts[char] = punctuationCounts[char] + 1
         end
     end
+
+    -- Count ellipsis (handle both ... and …)
+    ellipsisCount = ellipsisCount + select(2, string.gsub(text, "%.%.%.", "")) -- Three dots
+    ellipsisCount = ellipsisCount + select(2, string.gsub(text, "…", "")) -- Unicode ellipsis
+
+    -- Calculate total punctuation time
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["-"] * (0.3))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["—"] * (0.4))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["–"] * (0.4))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[","] * (0.7))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[";"] * (0.25))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts[":"] * (0.3))
+    totalPunctuationTime = totalPunctuationTime + (punctuationCounts["."] * (0.3))
+    totalPunctuationTime = totalPunctuationTime +
+        (ellipsisCount * (self.savedVars.chunkedDialog.ellipsisPauseTime or 0.5))
+
+    -- Debug output
+    if totalPunctuationTime > 0 then
+        local details = {}
+        if punctuationCounts["-"] > 0 then table.insert(details, punctuationCounts["-"] .. " hyphens") end
+        if punctuationCounts["—"] > 0 then table.insert(details, punctuationCounts["—"] .. " em-dashes") end
+        if punctuationCounts[","] > 0 then table.insert(details, punctuationCounts[","] .. " commas") end
+        if punctuationCounts[";"] > 0 then table.insert(details, punctuationCounts[";"] .. " semicolons") end
+        if punctuationCounts[":"] > 0 then table.insert(details, punctuationCounts[":"] .. " colons") end
+        if ellipsisCount > 0 then table.insert(details, ellipsisCount .. " ellipsis") end
+    end
+    return totalPunctuationTime
+end
+
+function CinematicCam:CleanTextForTiming(text)
+    if not text then return "" end
+
+    -- Remove abbreviation markers
+    local cleaned = string.gsub(text, "§ABBREV§", ".")
+
+    -- Remove extra whitespace
+    cleaned = string.gsub(cleaned, "%s+", " ")
+    cleaned = self:TrimString(cleaned)
+    return cleaned
+end
+
+function CinematicCam:ScheduleNextChunk()
+    if chunkedDialogueData.displayTimer then
+        zo_removeCallLater(chunkedDialogueData.displayTimer)
+    end
+
+    -- Calculate timing for the CURRENT chunk (the one being displayed)
+    local currentChunkIndex = chunkedDialogueData.currentChunkIndex
+    local currentChunk = chunkedDialogueData.chunks[currentChunkIndex]
+    local displayTime = self:CalculateChunkDisplayTime(currentChunk)
+
+    -- Convert to milliseconds for zo_callLater
+    local displayTimeMs = displayTime * 1000
+
+    chunkedDialogueData.displayTimer = zo_callLater(function()
+        self:AdvanceToNextChunk()
+    end, displayTimeMs)
+end
+
+function CinematicCam:AdvanceToNextChunk()
+    chunkedDialogueData.currentChunkIndex = chunkedDialogueData.currentChunkIndex + 1
+
+    if chunkedDialogueData.currentChunkIndex <= #chunkedDialogueData.chunks then
+        self:DisplayCurrentChunk()
+        if self.savedVars.interaction.subtitles.useChunkedDialogue and #chunkedDialogueData.chunks > 1 then
+            self:ScheduleNextChunk()
+        end
+    end
+end
+
+function CinematicCam:UpdateChunkedTextVisibility()
+    local control = chunkedDialogueData.customControl
+    if control then
+        if self.savedVars.interaction.subtitles.isHidden then
+            control:SetAlpha(0)
+        else
+            control:SetAlpha(1.0)
+        end
+    end
+end
+
+function CinematicCam:PreprocessTextForChunking(text)
+    local abbreviations = {
+        "Mr%.", "Mrs%.", "Ms%.", "Dr%.", "Prof%.",
+        "U%.S%.A%.", "etc%.", "vs%.", "e%.g%.", "i%.e%."
+    }
+
+    local processed = text
+    for _, abbrev in ipairs(abbreviations) do
+        processed = string.gsub(processed, abbrev, function(match)
+            return string.gsub(match, "%.", "§ABBREV§")
+        end)
+    end
+
+    return processed
+end
+
+function CinematicCam:IsValidChunkBoundary(text, position, currentChunk, minLength)
+    if string.len(currentChunk) < minLength then
+        return false
+    end
+
+    local nextChar = text:sub(position + 1, position + 1)
+    if nextChar == " " or nextChar == "\n" or nextChar == "\t" or nextChar == "" then
+        return true
+    end
+
+    if string.match(nextChar, "%w") then
+        return false
+    end
+
+    return true
+end
+
+function CinematicCam:FindWordBoundary(text, maxPosition)
+    for i = maxPosition, 1, -1 do
+        if text:sub(i, i) == " " then
+            return i - 1
+        end
+    end
+    return maxPosition
 end
 
 ---=============================================================================
@@ -1536,17 +1533,6 @@ function CinematicCam:ShouldBlockInteraction(interactionType)
     return interactionTypeMap[interactionType] == true
 end
 
--- Save current camera state before interaction
-function CinematicCam:SaveCameraState()
-    savedCameraState = {
-        distance = GetCameraDistance(),
-    }
-end
-
-function CinematicCam:RestoreCameraState()
-    savedCameraState = {}
-end
-
 function CinematicCam:checkhid()
     if self.savedVars.interaction.subtitles.isHidden or self.savedVars.interaction.layoutPreset == "cinematic" then
         if ZO_InteractWindowTargetAreaBodyText then
@@ -1558,45 +1544,34 @@ function CinematicCam:checkhid()
     end
 end
 
+--TODO config is nothing
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
-    if not self.savedVars.usePerInteractionSettings and config then
-        -- Use per-interaction settings
-        if not config.enabled or not config.forceThirdPerson then
-            return
-        end
 
+
+    if self:ShouldBlockInteraction(interactionType) then
         SetInteractionUsingInteractCamera(false)
         isInteractionModified = true
 
-
-
-
         self:ApplyDialogueRepositioning()
 
-        -- Save current state
-        self:SaveCameraState()
 
-        -- Handle dialogue panels, NPC text, etc.
-        if config.hideDialoguePanels then
+        if self.savedVars.interaction.ui.hidePanelsESO then
             self:HideDialoguePanels()
         end
 
-        if self.savedVars.interaction.subtitles.isHidden then
-            if ZO_InteractWindowTargetAreaBodyText then
-                ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-            end
-            if ZO_InteractWindow_GamepadContainerText then
-                ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-            end
+        if ZO_InteractWindowTargetAreaBodyText then
+            ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+        end
+        if ZO_InteractWindow_GamepadContainerText then
+            ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
         end
 
-        -- ALWAYS intercept dialogue (for both chunked and non-chunked)
         if self.savedVars.interaction.layoutPreset == "cinematic" then
             self:InterceptDialogueForChunking()
         end
-        -- Handle letterbox and UI
-        if config.autoLetterbox then
+
+        if self:AutoShowLetterbox(interactionType) then
             if not self.savedVars.letterbox.letterboxVisible then
                 dialogLetterbox = true
                 self:ShowLetterbox()
@@ -1605,64 +1580,15 @@ function CinematicCam:OnGameCameraDeactivated()
             end
         end
 
-        if config.autoHideUI then
-            if self.savedVars.interface.uiElementsVisible then
-                wasUIAutoHidden = true
+        if self.savedVars.interaction.auto.autoHideUIDialogue then
+            if self.savedVars.interface.UiElementsVisible then
                 self:HideUI()
-            else
-                wasUIAutoHidden = false
             end
         end
-
+        self:ForceApplyFontsToDialogue()
         zo_callLater(function()
             CinematicCam:CheckInteractionStatus()
         end, 1000)
-    else
-        -- Legacy behavior
-        if self:ShouldBlockInteraction(interactionType) then
-            SetInteractionUsingInteractCamera(false)
-            isInteractionModified = true
-
-            self:ApplyDialogueRepositioning()
-            self:SaveCameraState()
-
-            if self.savedVars.interaction.ui.hidePanelsESO then
-                self:HideDialoguePanels()
-            end
-
-            if ZO_InteractWindowTargetAreaBodyText then
-                ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-            end
-            if ZO_InteractWindow_GamepadContainerText then
-                ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-            end
-
-
-            if self.savedVars.interaction.layoutPreset == "cinematic" then
-                self:InterceptDialogueForChunking()
-            end
-            if self:AutoShowLetterbox(interactionType) then
-                if not self.savedVars.letterbox.letterboxVisible then
-                    dialogLetterbox = true
-                    self:ShowLetterbox()
-                else
-                    dialogLetterbox = false
-                end
-            end
-
-            if self.savedVars.interaction.auto.autoHideUIDialogue then
-                if self.savedVars.interface.uiElementsVisible then
-                    wasUIAutoHidden = true
-                    self:HideUI()
-                else
-                    wasUIAutoHidden = false
-                end
-            end
-
-            zo_callLater(function()
-                CinematicCam:CheckInteractionStatus()
-            end, 1000)
-        end
     end
 end
 
@@ -1705,27 +1631,13 @@ end
 function CinematicCam:OnInteractionEnd()
     if isInteractionModified then
         isInteractionModified = false
-
-        -- Always cleanup chunked dialogue when interaction ends
         if self.savedVars.interaction.subtitles.useChunkedDialogue then
             self:CleanupChunkedDialogue()
         end
 
-        if self.savedVars.interaction.ui.hidePanelsESO then
-            self:ShowDialoguePanels()
-        end
-
-        -- Restore camera state
-        self:RestoreCameraState()
-
         -- Only hide letterbox if we auto-showed it
         if dialogLetterbox and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
-        end
-
-        -- Only show UI if we auto-hid it
-        if wasUIAutoHidden and not self.savedVars.interface.uiElementsVisible then
-            self:ShowUI()
         end
 
         -- Reset tracking flags
@@ -1824,25 +1736,19 @@ function CinematicCam:ApplyFontToElement(element, fontSize)
     local fontPath = self:GetCurrentFont()
     local actualSize = fontSize or self.savedVars.interface.customFontSize
     actualSize = math.floor(actualSize * self.savedVars.interface.fontScale)
-
     if not fontPath then
         local defaultFontString = "EsoUI/Common/Fonts/FTN57.slug|" .. actualSize .. "|soft-shadow-thick"
         element:SetFont(defaultFontString)
         return
     end
-
-    -- Parse the font path and replace size for custom fonts
     local finalFontString = self:ParseFontPath(fontPath, actualSize)
-
     if finalFontString then
         element:SetFont(finalFontString)
     end
 end
 
 function CinematicCam:ApplyFontsToUI()
-    -- Use the same size for all dialogue elements
     local fontSize = self.savedVars.interface.customFontSize
-
     if ZO_InteractWindowTargetAreaTitle then
         self:ApplyFontToElement(ZO_InteractWindowTargetAreaTitle, fontSize)
     end
@@ -1903,32 +1809,25 @@ function CinematicCam:BuildUserFontString()
     local selectedFont = self.savedVars.interface.selectedFont
     local fontSize = self.savedVars.interface.customFontSize
     local fontScale = self.savedVars.interface.fontScale
-
-    -- Calculate final size
     local finalSize = math.floor(fontSize * fontScale)
 
-    -- Handle each font type directly
     if selectedFont == "ESO_Standard" then
-        -- ESO Standard uses the default font with size
         return "EsoUI/Common/Fonts/FTN57.slug|" .. finalSize .. "|soft-shadow-thick"
     elseif selectedFont == "ESO_Bold" then
-        -- ESO Bold with the path from your fontBook
         return "EsoUI/Common/Fonts/FTN57.slug|" .. finalSize .. "|thick-outline"
     elseif selectedFont == "Handwritten" then
-        -- Handwritten with the path from your fontBook
         return "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|" .. finalSize .. "|soft-shadow-thick"
     end
 end
 
 function CinematicCam:OnFontChanged()
-    -- Apply fonts immediately if dialogue is currently open
+    self:UpdateChunkedTextFont()
+    self:ApplyFontsToUI()
+
     local interactionType = GetInteractionType()
     if interactionType ~= INTERACTION_NONE then
         self:ApplyFontsToUI()
     end
-    self:UpdateChunkedTextFont()
-    -- Also apply to any existing dialogue elements
-    self:ApplyFontsToUI()
 end
 
 -- Repositioning preset system
@@ -1967,17 +1866,20 @@ function CinematicCam:ApplyCinematicPreset()
 end
 
 function CinematicCam:ApplySubtitlePosition()
-    local targetY = self.savedVars.interaction.subtitles.posY or self:CalculateDefaultPosition()
+    local targetX, targetY = self:ConvertToScreenCoordinates(
+        self.savedVars.interaction.subtitles.posX or 0.5,
+        self.savedVars.interaction.subtitles.posY or 0.7
+    )
 
     if npcTextContainer then
         npcTextContainer:ClearAnchors()
-        npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, 0, 1000)
+        npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
     end
 
     -- Apply to custom chunked dialogue control
     if chunkedDialogueData.customControl then
         chunkedDialogueData.customControl:ClearAnchors()
-        chunkedDialogueData.customControl:SetAnchor(CENTER, GuiRoot, CENTER, 0, 1000)
+        chunkedDialogueData.customControl:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
     end
 end
 
@@ -1989,12 +1891,13 @@ function CinematicCam:ApplyChunkedTextPositioning()
 
     if preset == "cinematic" then
         -- Use the same positioning logic as native subtitles
-        local targetY = self:ConvertToScreenCoordinates(
+        local targetX, targetY = self:ConvertToScreenCoordinates(
+            self.savedVars.interaction.subtitles.posX or 0.5,
             self.savedVars.interaction.subtitles.posY or 0.7
         )
 
         control:ClearAnchors()
-        control:SetAnchor(CENTER, GuiRoot, CENTER, 0, targetY)
+        control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
         control:SetDimensions(800, 200)
     else
         -- Default positioning for non-cinematic presets
@@ -2003,14 +1906,23 @@ function CinematicCam:ApplyChunkedTextPositioning()
     end
 end
 
-function CinematicCam:OnSubtitlePositionChanged(newY)
-    -- Real-time position updates
-    self.savedVars.interaction.subtitles.posY = newY
+function CinematicCam:OnSubtitlePositionChanged(newX, newY)
+    -- Update saved variables
+    if newX then
+        self.savedVars.interaction.subtitles.posX = newX
+    end
+    if newY then
+        self.savedVars.interaction.subtitles.posY = newY
+    end
 
     -- Immediate application if dialogue is active
     local interactionType = GetInteractionType()
     if interactionType ~= INTERACTION_NONE then
         self:ApplySubtitlePosition()
+        -- Also update chunked dialogue positioning if active
+        if chunkedDialogueData.isActive then
+            self:ApplyChunkedTextPositioning()
+        end
     end
 end
 
@@ -2049,18 +1961,125 @@ function CinematicCam:ApplyDialogueRepositioning()
     end
 end
 
+function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
+    if chunkedDialogueData.isActive and chunkedDialogueData.customControl then
+        self:ApplyChunkedTextPositioning()
+    end
+end
+
+function CinematicCam:RegisterFontEvents()
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
+        self:ApplyFontsToUI()
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CONVERSATION_UPDATED, function()
+        zo_callLater(function()
+            self:ApplyFontsToUI()
+        end, 20)
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_QUEST_COMPLETE_DIALOG, function()
+        self:ApplyFontsToUI()
+    end)
+
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_INTERACTION_UPDATED, function()
+        self:ApplyFontsToUI()
+    end)
+
+    -- Add more specific events
+    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_SHOW_BOOK, function()
+        self:ApplyFontsToUI()
+    end)
+end
+
+function CinematicCam:ForceApplyFontsToDialogue()
+    local dialogueElements = {
+        "ZO_InteractWindowTargetAreaBodyText",
+        "ZO_InteractWindow_GamepadContainerText",
+        "ZO_InteractWindowTargetAreaTitle",
+        "ZO_InteractWindow_GamepadTitle",
+        "ZO_InteractWindowPlayerAreaOptions",
+        "ZO_InteractWindowPlayerAreaHighlight"
+    }
+
+    for _, elementName in ipairs(dialogueElements) do
+        local element = _G[elementName]
+        if element then
+            self:ApplyFontToElement(element, self.savedVars.interface.customFontSize)
+        end
+    end
+end
+
+---=============================================================================
+-- Initialize
+--=============================================================================
+
+local function Initialize()
+    CinematicCam:InitSavedVars()
+    CinematicCam:ApplyFontsToUI()
+
+    CinematicCam:InitializeChunkedDialogueSystem()
+    CinematicCam:InitializeChunkedTextControl()
+
+    CinematicCam:RegisterFontEvents()
+
+    CinematicCam:InitializeLetterbox()
+    CinematicCam:InitializeUI()
+
+    zo_callLater(function()
+        CinematicCam:InitializePreviewSystem()
+    end, 200)
+
+    -- Register slash commands
+    SLASH_COMMANDS["/ccui"] = function()
+        CinematicCam:ToggleUI()
+    end
+
+    SLASH_COMMANDS["/ccbars"] = function()
+        CinematicCam:ToggleLetterbox()
+    end
+
+    CinematicCam:InitializeInteractionSettings()
+
+    zo_callLater(function()
+        CinematicCam:CreateSettingsMenu()
+        CinematicCam:RegisterSceneCallbacks()
+    end, 100)
+
+    CinematicCam:checkhid()
+end
+function CinematicCam:InitSavedVars()
+    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, defaults)
+end
+
+function CinematicCam:InitializeChunkedDialogueSystem()
+    -- Hook into your existing dialogue detection
+    local originalOnGameCameraDeactivated = self.OnGameCameraDeactivated
+    self.OnGameCameraDeactivated = function(self)
+        originalOnGameCameraDeactivated(self)
+
+        if self.savedVars.interaction.layoutPreset == "cinematic" then
+            -- Add chunked dialogue initialization
+            zo_callLater(function()
+                self:InterceptDialogueForChunking()
+            end, 20)
+        end
+    end
+end
+
+-- XML element for cinematic subtitles
 function CinematicCam:InitializeChunkedTextControl()
     local control = _G["CinematicCam_ChunkedText"]
 
     if not control then
-        -- Create control programmatically as fallback
         control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
 
         if not control then
             return nil
         end
     end
-    -- Basic visibility settings
+
+    -- visibility settings
     control:SetColor(1, 1, 1, 1)
     if self.savedVars.interaction.subtitles.isHidden == true then
         control:SetAlpha(0)
@@ -2089,29 +2108,7 @@ function CinematicCam:InitializeChunkedTextControl()
     return control
 end
 
-function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
-    if chunkedDialogueData.isActive and chunkedDialogueData.customControl then
-        self:ApplyChunkedTextPositioning()
-    end
-end
-
-function CinematicCam:InitSavedVars()
-    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, defaults)
-end
-
----=============================================================================
--- Initialize
---=============================================================================
-local function Initialize()
-    -- Load saved variables
-    CinematicCam:InitSavedVars()
-
-    -- Apply fonts after UI elements are loaded
-    CinematicCam:ApplyFontsToUI()
-    CinematicCam:InitializeChunkedDialogueSystem()
-    CinematicCam:InitializeChunkedTextControl()
-
-    --Letterbox
+function CinematicCam:InitializeLetterbox()
     if CinematicCam.savedVars.letterbox.letterboxVisible then
         CinematicCam_Container:SetHidden(false)
         CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
@@ -2134,8 +2131,9 @@ local function Initialize()
         CinematicCam_LetterboxTop:SetHidden(true)
         CinematicCam_LetterboxBottom:SetHidden(true)
     end
+end
 
-    -- Init UI saved Vars
+function CinematicCam:InitializeUI()
     if not CinematicCam.savedVars.interface.UiElementsVisible then
         zo_callLater(function()
             for _, elementName in ipairs(uiElements) do
@@ -2156,24 +2154,6 @@ local function Initialize()
             end
         end, 1600)
     end
-    zo_callLater(function()
-        CinematicCam:InitializePreviewSystem()
-    end, 200)
-    -- Register slash commands
-    SLASH_COMMANDS["/ccui"] = function()
-        CinematicCam:ToggleUI()
-    end
-
-    SLASH_COMMANDS["/ccbars"] = function()
-        CinematicCam:ToggleLetterbox()
-    end
-
-    CinematicCam:InitializeInteractionSettings()
-    zo_callLater(function()
-        CinematicCam:CreateSettingsMenu()
-        CinematicCam:RegisterSceneCallbacks()
-    end, 100)
-    CinematicCam:checkhid()
 end
 
 local function OnPlayerActivated(eventCode)
@@ -2227,29 +2207,6 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function
     else
         CinematicCam:OnMountDown()
     end
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
-        zo_callLater(function()
-            CinematicCam:ApplyFontsToUI()
-        end)
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CONVERSATION_UPDATED, function()
-        zo_callLater(function()
-            CinematicCam:ApplyFontsToUI()
-        end)
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_QUEST_COMPLETE_DIALOG, function()
-        zo_callLater(function()
-            CinematicCam:ApplyFontsToUI()
-        end)
-    end)
-
-    EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_INTERACTION_UPDATED, function()
-        zo_callLater(function()
-            CinematicCam:ApplyFontsToUI()
-        end)
-    end)
 end)
 ---=============================================================================
 -- Debug

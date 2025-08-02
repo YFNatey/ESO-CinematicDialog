@@ -101,7 +101,7 @@ function CinematicCam:CreateSettingsMenu()
             tooltip =
             "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
             choices = { "Default", "Cinematic" },
-            choicesValues = { "defeault", "cinematic" },
+            choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
                 self.savedVars.interaction.layoutPreset = value
@@ -131,11 +131,10 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Cinematic Subtitle Position",
-            tooltip =
-            "Adjust vertical position of dialogue text.",
+            name = "Cinematic Subtitle Y Position",
+            tooltip = "Adjust vertical position of dialogue text.",
             min = 0,
-            max = 130,
+            max = 100,
             step = 1,
             getFunc = function()
                 local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
@@ -144,19 +143,33 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 local normalizedY = value / 100
                 self.savedVars.interaction.subtitles.posY = normalizedY
-                self:OnSubtitlePositionChanged(normalizedY)
-
+                self:OnSubtitlePositionChanged(nil, normalizedY)
                 -- Show preview when slider changes
-                self:ShowSubtitlePreview(value)
-            end,
-            -- Real-time preview while dragging (if supported by your settings library)
-            onValueChanged = function(value)
-                if isPreviewActive then
-                    self:UpdatePreviewPosition(value)
-                end
+                self:ShowSubtitlePreview(nil, value)
             end,
             width = "full",
         },
+        {
+            type = "slider",
+            name = "Cinematic Subtitle X Position",
+            tooltip = "Adjust horizontal position of dialogue text.",
+            min = 0,
+            max = 100,
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posX or 0.5
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedX = value / 100
+                self.savedVars.interaction.subtitles.posX = normalizedX
+                self:OnSubtitlePositionChanged(normalizedX, nil)
+                -- Show preview when slider changes
+                self:ShowSubtitlePreview(value, nil)
+            end,
+            width = "full",
+        },
+
         {
             type = "slider",
             name = "Player Dialog Position",
@@ -196,6 +209,54 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+        {
+            type = "dropdown",
+            name = "NPC Name Location",
+
+            choices = { "Default", "Attached" },
+            choicesValues = { "default", "prepended" },
+            getFunc = function()
+                return self.savedVars.npcNamePreset or "default"
+            end,
+            setFunc = function(value)
+                self.savedVars.npcNamePreset = value
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    self:ApplyNPCNamePreset(value)
+                end
+            end,
+            width = "full",
+        },
+        {
+
+        },
+        {
+            type = "colorpicker",
+            name = "NPC Name Color",
+            tooltip = "Color for NPC names when using 'Attached' location",
+            getFunc = function()
+                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
+                self:UpdateNPCNameColor()
+
+                -- If we're in prepended mode and dialogue is active, refresh the text
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
+                        -- Re-process the dialogue with the new color
+                        self:InterceptDialogueForChunking()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },
 
         --- FONT SETTINGS
         {
@@ -231,56 +292,6 @@ function CinematicCam:CreateSettingsMenu()
             type = "header",
             name = "Cinematic Settings",
         },
-        {
-            type = "dropdown",
-            name = "NPC Name Display",
-
-            choices = { "Default", "Attached" },
-            choicesValues = { "default", "prepended", "above" },
-            getFunc = function()
-                return self.savedVars.npcNamePreset or "default"
-            end,
-            setFunc = function(value)
-                self.savedVars.npcNamePreset = value
-                -- Apply immediately if in dialogue
-                local interactionType = GetInteractionType()
-                if interactionType ~= INTERACTION_NONE then
-                    self:ApplyNPCNamePreset(value)
-                end
-            end,
-            width = "full",
-        },
-        {
-
-        },
-        {
-            type = "colorpicker",
-            name = "NPC Name Color",
-            tooltip = "Color for NPC names when using 'Prepended to Text' or 'Above Subtitles' mode",
-            getFunc = function()
-                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
-                self:UpdateNPCNameColor()
-
-                -- If we're in prepended mode and dialogue is active, refresh the text
-                if self.savedVars.npcNamePreset == "prepended" then
-                    local interactionType = GetInteractionType()
-                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
-                        -- Re-process the dialogue with the new color
-                        self:InterceptDialogueForChunking()
-                    end
-                end
-            end,
-            disabled = function()
-                return self.savedVars.npcNamePreset == "default"
-            end,
-            width = "full",
-        },
-
-
 
         {
             type = "checkbox",
@@ -398,20 +409,6 @@ function CinematicCam:CreateSettingsMenu()
 
     LAM:RegisterAddonPanel(panelName, panelData)
     LAM:RegisterOptionControls(panelName, optionsData)
-end
-
-function CinematicCam:ConvertToScreenCoordinates(normalizedY)
-    local screenHeight = GuiRoot:GetHeight()
-
-    if self.savedVars.interaction.layoutPreset == "cinematic" then
-        -- For cinematic mode, convert the slider value (0-100) to screen position
-        -- The slider saves as posY (0-100), so we need to convert to actual Y offset
-        local targetY = (normalizedY - 0.5) * screenHeight * 0.8 -- Center-based positioning
-        return targetY
-    else
-        -- For default preset, use direct screen positioning
-        return (normalizedY * screenHeight) - (screenHeight / 2)
-    end
 end
 
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)

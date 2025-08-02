@@ -57,7 +57,7 @@
                 <Label name="CinematicCam_PlayerOptionsPreviewText" mouseEnabled="false"
                        layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
-                    <Dimensions x="700" y="1080" />
+                    <Dimensions x="700" y="10s80" />
                 </Label>
             </Controls>
         </TopLevelControl>
