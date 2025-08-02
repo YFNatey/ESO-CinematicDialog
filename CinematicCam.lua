@@ -1592,32 +1592,6 @@ function CinematicCam:OnGameCameraDeactivated()
     end
 end
 
-function CinematicCam:EnableAllInteractions(enable)
-    for interactionName, settings in pairs(self.savedVars.interactions) do
-        if type(settings) == "table" then
-            settings.enabled = enable
-        end
-    end
-    self:InitializeInteractionSettings()
-end
-
-function CinematicCam:SetAllThirdPersonMode(enable)
-    for interactionName, settings in pairs(self.savedVars.interactions) do
-        if type(settings) == "table" then
-            settings.forceThirdPerson = enable
-        end
-    end
-    self:InitializeInteractionSettings()
-end
-
-function CinematicCam:SetAllLetterboxMode(enable)
-    for interactionName, settings in pairs(self.savedVars.interactions) do
-        if type(settings) == "table" then
-            settings.autoLetterbox = enable
-        end
-    end
-end
-
 function CinematicCam:OnGameCameraActivated()
     if isInteractionModified then
         -- Check if we're actually out of interaction
