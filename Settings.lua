@@ -1,14 +1,10 @@
 --[[ TODO
-Dye Stations toggle
-Allow npc text repositioning
-Allow options for npc name: appended or above text
 Allow reposition dialoge options
 Fix "images, coin, u46 descision images shopwing up as squares"
 --]]
 ---=============================================================================
 -- Settings Menu
 --=============================================================================
--- Create LibAddonMenu-2.0 settings panel
 function CinematicCam:CreateSettingsMenu()
     local LAM = LibAddonMenu2
 
@@ -172,7 +168,7 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "slider",
-            name = "Player Dialog Position",
+            name = "Player Dialog X Position",
             tooltip = "Adjust the horizontal position of the dialogue window. Move the slider to see a preview.",
             min = 10,
             max = 34,
@@ -229,7 +225,6 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-
         },
         {
             type = "colorpicker",
@@ -259,10 +254,6 @@ function CinematicCam:CreateSettingsMenu()
         },
 
         --- FONT SETTINGS
-        {
-            type = "header",
-            name = "Font Settings",
-        },
         {
             type = "dropdown",
             name = "Font",
@@ -411,8 +402,113 @@ function CinematicCam:CreateSettingsMenu()
     LAM:RegisterOptionControls(panelName, optionsData)
 end
 
+local playerOptionsPreviewTimer = nil
+local isPlayerOptionsPreviewActive = false
+
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()
     return pixelY / screenHeight
+end
+
+function CinematicCam:ShowPlayerOptionsPreview(xPosition)
+    if not CinematicCam_PlayerOptionsPreviewContainer or not CinematicCam_PlayerOptionsPreviewText or not CinematicCam_PlayerOptionsPreviewBackground then
+        return
+    end
+
+    isPlayerOptionsPreviewActive = true
+
+    -- Convert percentage to screen coordinates
+    local screenWidth = GuiRoot:GetWidth()
+    local targetX = screenWidth * (xPosition / 100)
+
+    -- Position the background box
+    CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
+    CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+
+    -- Set background properties (slightly opaque dark background)
+    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- (r,g,b,opacity)
+    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLayer(DL_CONTROLS)
+    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLevel(5)
+
+    -- Position the preview text
+    CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
+    CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+
+    -- Set preview text properties
+    CinematicCam_PlayerOptionsPreviewText:SetText("")
+    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1)
+    CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    CinematicCam_PlayerOptionsPreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- Apply current font settings to preview
+    local fontString = self:BuildUserFontString()
+    CinematicCam_PlayerOptionsPreviewText:SetFont(fontString)
+
+    -- Show the preview container
+    CinematicCam_PlayerOptionsPreviewContainer:SetHidden(false)
+    CinematicCam_PlayerOptionsPreviewBackground:SetHidden(false)
+    CinematicCam_PlayerOptionsPreviewText:SetHidden(false)
+
+    -- Clear any existing timer
+    if playerOptionsPreviewTimer then
+        zo_removeCallLater(playerOptionsPreviewTimer)
+    end
+
+    -- Hide preview after 3 seconds
+    playerOptionsPreviewTimer = zo_callLater(function()
+        self:HidePlayerOptionsPreview()
+    end, 3000)
+end
+
+function CinematicCam:HidePlayerOptionsPreview()
+    if not isPlayerOptionsPreviewActive then
+        return
+    end
+
+    isPlayerOptionsPreviewActive = false
+
+    -- Clear timer
+    if playerOptionsPreviewTimer then
+        zo_removeCallLater(playerOptionsPreviewTimer)
+        playerOptionsPreviewTimer = nil
+    end
+
+    -- Hide preview elements
+    if CinematicCam_PlayerOptionsPreviewContainer then
+        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
+    end
+    if CinematicCam_PlayerOptionsPreviewBackground then
+        CinematicCam_PlayerOptionsPreviewBackground:SetHidden(true)
+    end
+    if CinematicCam_PlayerOptionsPreviewText then
+        CinematicCam_PlayerOptionsPreviewText:SetHidden(true)
+    end
+end
+
+function CinematicCam:UpdatePlayerOptionsPreviewPosition(xPosition)
+    if isPlayerOptionsPreviewActive then
+        -- Update position while slider is being moved
+        local screenWidth = GuiRoot:GetWidth()
+        local targetX = (xPosition / 100) * screenWidth - (screenWidth / 2)
+
+        if CinematicCam_PlayerOptionsPreviewBackground then
+            CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
+            CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+        end
+
+        if CinematicCam_PlayerOptionsPreviewText then
+            CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
+            CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
+        end
+
+        -- Reset the auto-hide timer
+        if playerOptionsPreviewTimer then
+            zo_removeCallLater(playerOptionsPreviewTimer)
+        end
+        playerOptionsPreviewTimer = zo_callLater(function()
+            self:HidePlayerOptionsPreview()
+        end, 3000)
+    end
 end

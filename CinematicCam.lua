@@ -2,13 +2,13 @@
 local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
 CinematicCam.savedVars = nil
-local playerOptionsPreviewTimer = nil
-local isPlayerOptionsPreviewActive = false
+
+
 local uiElementsMap = {}      -- table for hiding ui elements, used in HideUI()
 local interactionTypeMap = {} -- table for interaction type settings
 
 -- State tracking
-local isInteractionModified = false -- is default camera overridden?
+local isInteractionModified = false -- overriden default cam
 local mountLetterbox = false
 local dialogLetterbox = false
 local wasUIAutoHidden = false
@@ -21,16 +21,16 @@ local npcNameData = {
     currentPreset = "default"
 }
 local namePresetDefaults = {
-    npcNamePreset = "default",                             -- "default", "prepended", "above"
-    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- Warm gold color for NPC names
-    npcNameFontSize = 42,                                  -- Slightly larger than dialogue text
+    npcNamePreset = "default",
+    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+    npcNameFontSize = 42,
 }
 
 -- Default settings
 local defaults = {
     camEnabled = false,
-    npcNamePreset = "default",                             -- "default", "prepended", "above"
-    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }, -- Warm gold color
+    npcNamePreset = "default",
+    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
     npcNameFontSize = 42,
     -- Slightly larger than dialogue text
     letterbox = {
@@ -62,7 +62,6 @@ local defaults = {
             autoLetterboxBank = false,
             autoLetterboxCrafting = false,
         },
-
         subtitles = {
             isHidden = false,
             useChunkedDialogue = false,
@@ -70,7 +69,6 @@ local defaults = {
             posX = .5
 
         },
-
     },
     interface = {
         UiElementsVisible = true,
@@ -83,8 +81,6 @@ local defaults = {
 
     },
     hideUiElements = {},
-
-
     chunkedDialog = {
         chunkDisplayInterval = 3.0,
         chunkDelimiters = { ".", "!", "?" },
@@ -103,10 +99,7 @@ local defaults = {
         dashPauseTime = 0.4,
         ellipsisPauseTime = 0.5,
     },
-    -- Global control settings
-    usePerInteractionSettings = false,
-
-
+    usePerInteractionSettings = false, -- Global setting
 }
 
 local chunkedDialogueData = {
@@ -120,11 +113,14 @@ local chunkedDialogueData = {
 
 -- UI elements to hide
 local uiElements = {
+    -- Compass
     "ZO_CompassFrame",
     "ZO_CompassFrameCenter",
     "ZO_CompassFrameLeft",
     "ZO_CompassFrameRight",
     "ZO_CompassContainer",
+
+    -- Action  Bar
     "ZO_PlayerAttributeHealth",
     "ZO_PlayerAttributeMagicka",
     "ZO_PlayerAttributeStamina",
@@ -132,10 +128,14 @@ local uiElements = {
     "ZO_ActionBar2",
     "ZO_TargetUnitFrame",
     "ZO_UnitFrames",
-    "ZO_ChatWindowTemplate1",
+
     "ZO_MinimapContainer",
+
+    -- Buff bar
     "ZO_PowerBlock",
     "ZO_BuffTracker",
+
+    -- Reticle
     "ZO_ReticleContainerReticle",
     "ZO_ReticleContainer",
     "ZO_ReticleContainerStealthIcon",
@@ -148,8 +148,6 @@ local uiElements = {
     "ZO_FocusedQuestTrackerPanel",
     "ZO_QuestTrackerPanelContainer",
     "ZO_QuestLog",
-
-    -- General Interaction UI (but NOT specific dialogue elements)
     "ZO_ConversationWindow",
 
     -- Inventory & Menus
@@ -158,9 +156,6 @@ local uiElements = {
     "ZO_MainMenuCategoryBarContainer",
 
     -- Social UI
-    "ZO_KeyboardGuildWindow",
-    "ZO_FriendsListKeyboard",
-    "ZO_IgnoreListKeyboard",
     "ZO_GroupWindow",
     "ZO_ChatMenu_Gamepad_TopLevel",
     "ZO_GamepadTextChat",
@@ -169,22 +164,13 @@ local uiElements = {
     "ZO_GamepadTextChatWindowContainer",
     "ZO_ChatWindowTab_Gamepad1",
     "ZO_ChatMenu_Gamepad_TopLevelMask",
-
-    -- Crafting UI
-    "ZO_CraftingTopLevel",
-    "ZO_SmithingTopLevel",
-    "ZO_EnchantingTopLevel",
-    "ZO_AlchemyTopLevel",
-    "ZO_ProvisionerTopLevel",
-
+    "ZO_ChatWindowTemplate1",
+    "ZO_GamepadChatSystem",
 
     -- Other UI
     "ZO_NotificationContainer",
     "ZO_TutorialOverlay",
-    "ZO_DeathRecapWindow",
 
-    -- Gamepad elements
-    "ZO_GamepadChatSystem",
 }
 
 local fontBook = {
@@ -205,107 +191,7 @@ local fontBook = {
     },
 }
 
-function CinematicCam:ShowPlayerOptionsPreview(xPosition)
-    if not CinematicCam_PlayerOptionsPreviewContainer or not CinematicCam_PlayerOptionsPreviewText or not CinematicCam_PlayerOptionsPreviewBackground then
-        return
-    end
 
-    isPlayerOptionsPreviewActive = true
-
-    -- Convert percentage to screen coordinates
-    local screenWidth = GuiRoot:GetWidth()
-    local targetX = screenWidth * (xPosition / 100)
-
-    -- Position the background box
-    CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
-    CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-
-    -- Set background properties (slightly opaque dark background)
-    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- (r,g,b,opacity)
-    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLayer(DL_CONTROLS)
-    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLevel(5)
-
-    -- Position the preview text
-    CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
-    CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-
-    -- Set preview text properties
-    CinematicCam_PlayerOptionsPreviewText:SetText("")
-    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1)
-    CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
-    CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
-    CinematicCam_PlayerOptionsPreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-
-    -- Apply current font settings to preview
-    local fontString = self:BuildUserFontString()
-    CinematicCam_PlayerOptionsPreviewText:SetFont(fontString)
-
-    -- Show the preview container
-    CinematicCam_PlayerOptionsPreviewContainer:SetHidden(false)
-    CinematicCam_PlayerOptionsPreviewBackground:SetHidden(false)
-    CinematicCam_PlayerOptionsPreviewText:SetHidden(false)
-
-    -- Clear any existing timer
-    if playerOptionsPreviewTimer then
-        zo_removeCallLater(playerOptionsPreviewTimer)
-    end
-
-    -- Hide preview after 3 seconds
-    playerOptionsPreviewTimer = zo_callLater(function()
-        self:HidePlayerOptionsPreview()
-    end, 3000)
-end
-
-function CinematicCam:HidePlayerOptionsPreview()
-    if not isPlayerOptionsPreviewActive then
-        return
-    end
-
-    isPlayerOptionsPreviewActive = false
-
-    -- Clear timer
-    if playerOptionsPreviewTimer then
-        zo_removeCallLater(playerOptionsPreviewTimer)
-        playerOptionsPreviewTimer = nil
-    end
-
-    -- Hide preview elements
-    if CinematicCam_PlayerOptionsPreviewContainer then
-        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
-    end
-    if CinematicCam_PlayerOptionsPreviewBackground then
-        CinematicCam_PlayerOptionsPreviewBackground:SetHidden(true)
-    end
-    if CinematicCam_PlayerOptionsPreviewText then
-        CinematicCam_PlayerOptionsPreviewText:SetHidden(true)
-    end
-end
-
-function CinematicCam:UpdatePlayerOptionsPreviewPosition(xPosition)
-    if isPlayerOptionsPreviewActive then
-        -- Update position while slider is being moved
-        local screenWidth = GuiRoot:GetWidth()
-        local targetX = (xPosition / 100) * screenWidth - (screenWidth / 2)
-
-        if CinematicCam_PlayerOptionsPreviewBackground then
-            CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
-            CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-        end
-
-        if CinematicCam_PlayerOptionsPreviewText then
-            CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
-            CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-        end
-
-        -- Reset the auto-hide timer
-        if playerOptionsPreviewTimer then
-            zo_removeCallLater(playerOptionsPreviewTimer)
-        end
-        playerOptionsPreviewTimer = zo_callLater(function()
-            self:HidePlayerOptionsPreview()
-        end, 3000)
-    end
-end
 
 function CinematicCam:RegisterSceneCallbacks()
     local scenesToWatch = {
@@ -581,6 +467,7 @@ end
 -- Preview system for subtitle positioning
 local previewTimer = nil
 local isPreviewActive = false
+
 
 function CinematicCam:ConvertToScreenCoordinates(normalizedX, normalizedY)
     local screenWidth = GuiRoot:GetWidth()
@@ -896,7 +783,6 @@ function CinematicCam:ApplyNPCNamePreset(preset)
             control:SetHidden(false)
         end
     end
-
     -- Store the NPC name for use in dialogue processing
     npcNameData.originalName = npcName or ""
 end
@@ -1236,7 +1122,7 @@ function CinematicCam:DisplayCurrentChunk()
     -- Set text and show
     control:SetText(chunkText)
     local interactionType = GetInteractionType()
-    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT or interactionType == INTERACTION_NONE or interactionType == INTERACTION_LOCKPICK then
+    if interactionType == INTERACTION_DYE_STATION or interactionType == INTERACTION_CRAFT or interactionType == INTERACTION_NONE or interactionType == INTERACTION_LOCKPICK or interactionType == INTERATCTION_BOOK then
         control:SetText("")
     end
     control:SetHidden(false)
@@ -1525,10 +1411,6 @@ function CinematicCam:CheckInteractionStatus()
     end
 end
 
-function GetCameraDistance()
-    return tonumber(GetSetting(SETTING_TYPE_CAMERA, CAMERA_SETTING_DISTANCE))
-end
-
 function CinematicCam:ShouldBlockInteraction(interactionType)
     return interactionTypeMap[interactionType] == true
 end
@@ -1544,7 +1426,6 @@ function CinematicCam:checkhid()
     end
 end
 
---TODO config is nothing
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
 
@@ -1594,7 +1475,6 @@ end
 
 function CinematicCam:OnGameCameraActivated()
     if isInteractionModified then
-        -- Check if we're actually out of interaction
         local currentInteraction = GetInteractionType()
         if currentInteraction == INTERACTION_NONE then
             CinematicCam:OnInteractionEnd()
@@ -1616,10 +1496,6 @@ function CinematicCam:OnInteractionEnd()
 
         -- Reset tracking flags
         dialogLetterbox = false
-        wasUIAutoHidden = false
-
-        -- Clear dialogue tracking
-        lastDialogueText = ""
     end
 end
 
@@ -1638,7 +1514,6 @@ function CinematicCam:HideDialoguePanels()
 
     -- Text elements - handle title and body text separately
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(true) end
-
 
     -- Options and highlights
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(true) end
@@ -1826,6 +1701,7 @@ if npcTextContainer then
     local addedHeight = originalHeight + 100
 end
 
+
 ---=============================================================================
 -- Reposition UI
 --=============================================================================
@@ -1987,7 +1863,6 @@ end
 ---=============================================================================
 -- Initialize
 --=============================================================================
-
 local function Initialize()
     CinematicCam:InitSavedVars()
     CinematicCam:ApplyFontsToUI()
@@ -2041,9 +1916,8 @@ function CinematicCam:InitializeChunkedDialogueSystem()
     end
 end
 
--- XML element for cinematic subtitles
 function CinematicCam:InitializeChunkedTextControl()
-    local control = _G["CinematicCam_ChunkedText"]
+    local control = _G["CinematicCam_ChunkedText"] -- XML element
 
     if not control then
         control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
@@ -2078,7 +1952,6 @@ function CinematicCam:InitializeChunkedTextControl()
 
     -- Store reference
     chunkedDialogueData.customControl = control
-
     return control
 end
 
@@ -2138,6 +2011,7 @@ local function OnPlayerActivated(eventCode)
     end, 100)
 end
 
+
 local function OnAddOnLoaded(event, addonName)
     if addonName == ADDON_NAME then
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED)
@@ -2182,6 +2056,8 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function
         CinematicCam:OnMountDown()
     end
 end)
+
+
 ---=============================================================================
 -- Debug
 --=============================================================================
