@@ -159,7 +159,7 @@ local uiElements = {
     "ZO_GameMenu_InGame",
     "ZO_MainMenuCategoryBarContainer",
 
-    -- Social UI
+    --[[ Social UI
     "ZO_GroupWindow",
     "ZO_ChatMenu_Gamepad_TopLevel",
     "ZO_GamepadTextChat",
@@ -170,7 +170,7 @@ local uiElements = {
     "ZO_ChatMenu_Gamepad_TopLevelMask",
     "ZO_ChatWindowTemplate1",
     "ZO_GamepadChatSystem",
-
+    --]]
     -- Other UI
     "ZO_NotificationContainer",
     "ZO_TutorialOverlay",
@@ -231,14 +231,13 @@ function CinematicCam:RegisterSceneCallbacks()
 end
 
 function CinematicCam:ReapplyUIState()
-    -- Reapply UI visibility based on saved setting
+    -- Simply reapply current UI state - monitoring will handle the rest
     if not self.savedVars.interface.UiElementsVisible then
-        self:HideUI()
+        self:HideUI() -- This will restart monitoring
     end
 
     -- Reapply letterbox if it should be visible
     if self.savedVars.letterbox.letterboxVisible then
-        -- Don't animate, just show immediately
         CinematicCam_Container:SetHidden(false)
         CinematicCam_LetterboxTop:SetHidden(false)
         CinematicCam_LetterboxBottom:SetHidden(false)
@@ -432,6 +431,7 @@ function CinematicCam:HideUI()
         end
     end
     self.savedVars.interface.UiElementsVisible = false
+    self:StartUIMonitoring()
 end
 
 -- Show UI elements
@@ -439,6 +439,7 @@ function CinematicCam:ShowUI()
     if self.savedVars.interface.UiElementsVisible then
         return
     end
+    self:StopUIMonitoring()
     for elementName, _ in pairs(uiElementsMap) do
         local element = _G[elementName]
         if element then
@@ -462,6 +463,51 @@ end
 -- ZO_InteractWindow_GamepadContainerInteract(List)
 -- ZO_InteractWindow_Gamepad
 -- ZO_InteractWindow_GamepadTitle
+function CinematicCam:StartUIMonitoring()
+    -- Stop any existing monitoring
+    self:StopUIMonitoring()
+
+    -- Start the monitoring loop
+    local function monitorUIElements()
+        -- Only continue monitoring if UI should be hidden
+        if self.savedVars.interface.UiElementsVisible then
+            self:StopUIMonitoring()
+            return
+        end
+
+        -- Re-hide elements from the predefined list if they've become visible
+        for _, elementName in ipairs(uiElements) do
+            local element = _G[elementName]
+            if element and not element:IsHidden() then
+                element:SetHidden(true)
+            end
+        end
+
+        -- Re-hide custom UI elements if they've become visible
+        for elementName, shouldHide in pairs(self.savedVars.hideUiElements) do
+            if shouldHide then
+                local element = _G[elementName]
+                if element and not element:IsHidden() then
+                    element:SetHidden(true)
+                end
+            end
+        end
+
+        -- Schedule next check
+        uiMonitoringTimer = zo_callLater(monitorUIElements, MONITORING_INTERVAL)
+    end
+
+    -- Start the first check
+    uiMonitoringTimer = zo_callLater(monitorUIElements, MONITORING_INTERVAL)
+end
+
+-- Stop the periodic monitoring
+function CinematicCam:StopUIMonitoring()
+    if uiMonitoringTimer then
+        zo_removeCallLater(uiMonitoringTimer)
+        uiMonitoringTimer = nil
+    end
+end
 
 function CinematicCam:GetDialogueText()
     local sources = {
