@@ -145,7 +145,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
+        --[[{
             type = "slider",
             name = "Cinematic Subtitle X Position",
             tooltip = "Adjust horizontal position of dialogue text.",
@@ -190,6 +190,23 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+       {
+            type = "slider",
+            name = "Player Dialog Y Position",
+            tooltip = "Adjust the vertical position of the dialogue window.",
+            min = 0,
+            max = 2000,
+            step = 30,
+            getFunc = function()
+                return math.floor(self.savedVars.interface.dialogueVerticalOffset)
+            end,
+            setFunc = function(value)
+                self.savedVars.interface.dialogueVerticalOffset = value
+
+                self:ApplyDefaultPosition()
+            end,
+            width = "full",
+        --},]]
         {
             type = "checkbox",
             name = "UI Panels",
@@ -216,6 +233,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             setFunc = function(value)
                 self.savedVars.npcNamePreset = value
+
                 -- Apply immediately if in dialogue
                 local interactionType = GetInteractionType()
                 if interactionType ~= INTERACTION_NONE then

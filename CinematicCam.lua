@@ -15,16 +15,7 @@ local wasUIAutoHidden = false
 
 local lastDialogueText = ""
 local dialogueChangeCheckTimer = nil
-local npcNameData = {
-    originalName = "",
-    customNameControl = nil,
-    currentPreset = "default"
-}
-local namePresetDefaults = {
-    npcNamePreset = "default",
-    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
-    npcNameFontSize = 42,
-}
+
 
 -- Default settings
 local defaults = {
@@ -102,6 +93,19 @@ local defaults = {
     usePerInteractionSettings = false, -- Global setting
 }
 
+-- NPC Name tables
+local npcNameData = {
+    originalName = "",
+    customNameControl = nil,
+    currentPreset = "default"
+}
+local namePresetDefaults = {
+
+    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+    npcNameFontSize = 42,
+}
+
+-- Chunked Dialog Table
 local chunkedDialogueData = {
     originalText = "",
     chunks = {},
@@ -172,7 +176,18 @@ local uiElements = {
     "ZO_TutorialOverlay",
 
 }
-
+local playerOptionsData = {
+    isDetached = false,
+    detectedElement = nil,
+    elementName = "",
+    originalParent = nil,
+    originalAnchors = {},
+    originalDrawLayer = nil,
+    originalDrawLevel = nil,
+    originalInheritAlpha = nil,
+    originalInheritScale = nil,
+    isActive = false
+}
 local fontBook = {
     ["ESO_Standard"] = {
         name = "ESO Standard",
@@ -352,13 +367,15 @@ end
 -- Cinematic Mounting
 --=============================================================================
 function CinematicCam:OnMountUp()
+    if not self.savedVars or not self.savedVars.letterbox then
+        return
+    end
+
     if self.savedVars.letterbox.autoLetterboxMount then
         if not self.savedVars.letterbox.letterboxVisible then
             mountLetterbox = true
-
             -- Apply delay
             local delayMs = self.savedVars.letterbox.mountLetterboxDelay * 1000
-
             if delayMs > 0 then
                 mountLetterboxTimer = zo_callLater(function()
                     if IsMounted() and mountLetterbox then
@@ -378,6 +395,10 @@ function CinematicCam:OnMountUp()
 end
 
 function CinematicCam:OnMountDown()
+    if not self.savedVars or not self.savedVars.letterbox then
+        return
+    end
+
     if self.savedVars.letterbox.autoLetterboxMount then
         if mountLetterbox and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
@@ -393,8 +414,6 @@ function CinematicCam:HideUI()
     if not self.savedVars.interface.UiElementsVisible then
         return
     end
-    ZO_ReticleContainerReticle:SetHidden(true)
-    ZO_ReticleContainerReticle.SetHidden = function() end
     for _, elementName in ipairs(uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
@@ -420,8 +439,6 @@ function CinematicCam:ShowUI()
     if self.savedVars.interface.UiElementsVisible then
         return
     end
-    ZO_ReticleContainerReticle:SetHidden(false)
-    ZO_ReticleContainerReticle.SetHidden = function() end
     for elementName, _ in pairs(uiElementsMap) do
         local element = _G[elementName]
         if element then
@@ -844,7 +861,7 @@ function CinematicCam:PositionChunkedTextControl(control)
         -- Subtle center positioning
         control:ClearAnchors()
         control:SetAnchor(CENTER, GuiRoot, CENTER, 0, 100)
-        control:SetDimensions(700, 250)
+        control:SetDimensions(4000, 750)
     end
 end
 
@@ -882,6 +899,8 @@ function CinematicCam:StartDialogueChangeMonitoring()
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
+
+
             return
         end
 
@@ -1502,7 +1521,9 @@ end
 ---=============================================================================
 -- Hide Questing Dialoge Panels
 --=============================================================================
--- Need to hide this: "ZO_KeybindStripButtonTemplate2"
+-- Need to hide this: "ZO_KeybindStripButtonTemplate1-6"
+--ZO_KeybindStripControl
+--ZO_KeybindStripControlCenterParent
 function CinematicCam:HideDialoguePanels()
     -- Main dialogue window elements
     if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
@@ -1748,7 +1769,7 @@ function CinematicCam:ApplyChunkedTextPositioning()
 
         control:ClearAnchors()
         control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
-        control:SetDimensions(800, 200)
+        control:SetDimensions(2700, 200)
     else
         -- Default positioning for non-cinematic presets
         control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
@@ -1782,24 +1803,41 @@ function CinematicCam:ApplyDefaultPosition()
         local rootWindow = _G["ZO_InteractWindow_Gamepad"]
         if rootWindow then
             local screenWidth, screenHeight = GuiRoot:GetDimensions()
-            local originalWidth, originalHeight = rootWindow:GetDimensions()
 
-            -- Use the slider value for horizontal positioning
+            -- Calculate positions
             local centerX = screenWidth * self.savedVars.interface.dialogueHorizontalOffset
             local centerY = 0
+            if self.savedVars.interface.dialogueVerticalOffset then
+                centerY = (self.savedVars.interface.dialogueVerticalOffset - 0.5) * screenHeight * 0.8
+            end
 
             -- Coordinate with letterbox if active
             if self.savedVars.letterbox.letterboxVisible then
-                centerY = self.savedVars.letterbox.size * 0.3
+                centerY = centerY + (self.savedVars.letterbox.size * 0.3)
             end
 
-            -- Apply positioning
+            -- Move root window
             rootWindow:ClearAnchors()
-            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
-
-            -- Set dimensions
+            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, centerX, 0)
             rootWindow:SetWidth(683)
             rootWindow:SetHeight(2000)
+
+            -- Move the player options elements with same offset
+            local playerOptionsElements = {
+                "ZO_InteractWindow_GamepadContainerInteract",
+                "ZO_InteractWindow_GamepadContainerInteractList",
+                "ZO_InteractWindow_GamepadContainerInteractListScroll",
+                "ZO_InteractWindow_GamepadContainer",
+                "ZO_InteractWindow_GamepadTitle"
+            }
+
+            for _, elementName in ipairs(playerOptionsElements) do
+                local element = _G[elementName]
+                if element then
+                    element:ClearAnchors()
+                    element:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
+                end
+            end
         end
     end)
 end
@@ -1903,6 +1941,7 @@ end
 
 function CinematicCam:InitializeChunkedDialogueSystem()
     -- Hook into your existing dialogue detection
+
     local originalOnGameCameraDeactivated = self.OnGameCameraDeactivated
     self.OnGameCameraDeactivated = function(self)
         originalOnGameCameraDeactivated(self)
@@ -1911,7 +1950,7 @@ function CinematicCam:InitializeChunkedDialogueSystem()
             -- Add chunked dialogue initialization
             zo_callLater(function()
                 self:InterceptDialogueForChunking()
-            end, 20)
+            end, 2)
         end
     end
 end
