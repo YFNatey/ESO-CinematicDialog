@@ -1,3 +1,14 @@
+local lastDialogueText = ""
+local dialogueChangeCheckTimer = nil
+-- Chunked Dialog Table
+CinematicCam.chunkedDialogueData = {
+    originalText = "",
+    chunks = {},
+    currentChunkIndex = 0,
+    isActive = false,
+    customControl = nil,
+    displayTimer = nil
+}
 ---=============================================================================
 -- Chunked Text
 --=============================================================================

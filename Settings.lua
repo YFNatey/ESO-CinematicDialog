@@ -420,15 +420,49 @@ function CinematicCam:CreateSettingsMenu()
     LAM:RegisterOptionControls(panelName, optionsData)
 end
 
-local playerOptionsPreviewTimer = nil
-local isPlayerOptionsPreviewActive = false
-
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()
     return pixelY / screenHeight
 end
 
+---
+-- Converts normalized (0-1) X and Y coordinates to actual screen coordinates.
+-- Used for positioning UI elements relative to the screen size and user settings.
+-- @param normalizedX number: X position as a value between 0 and 1
+-- @param normalizedY number: Y position as a value between 0 and 1
+-- @return number, number: The calculated screen X and Y positions
+function CinematicCam:ConvertToScreenCoordinates(normalizedX, normalizedY)
+    local screenWidth = GuiRoot:GetWidth()
+    local screenHeight = GuiRoot:GetHeight()
+
+    local targetX = 0 -- Default to center for X
+    local targetY = 0 -- Default to center for Y
+
+    if normalizedX then
+        -- Convert 0-1 range to actual screen position
+        -- 0.5 (50%) should be center (0 offset)
+        -- 0.0 (0%) should be left, 1.0 (100%) should be right
+        targetX = (normalizedX - 0.5) * screenWidth * 0.8 -- 0.8 to keep within reasonable bounds
+    end
+
+    if normalizedY then
+        -- Cinematic uses a fixed offset from center
+        if self.savedVars.interaction.layoutPreset == "cinematic" then
+            targetY = (normalizedY - 0.5) * screenHeight * 0.8
+        else
+            -- For default preset, match your existing logic
+            targetY = (normalizedY * screenHeight) - (screenHeight / 2)
+        end
+    end
+
+    return targetX, targetY
+end
+
+local playerOptionsPreviewTimer = nil
+local isPlayerOptionsPreviewActive = false
+local previewTimer = nil
+local isPreviewActive = false
 ---=============================================================================
 -- Player Options preview
 --=============================================================================
