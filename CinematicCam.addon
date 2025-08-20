@@ -10,6 +10,7 @@
 ## ConsoleDependsOn: LibAddonMenu-2.0
 
 CinematicCam.lua
+Defaults.lua
 ChunkedText.lua
 Settings.lua
 CinematicCam.xml
