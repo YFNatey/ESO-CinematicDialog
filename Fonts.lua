@@ -1,6 +1,3 @@
----=============================================================================
--- Font Book
---=============================================================================
 local fontBook = {
     ["ESO_Standard"] = {
         name = "ESO Standard",
@@ -36,56 +33,6 @@ function CinematicCam:GetCurrentFont()
         return fontData.path
     end
     return fontBook["ESO_Standard"].path -- fallback
-end
-
-function CinematicCam:ApplyFontToElement(element, fontSize)
-    if not element then
-        return
-    end
-
-    local fontPath = self:GetCurrentFont()
-    local actualSize = fontSize or self.savedVars.interface.customFontSize
-    actualSize = math.floor(actualSize * self.savedVars.interface.fontScale)
-    if not fontPath then
-        local defaultFontString = "EsoUI/Common/Fonts/FTN57.slug|" .. actualSize .. "|soft-shadow-thick"
-        element:SetFont(defaultFontString)
-        return
-    end
-    local finalFontString = self:ParseFontPath(fontPath, actualSize)
-    if finalFontString then
-        element:SetFont(finalFontString)
-    end
-end
-
-function CinematicCam:ApplyFontsToUI()
-    local fontSize = self.savedVars.interface.customFontSize
-    if ZO_InteractWindowTargetAreaTitle then
-        self:ApplyFontToElement(ZO_InteractWindowTargetAreaTitle, fontSize)
-    end
-    if ZO_InteractWindow_GamepadTitle then
-        self:ApplyFontToElement(ZO_InteractWindow_GamepadTitle, fontSize)
-    end
-    if ZO_InteractWindowTargetAreaBodyText then
-        self:ApplyFontToElement(ZO_InteractWindowTargetAreaBodyText, fontSize)
-    end
-
-    if ZO_InteractWindow_GamepadContainerText then
-        self:ApplyFontToElement(ZO_InteractWindow_GamepadContainerText, fontSize)
-    end
-    if ZO_InteractWindowPlayerAreaOptions then
-        self:ApplyFontToElement(ZO_InteractWindowPlayerAreaOptions, fontSize)
-    end
-    if ZO_InteractWindowPlayerAreaHighlight then
-        self:ApplyFontToElement(ZO_InteractWindowPlayerAreaHighlight, fontSize)
-    end
-    for i = 1, 10 do
-        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" ..
-            i .. "Text"
-        local option = _G[longOptionName]
-        if option then
-            self:ApplyFontToElement(option, fontSize)
-        end
-    end
 end
 
 function CinematicCam:ParseFontPath(fontPath, newSize)
@@ -155,9 +102,54 @@ local repositionPresets = {
         end
     },
 }
-local npcTextContainer = ZO_InteractWindow_GamepadContainerText
-if npcTextContainer then
-    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
-    local addedWidth = originalWidth + 10
-    local addedHeight = originalHeight + 100
+
+
+function CinematicCam:ApplyFontToElement(element, fontSize)
+    if not element then
+        return
+    end
+
+    local fontPath = self:GetCurrentFont()
+    local actualSize = fontSize or self.savedVars.interface.customFontSize
+    actualSize = math.floor(actualSize * self.savedVars.interface.fontScale)
+    if not fontPath then
+        local defaultFontString = "EsoUI/Common/Fonts/FTN57.slug|" .. actualSize .. "|soft-shadow-thick"
+        element:SetFont(defaultFontString)
+        return
+    end
+    local finalFontString = self:ParseFontPath(fontPath, actualSize)
+    if finalFontString then
+        element:SetFont(finalFontString)
+    end
+end
+
+function CinematicCam:ApplyFontsToUI()
+    local fontSize = self.savedVars.interface.customFontSize
+    if ZO_InteractWindowTargetAreaTitle then
+        self:ApplyFontToElement(ZO_InteractWindowTargetAreaTitle, fontSize)
+    end
+    if ZO_InteractWindow_GamepadTitle then
+        self:ApplyFontToElement(ZO_InteractWindow_GamepadTitle, fontSize)
+    end
+    if ZO_InteractWindowTargetAreaBodyText then
+        self:ApplyFontToElement(ZO_InteractWindowTargetAreaBodyText, fontSize)
+    end
+
+    if ZO_InteractWindow_GamepadContainerText then
+        self:ApplyFontToElement(ZO_InteractWindow_GamepadContainerText, fontSize)
+    end
+    if ZO_InteractWindowPlayerAreaOptions then
+        self:ApplyFontToElement(ZO_InteractWindowPlayerAreaOptions, fontSize)
+    end
+    if ZO_InteractWindowPlayerAreaHighlight then
+        self:ApplyFontToElement(ZO_InteractWindowPlayerAreaHighlight, fontSize)
+    end
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" ..
+            i .. "Text"
+        local option = _G[longOptionName]
+        if option then
+            self:ApplyFontToElement(option, fontSize)
+        end
+    end
 end

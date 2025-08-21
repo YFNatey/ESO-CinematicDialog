@@ -1,14 +1,18 @@
-local lastDialogueText = ""
 local dialogueChangeCheckTimer = nil
--- Chunked Dialog Table
 CinematicCam.chunkedDialogueData = {
     originalText = "",
     chunks = {},
     currentChunkIndex = 0,
     isActive = false,
     customControl = nil,
-    displayTimer = nil
+    displayTimer = nil,
+    backgroundControl = nil,
+    playerOptionsBackgroundControl = nil
 }
+
+--TODO cant find ResizeBackgroundToText() -- the subtitle background is too talland needs to be positioned slightly lower
+-- Playher options needs to stay persisnt until dialog end
+
 ---=============================================================================
 -- Chunked Text
 --=============================================================================
@@ -37,6 +41,25 @@ function CinematicCam:CreateChunkedTextControl()
     self:ConfigureChunkedTextBackground()
 
     return control
+end
+
+function CinematicCam:ConfigurePlayerOptionsBackground()
+    local background = _G["CinematicCam_PlayerOptionsBackground"]
+    if background then
+        -- Background Properties
+        background:SetColor(0.2, 0.2, 0.2, 0.7)
+        background:SetDrawLayer(DL_CONTROLS)
+        background:SetDrawLevel(8) -- slightly lower than subtitle background (9)
+        background:SetHidden(true)
+
+        -- Store reference for later use
+        CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl = background
+
+        -- Initialize position
+        background:ClearAnchors()
+        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+        background:SetDimensions(1, 1)
+    end
 end
 
 function CinematicCam:ConfigureChunkedTextBackground()
@@ -397,14 +420,14 @@ function CinematicCam:DisplayCurrentChunk()
     -- Show text control
     control:SetHidden(false)
 
-    -- Resize background to fit text if background exists and setting is enabled
-    if background and self.savedVars.interface and self.savedVars.interface.useSubtitleBackground then
+    -- Enhanced background handling with new system
+    if background and self:ShouldShowSubtitleBackground() then
         -- Get text dimensions
         local textWidth = control:GetTextWidth()
         local textHeight = control:GetTextHeight()
 
         -- Add padding around the text
-        local padding = 40 -- pixels of padding on each side
+        local padding = 40
         local backgroundWidth = textWidth + (padding * 2)
         local backgroundHeight = textHeight + (padding * 2)
 
@@ -421,6 +444,8 @@ function CinematicCam:DisplayCurrentChunk()
         -- Apply the new dimensions
         background:SetDimensions(backgroundWidth, backgroundHeight)
         background:SetHidden(false)
+    elseif background then
+        background:SetHidden(true)
     end
 
     -- Update visibility for both text and background
@@ -466,9 +491,14 @@ function CinematicCam:CleanupChunkedDialogue()
         CinematicCam.chunkedDialogueData.customControl:SetText("")
     end
 
-    -- Hide background
+    -- Hide subtitle background
     if CinematicCam.chunkedDialogueData.backgroundControl then
         CinematicCam.chunkedDialogueData.backgroundControl:SetHidden(true)
+    end
+
+    -- NEW: Hide player options background
+    if CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl then
+        CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl:SetHidden(true)
     end
 
     -- Hide custom NPC name control
@@ -490,15 +520,17 @@ function CinematicCam:CleanupChunkedDialogue()
         end
     end
 
-    -- Reset state (preserve background control reference)
+    -- Reset state (preserve background control references)
     local backgroundControl = CinematicCam.chunkedDialogueData.backgroundControl
+    local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
     CinematicCam.chunkedDialogueData = {
         originalText = "",
         chunks = {},
         currentChunkIndex = 0,
         isActive = false,
-        customControl = CinematicCam.chunkedDialogueData.customControl, -- Preserve control
-        backgroundControl = backgroundControl,                          -- Preserve background control
+        customControl = CinematicCam.chunkedDialogueData.customControl,
+        backgroundControl = backgroundControl,
+        playerOptionsBackgroundControl = playerOptionsBackgroundControl, -- NEW: preserve player options background
         displayTimer = nil,
         sourceElement = nil,
         rawDialogueText = ""

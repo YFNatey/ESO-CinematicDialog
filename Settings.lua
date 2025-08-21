@@ -1,7 +1,3 @@
---[[ TODO
-Allow reposition dialoge options
-Fix "images, coin, u46 descision images shopwing up as squares"
---]]
 ---=============================================================================
 -- Settings Menu
 --=============================================================================
@@ -76,6 +72,17 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+        {
+            type = "checkbox",
+            name = "Dye Stations",
+            tooltip = "Keep camera in 3rd person when using dye stations",
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonDye end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonDye = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
 
         {
             type = "header",
@@ -93,7 +100,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Subtitle Style",
+            name = "Style",
             tooltip =
             "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
             choices = { "Default", "Cinematic" },
@@ -126,26 +133,63 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-            type = "slider",
-            name = "Cinematic Subtitle Y Position",
-            tooltip = "Adjust vertical position of dialogue text.",
-            min = 0,
-            max = 100,
-            step = 1,
+            type = "dropdown",
+            name = "Default Layout Backgrounds",
+            tooltip = "Background options when using Default layout style",
+            choices = { "ESO Default", "None" },
+            choicesValues = { "esoDefault", "none" },
             getFunc = function()
-                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
-                return math.floor(normalizedPos * 100)
+                return self.savedVars.interface.defaultBackgroundMode or "esoDefault"
             end,
             setFunc = function(value)
-                local normalizedY = value / 100
-                self.savedVars.interaction.subtitles.posY = normalizedY
-                self:OnSubtitlePositionChanged(nil, normalizedY)
-                -- Show preview when slider changes
-                self:ShowSubtitlePreview(nil, value)
+                self.savedVars.interface.defaultBackgroundMode = value
+                self:ApplyDefaultBackgroundSettings(value)
+                if self.savedVars.interaction.layoutPreset == "default" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE then
+                        zo_callLater(function()
+                            self:RefreshDialogueBackgrounds()
+                        end, 50)
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "default"
             end,
             width = "full",
         },
-        --[[{
+        {
+            type = "dropdown",
+            name = "Cinematic Layout Backgrounds",
+            tooltip = "Custom background options when using Cinematic layout style",
+            choices = { "All", "Only Subtitles", "Only Player Choices", "None" },
+            choicesValues = { "all", "subtitles", "playerOptions", "none" },
+            getFunc = function()
+                return self.savedVars.interface.cinematicBackgroundMode or "all"
+            end,
+            setFunc = function(value)
+                self.savedVars.interface.cinematicBackgroundMode = value
+                self:ApplyCinematicBackgroundSettings(value)
+
+                if self.savedVars.interaction.layoutPreset == "cinematic" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE then
+                        zo_callLater(function()
+                            self:RefreshDialogueBackgrounds()
+                        end, 50)
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Position Settings",
+        },
+        {
             type = "slider",
             name = "Cinematic Subtitle X Position",
             tooltip = "Adjust horizontal position of dialogue text.",
@@ -161,14 +205,36 @@ function CinematicCam:CreateSettingsMenu()
                 self.savedVars.interaction.subtitles.posX = normalizedX
                 self:OnSubtitlePositionChanged(normalizedX, nil)
                 -- Show preview when slider changes
-                self:ShowSubtitlePreview(value, nil)
+                CinematicCam:ShowSubtitlePreview(value, nil)
             end,
             width = "full",
         },
-
         {
             type = "slider",
-            name = "Player Dialog X Position",
+            name = "Cinematic Subtitle Y Position",
+            tooltip = "Adjust vertical position of dialogue text.",
+            min = 0,
+            max = 100,
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedY = value / 100
+                self.savedVars.interaction.subtitles.posY = normalizedY
+                CinematicCam:OnSubtitlePositionChanged(nil, normalizedY)
+                -- Show preview when slider changes
+                CinematicCam:ShowSubtitlePreview(nil, value)
+            end,
+            width = "full",
+        },
+        {
+            type = "divider"
+        },
+        {
+            type = "slider",
+            name = "Player Choices X Position",
             tooltip = "Adjust the horizontal position of the dialogue window. Move the slider to see a preview.",
             min = 10,
             max = 34,
@@ -190,9 +256,9 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-       {
+        {
             type = "slider",
-            name = "Player Dialog Y Position",
+            name = "Player Choices Y Position",
             tooltip = "Adjust the vertical position of the dialogue window.",
             min = 0,
             max = 2000,
@@ -206,21 +272,10 @@ function CinematicCam:CreateSettingsMenu()
                 self:ApplyDefaultPosition()
             end,
             width = "full",
-        --},]]
+        },
         {
-            type = "checkbox",
-            name = "UI Panels",
-            tooltip = "Hide the default ESO UI panels",
-            getFunc = function() return not self.savedVars.interaction.ui.hidePanelsESO end,
-            setFunc = function(value)
-                self.savedVars.interaction.ui.hidePanelsESO = not value
-                if self.savedVars.interaction.ui.hidePanelsESO then
-                    CinematicCam:HideDialoguePanels()
-                else
-                    CinematicCam:ShowDialoguePanels()
-                end
-            end,
-            width = "full",
+            type = "header",
+            name = "Name Settings",
         },
         {
             type = "dropdown",
@@ -242,11 +297,12 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+
         {
         },
         {
             type = "colorpicker",
-            name = "NPC Name Color",
+            name = "Default NPC Name Color",
             tooltip = "Color for NPC names when using 'Attached' location",
             getFunc = function()
                 local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
@@ -269,6 +325,84 @@ function CinematicCam:CreateSettingsMenu()
                 return self.savedVars.npcNamePreset == "default"
             end,
             width = "full",
+        },
+        --[[{
+            type = "editbox",
+            name = "NPC Name Filter", -- Give it a proper name
+            tooltip = "Enter partial NPC name to save custom color for",
+            getFunc = function()
+                return self.savedVars.npcNameFilter or ""
+            end,
+            setFunc = function(value)
+                self.savedVars.npcNameFilter = value or ""
+            end,
+            width = "full",
+        },
+        --TODO color the player inputted name  npc spoken to, generate a hash and save to variables. "does not need the entire name (Lyris) = Lyris Titanborn"
+        {
+            type = "colorpicker",
+            name = "Save Color for(Inputted npc Name)",
+            tooltip = "Give unique color to the last NPC spoken to.",
+            getFunc = function()
+                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
+                self:UpdateNPCNameColor()
+
+                -- If we're in prepended mode and dialogue is active, refresh the text
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
+                        -- Re-process the dialogue with the new color
+                        self:InterceptDialogueForChunking()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },
+        {
+            type = "divider"
+        },
+        --TODO: functionality to show your name by player options
+        {
+            type = "checkbox",
+            name = "Show Your Name",
+        },
+        --TODO: functionality to color your characters name
+        {
+            type = "colorpicker",
+            name = "Your Name Color",
+            tooltip = "",
+            getFunc = function()
+                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
+                self:UpdateNPCNameColor()
+
+                -- If we're in prepended mode and dialogue is active, refresh the text
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
+                        -- Re-process the dialogue with the new color
+                        self:InterceptDialogueForChunking()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },]]
+        {
+            type = "header",
+            name = "Font Settings",
         },
 
         --- FONT SETTINGS
@@ -457,6 +591,25 @@ function CinematicCam:ConvertToScreenCoordinates(normalizedX, normalizedY)
     end
 
     return targetX, targetY
+end
+
+function CinematicCam:OnSubtitlePositionChanged(newX, newY)
+    -- Update saved variables
+    if newX then
+        self.savedVars.interaction.subtitles.posX = newX
+    end
+    if newY then
+        self.savedVars.interaction.subtitles.posY = newY
+    end
+
+
+    local interactionType = GetInteractionType()
+    if interactionType ~= INTERACTION_NONE then
+        self:ApplySubtitlePosition()
+        if CinematicCam.chunkedDialogueData.isActive then
+            self:ApplyChunkedTextPositioning()
+        end
+    end
 end
 
 local playerOptionsPreviewTimer = nil
@@ -700,4 +853,136 @@ function CinematicCam:InitializePreviewSystem()
             hidePreviewOnSceneChange()
         end
     end)
+end
+
+---=============================================================================
+-- Backgrounds
+--=============================================================================
+function CinematicCam:ApplyDefaultBackgroundSettings(backgroundMode)
+    if backgroundMode == "esoDefault" then
+        self.savedVars.interaction.ui.hidePanelsESO = false
+        self:ShowDialoguePanels()
+    elseif backgroundMode == "none" then
+        self.savedVars.interaction.ui.hidePanelsESO = true
+        self:HideDialoguePanels()
+    end
+end
+
+function CinematicCam:ApplyCinematicBackgroundSettings(backgroundMode)
+    self.savedVars.interface.useSubtitleBackground = (backgroundMode == "all" or backgroundMode == "subtitles")
+    self.savedVars.interface.usePlayerOptionsBackground = (backgroundMode == "all" or backgroundMode == "playerOptions")
+end
+
+function CinematicCam:GetCurrentBackgroundMode()
+    local layoutPreset = self.savedVars.interaction.layoutPreset
+
+    if layoutPreset == "default" then
+        return self.savedVars.interface.defaultBackgroundMode or "esoDefault"
+    else
+        return self.savedVars.interface.cinematicBackgroundMode or "all"
+    end
+end
+
+function CinematicCam:ShouldShowSubtitleBackground()
+    local layoutPreset = self.savedVars.interaction.layoutPreset
+
+    -- Only show alternate backgrounds in cinematic mode
+    if layoutPreset ~= "cinematic" then
+        return false
+    end
+
+    local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "all"
+    return backgroundMode == "all" or backgroundMode == "subtitles"
+end
+
+function CinematicCam:ShouldShowPlayerOptionsBackground()
+    local layoutPreset = self.savedVars.interaction.layoutPreset
+
+    -- Only show alternate backgrounds in cinematic mode
+    if layoutPreset ~= "cinematic" then
+        return false
+    end
+
+    local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "all"
+    return backgroundMode == "all" or backgroundMode == "playerOptions"
+end
+
+function CinematicCam:RefreshDialogueBackgrounds()
+    -- Update subtitle background
+    local subtitleBackground = CinematicCam.chunkedDialogueData.backgroundControl
+    if subtitleBackground then
+        if self:ShouldShowSubtitleBackground() and CinematicCam.chunkedDialogueData.isActive then
+            subtitleBackground:SetHidden(false)
+            self:ResizeBackgroundToText()
+        else
+            subtitleBackground:SetHidden(true)
+        end
+    end
+
+    -- Update player options background
+    local playerOptionsBackground = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
+    if playerOptionsBackground then
+        if self:ShouldShowPlayerOptionsBackground() then
+            self:ShowPlayerOptionsBackground()
+            self:UpdatePlayerOptionsBackgroundSize()
+        else
+            self:HidePlayerOptionsBackground()
+        end
+    end
+end
+
+function CinematicCam:ShowPlayerOptionsBackground()
+    local background = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
+    if background and self:ShouldShowPlayerOptionsBackground() then
+        background:SetHidden(false)
+        self:UpdatePlayerOptionsBackgroundSize()
+    end
+end
+
+function CinematicCam:HidePlayerOptionsBackground()
+    local background = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
+    if background then
+        background:SetHidden(true)
+    end
+end
+
+function CinematicCam:UpdatePlayerOptionsBackgroundSize()
+    local background = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
+    if not background or not self:ShouldShowPlayerOptionsBackground() then
+        return
+    end
+
+    -- Find player options container to size background appropriately
+    local playerOptionsContainer = _G["ZO_InteractWindow_GamepadContainerInteract"]
+    if playerOptionsContainer and not playerOptionsContainer:IsHidden() then
+        local width, height = playerOptionsContainer:GetDimensions()
+        local padding = 30
+
+        background:ClearAnchors()
+        background:SetAnchor(CENTER, playerOptionsContainer, CENTER, 0, 0)
+        background:SetDimensions(width + padding, height + padding)
+        background:SetHidden(false)
+    end
+end
+
+function CinematicCam:OnLayoutPresetChanged(newPreset)
+    local currentBackgroundMode = self.savedVars.interface.backgroundMode
+
+    if newPreset == "default" then
+        if currentBackgroundMode ~= "esoDefault" and currentBackgroundMode ~= "none" then
+            self.savedVars.interface.backgroundMode = "esoDefault"
+        end
+    elseif newPreset == "cinematic" then
+        if currentBackgroundMode == "esoDefault" then
+            self.savedVars.interface.backgroundMode = "all"
+        end
+    end
+
+    self:ApplyBackgroundSettings()
+    local interactionType = GetInteractionType()
+    if interactionType ~= INTERACTION_NONE then
+        zo_callLater(function()
+            self:RefreshDialogueBackgrounds()
+        end, 50)
+    end
 end

@@ -9,8 +9,10 @@
 ## SavedVariables: CinematicCam2SavedVars
 ## ConsoleDependsOn: LibAddonMenu-2.0
 
+## Main
 CinematicCam.lua
 
+## Elements
 Defaults.lua
 Fonts.lua
 ChunkedText.lua
@@ -19,4 +21,5 @@ Names.lua
 Letterbox.lua
 Settings.lua
 
+## XML
 CinematicCam.xml

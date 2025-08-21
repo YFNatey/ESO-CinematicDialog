@@ -3,33 +3,45 @@
         <TopLevelControl name="CinematicCam_Container" mouseEnabled="false"
                          layer="DL_BACKGROUND" tier="DT_LOW" level="-5">
             <Controls>
+                <!-- Letterbox Top -->
                 <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false"
                          layer="DL_CONTROLS" tier ="DT_LOW" level="-10">
                     <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
                     <Anchor point="TOPRIGHT" relativeTo="GuiRoot" relativePoint="TOPRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
+                 <!-- Letterbox Bottom -->
                 <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false"
                          drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="9">
                     <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" />
                     <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
-                
+
+                <!-- Subtitles Background -->
                 <Texture name="CinematicCam_ChunkedTextBackground" mouseEnabled="false"
                          textureFile="/esoui/art/miscellaneous/centerscreen_left.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="9">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
-                
+               
+                <!-- Player Options Background -->
+                <Texture name="CinematicCam_PlayerOptionsBackground" mouseEnabled="false"
+                         textureFile="/esoui/art/miscellaneous/centerscreen_left.dds"
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="8">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="400" y="200" />
+                </Texture>
+                <!-- Chunked Text (Subtitles) -->
                 <Label name="CinematicCam_ChunkedText" mouseEnabled="false">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="10" />
-                    <Dimensions x="800" y="300" />
+                    <Dimensions x="800" y="240" />
                 </Label>
             </Controls>
         </TopLevelControl>      
-        
+
+       <!-- Preview for Settings -->
         <TopLevelControl name="CinematicCam_PreviewContainer" mouseEnabled="false"
                          layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
             <Controls>
@@ -39,8 +51,6 @@
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
-               
-                <!-- Preview text label -->
                 <Label name="CinematicCam_PreviewText" mouseEnabled="false"
                        layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
@@ -48,7 +58,6 @@
                 </Label>
             </Controls>
         </TopLevelControl>
-       
         <TopLevelControl name="CinematicCam_PlayerOptionsPreviewContainer" mouseEnabled="false"
                          layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
             <Controls>
@@ -58,7 +67,6 @@
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="720" y="200" />
                 </Texture>
-
                 <Label name="CinematicCam_PlayerOptionsPreviewText" mouseEnabled="false"
                        layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />

@@ -1,4 +1,3 @@
--- Default settings
 CinematicCam.defaults = {
     camEnabled = false,
     npcNamePreset = "default",
@@ -20,6 +19,7 @@ CinematicCam.defaults = {
         forceThirdPersonBank = false,
         forceThirdPersonQuest = true,
         forceThirdPersonCrafting = false,
+        forceThirdPersonDye = false,
         hidePlayerOptions = false,
         layoutPreset = "default",
         ui = {
@@ -37,8 +37,8 @@ CinematicCam.defaults = {
         subtitles = {
             isHidden = false,
             useChunkedDialogue = false,
-            posY = .8,
-            posX = .5
+            posY = 0.8,
+            posX = 0.5
 
         },
     },
@@ -49,7 +49,10 @@ CinematicCam.defaults = {
         customFontSize = 42,
         fontScale = 1.0,
         dialogueHorizontalOffset = 0.34,
-        dialogueVerticallOffset = 0.34,
+        dialogueVerticalOffset = 0.34,
+
+        defaultBackgroundMode = "esoDefault", -- "esoDefault", "none"
+        cinematicBackgroundMode = "all",      -- "all", "subtitles", "playerOptions", "none"
 
         useSubtitleBackground = true,
         usePlayerOptionsBackground = true,

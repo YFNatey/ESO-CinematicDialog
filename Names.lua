@@ -1,5 +1,4 @@
 local namePresetDefaults = {
-
     npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
     npcNameFontSize = 42,
 }
@@ -23,7 +22,6 @@ function CinematicCam:GetNPCName()
             end
         end
     end
-
     return nil, nil
 end
 
@@ -52,7 +50,7 @@ function CinematicCam:CreateNPCNameControl()
     control:SetDrawLayer(DL_OVERLAY)
     control:SetDrawLevel(7)
 
-    -- Start hidden
+    -- Initially hidden
     control:SetHidden(true)
     control:SetText("")
 

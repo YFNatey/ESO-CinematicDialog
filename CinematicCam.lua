@@ -117,6 +117,7 @@ end
 --
 -- Handles the logic when the default interaction camera is deactivated.
 -- Applies UI changes, letterbox, and font updates based on user settings and interaction type.
+-- Modified OnGameCameraDeactivated - just show/hide the background based on setting
 function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
     if self:ShouldBlockInteraction(interactionType) then
@@ -124,7 +125,6 @@ function CinematicCam:OnGameCameraDeactivated()
         isInteractionModified = true
 
         self:ApplyDialogueRepositioning()
-
 
         if self.savedVars.interaction.ui.hidePanelsESO then
             self:HideDialoguePanels()
@@ -139,6 +139,11 @@ function CinematicCam:OnGameCameraDeactivated()
 
         if self.savedVars.interaction.layoutPreset == "cinematic" then
             self:InterceptDialogueForChunking()
+        end
+
+        -- SIMPLE: Just show/hide player options background based on user setting
+        if self.savedVars.interface and self.savedVars.interface.usePlayerOptionsBackground then
+            self:ShowPlayerOptionsBackground()
         end
 
         if self:AutoShowLetterbox(interactionType) then
@@ -174,6 +179,10 @@ end
 function CinematicCam:OnInteractionEnd()
     if isInteractionModified then
         isInteractionModified = false
+
+        -- Hide player options background when dialogue ends
+        self:HidePlayerOptionsBackground()
+
         if self.savedVars.interaction.subtitles.useChunkedDialogue then
             self:CleanupChunkedDialogue()
         end
@@ -248,6 +257,13 @@ end
 ---=============================================================================
 -- Reposition UI
 --=============================================================================
+local npcTextContainer = ZO_InteractWindow_GamepadContainerText
+if npcTextContainer then
+    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+    local addedWidth = originalWidth + 10
+    local addedHeight = originalHeight + 100
+end
+
 function CinematicCam:ApplyCinematicPreset()
     ZO_InteractWindow_GamepadContainerText:SetHidden(true)
     if npcTextContainer then
@@ -312,25 +328,6 @@ function CinematicCam:ApplyChunkedTextPositioning()
             background:ClearAnchors()
             background:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
             background:SetDimensions(720, 580)
-        end
-    end
-end
-
-function CinematicCam:OnSubtitlePositionChanged(newX, newY)
-    -- Update saved variables
-    if newX then
-        self.savedVars.interaction.subtitles.posX = newX
-    end
-    if newY then
-        self.savedVars.interaction.subtitles.posY = newY
-    end
-
-
-    local interactionType = GetInteractionType()
-    if interactionType ~= INTERACTION_NONE then
-        self:ApplySubtitlePosition()
-        if CinematicCam.chunkedDialogueData.isActive then
-            self:ApplyChunkedTextPositioning()
         end
     end
 end
@@ -436,6 +433,19 @@ function CinematicCam:ForceApplyFontsToDialogue()
     end
 end
 
+function CinematicCam:InitializePlayerOptionsBackground()
+    -- Configure background if not already done
+    if not CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl then
+        self:ConfigurePlayerOptionsBackground()
+    end
+
+    -- Position it initially
+    self:PositionPlayerOptionsBackground()
+
+    -- Start monitoring for player options changes
+    self:StartPlayerOptionsMonitoring()
+end
+
 ---=============================================================================
 -- Initialize
 --=============================================================================
@@ -451,6 +461,8 @@ local function Initialize()
     CinematicCam:InitializeLetterbox()
     CinematicCam:InitializeUI()
 
+
+    CinematicCam:ConfigurePlayerOptionsBackground()
     zo_callLater(function()
         CinematicCam:InitializePreviewSystem()
     end, 200)
@@ -559,6 +571,11 @@ function CinematicCam:InitializeLetterbox()
         CinematicCam_LetterboxTop:SetHidden(true)
         CinematicCam_LetterboxBottom:SetHidden(true)
     end
+    zo_callLater(function()
+        if CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl then
+            CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl:SetHidden(true)
+        end
+    end, 100)
 end
 
 function CinematicCam:InitializeUI()
@@ -637,7 +654,6 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function
         CinematicCam:OnMountDown()
     end
 end)
-
 
 ---=============================================================================
 -- Debug
