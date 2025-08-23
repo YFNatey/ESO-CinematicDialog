@@ -209,7 +209,7 @@ function CinematicCam:HideDialoguePanels()
 
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
 
-    if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(true) end
+    if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
 
     -- Text elements - handle title and body text separately

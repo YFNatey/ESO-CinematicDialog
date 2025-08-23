@@ -3,7 +3,8 @@ CinematicCam.defaults = {
     npcNamePreset = "default",
     npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
     npcNameFontSize = 42,
-
+    usePlayerName = false,
+    playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
     letterbox = {
         size = 100,
         opacity = 1.0,
@@ -52,10 +53,10 @@ CinematicCam.defaults = {
         dialogueVerticalOffset = 0.34,
 
         defaultBackgroundMode = "esoDefault", -- "esoDefault", "none"
-        cinematicBackgroundMode = "all",      -- "all", "subtitles", "playerOptions", "none"
+        cinematicBackgroundMode = "none",     -- "all", "subtitles", "playerOptions", "none"
 
-        useSubtitleBackground = true,
-        usePlayerOptionsBackground = true,
+        useSubtitleBackground = false,
+        usePlayerOptionsBackground = false,
 
     },
     hideUiElements = {},
@@ -77,5 +78,4 @@ CinematicCam.defaults = {
         dashPauseTime = 0.4,
         ellipsisPauseTime = 0.5,
     },
-    usePerInteractionSettings = false, -- Global setting
 }

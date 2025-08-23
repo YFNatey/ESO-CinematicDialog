@@ -1,13 +1,75 @@
-local namePresetDefaults = {
-    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
-    npcNameFontSize = 42,
-}
+---=============================================================================
+-- STATE AND DATA STRUCTURES
+--=============================================================================
 -- NPC Name tables
 CinematicCam.npcNameData = {
     originalName = "",
     customNameControl = nil,
     currentPreset = "default"
 }
+
+---=============================================================================
+-- APPLY NPC NAME USER SETTINGS
+--=============================================================================
+function CinematicCam:ApplyNPCNamePreset(preset)
+    preset = preset or self.savedVars.npcNamePreset or "default"
+    CinematicCam.npcNameData.currentPreset = preset
+
+    local npcName, originalElement = self:GetNPCName()
+
+    if preset == "default" then
+        -- Show original ESO name element
+        if originalElement then
+            originalElement:SetHidden(false)
+        end
+        -- Hide custom name control
+        if CinematicCam.npcNameData.customNameControl then
+            CinematicCam.npcNameData.customNameControl:SetHidden(true)
+        end
+    elseif preset == "prepended" then
+        -- Hide original name element
+        if originalElement then
+            originalElement:SetHidden(true)
+            if self.savedVars.usePlayerName then
+                originalElement:SetHidden(false)
+                originalElement:SetText(GetUnitName("player"))
+                originalElement:SetColor(self.savedVars.playerNameColor.r, self.savedVars.playerNameColor.g,
+                    self.savedVars.playerNameColor.b, self.savedVars.playerNameColor.a)
+            else
+                originalElement:SetColor(self.savedVars.npcNameColor.r, self.savedVars.npcNameColor.g,
+                    self.savedVars.npcNameColor.b, self.savedVars.npcNameColor.a)
+            end
+        end
+        -- Hide custom name control (name will be in dialogue text)
+        if CinematicCam.npcNameData.customNameControl then
+            CinematicCam.npcNameData.customNameControl:SetHidden(true)
+        end
+    elseif preset == "above" then
+        -- Hide original name element
+        if originalElement then
+            originalElement:SetHidden(true)
+        end
+
+        -- Show custom name control
+        if not CinematicCam.npcNameData.customNameControl then
+            self:CreateNPCNameControl()
+        end
+
+        local control = CinematicCam.npcNameData.customNameControl
+        if control and npcName then
+            control:SetText(npcName)
+
+            control:SetHidden(false)
+        end
+    end
+
+    -- Save NPC Name for references
+    CinematicCam.npcNameData.originalName = npcName or ""
+end
+
+---=============================================================================
+-- YUTILITY FUNCTIONS
+--=============================================================================
 function CinematicCam:GetNPCName()
     local sources = {
         ZO_InteractWindow_GamepadTitle,
@@ -58,16 +120,6 @@ function CinematicCam:CreateNPCNameControl()
     return control
 end
 
-function CinematicCam:RGBToHexString(r, g, b)
-    -- Convert 0-1 float values to 0-255 integer values
-    local red = math.floor(r * 255)
-    local green = math.floor(g * 255)
-    local blue = math.floor(b * 255)
-
-    -- Convert to hex
-    return string.format("%02X%02X%02X", red, green, blue)
-end
-
 function CinematicCam:ProcessNPCNameForPreset(dialogueText, npcName, preset)
     if not npcName or npcName == "" then
         return dialogueText
@@ -76,105 +128,39 @@ function CinematicCam:ProcessNPCNameForPreset(dialogueText, npcName, preset)
     preset = preset or self.savedVars.npcNamePreset or "default"
 
     if preset == "prepended" then
-        local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+        local color = self.savedVars.npcNameColor
         local hexColor = self:RGBToHexString(color.r, color.g, color.b)
         local coloredName = "|c" .. hexColor .. npcName .. ": |r"
         return coloredName .. dialogueText
     elseif preset == "above" then
         return dialogueText
     else
-        -- Default
         return dialogueText
     end
-end
-
-function CinematicCam:PositionNPCNameControl(preset)
-    local control = CinematicCam.npcNameData.customNameControl
-    if not control then return end
-
-    preset = preset or self.savedVars.npcNamePreset or "default"
-
-    if preset == "above" then
-        -- Position above the dialogue text
-        local dialogueControl = CinematicCam.chunkedDialogueData.customControl
-        if dialogueControl and self.savedVars.interaction.layoutPreset == "cinematic" then
-            -- Get dialogue position and place name above it
-            local targetX, targetY = self:ConvertToScreenCoordinates(
-                self.savedVars.interaction.subtitles.posX or 0.5,
-                self.savedVars.interaction.subtitles.posY or 0.7
-            )
-            control:ClearAnchors()
-            control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY - 80) -- 80 pixels above dialogue
-            control:SetDimensions(800, 60)
-        else
-            -- Fallback positioning for non-cinematic mode
-            control:ClearAnchors()
-            control:SetAnchor(CENTER, GuiRoot, CENTER, 0, -200)
-            control:SetDimensions(600, 60)
-        end
-    end
-end
-
-function CinematicCam:ApplyNPCNamePreset(preset)
-    preset = preset or self.savedVars.npcNamePreset or "default"
-    CinematicCam.npcNameData.currentPreset = preset
-
-    local npcName, originalElement = self:GetNPCName()
-
-    if preset == "default" then
-        -- Show original ESO name element
-        if originalElement then
-            originalElement:SetHidden(false)
-            --originalElement:SetText(GetUnitName("player"))
-        end
-        -- Hide custom name control
-        if CinematicCam.npcNameData.customNameControl then
-            CinematicCam.npcNameData.customNameControl:SetHidden(true)
-        end
-    elseif preset == "prepended" then
-        -- Hide original name element
-        if originalElement then
-            originalElement:SetHidden(true)
-        end
-        -- Hide custom name control (name will be in dialogue text)
-        if CinematicCam.npcNameData.customNameControl then
-            CinematicCam.npcNameData.customNameControl:SetHidden(true)
-        end
-    elseif preset == "above" then
-        -- Hide original name element
-        if originalElement then
-            originalElement:SetHidden(true)
-        end
-
-        -- Show custom name control
-        if not CinematicCam.npcNameData.customNameControl then
-            self:CreateNPCNameControl()
-        end
-
-        local control = CinematicCam.npcNameData.customNameControl
-        if control and npcName then
-            control:SetText(npcName)
-            self:PositionNPCNameControl(preset)
-            control:SetHidden(false)
-        end
-    end
-    -- Store the NPC name for use in dialogue processing
-    CinematicCam.npcNameData.originalName = npcName or ""
 end
 
 function CinematicCam:UpdateNPCNameFont()
     local control = CinematicCam.npcNameData.customNameControl
     if control then
-        local fontSize = self.savedVars.npcNameFontSize or namePresetDefaults.npcNameFontSize
+        local fontSize = self.savedVars.npcNameFontSize
         self:ApplyFontToElement(control, fontSize)
     end
 end
 
--- Function to update NPC name color
+-- Update Color
 function CinematicCam:UpdateNPCNameColor()
     local control = CinematicCam.npcNameData.customNameControl
     if control then
-        local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+        local color = self.savedVars.npcNameColor
         control:SetColor(color.r, color.g, color.b, color.a)
     end
+end
+
+function CinematicCam:RGBToHexString(r, g, b)
+    -- Convert 0-1 float values to 0-255 integer values
+    local red = math.floor(r * 255)
+    local green = math.floor(g * 255)
+    local blue = math.floor(b * 255)
+    -- Convert to hex
+    return string.format("%02X%02X%02X", red, green, blue)
 end

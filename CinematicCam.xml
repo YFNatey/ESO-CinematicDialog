@@ -20,7 +20,7 @@
 
                 <!-- Subtitles Background -->
                 <Texture name="CinematicCam_ChunkedTextBackground" mouseEnabled="false"
-                         textureFile="/esoui/art/miscellaneous/centerscreen_left.dds"
+                         textureFile="/esoui/art/buttons/eso_buttonlarge_normal.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="9">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
@@ -46,10 +46,10 @@
                          layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
             <Controls>
                 <Texture name="CinematicCam_PreviewBackground" mouseEnabled="false"
-                         textureFile="/esoui/art/miscellaneous/centerscreen_left.dds"
+                         textureFile="/esoui/art/buttons/eso_buttonlarge_normal.dds"
                          layer="DL_CONTROLS" tier="DT_MEDIUM" level="5">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
-                    <Dimensions x="820" y="120" />
+                    <Dimensions x="820" y="72" />
                 </Texture>
                 <Label name="CinematicCam_PreviewText" mouseEnabled="false"
                        layer="DL_CONTROLS" tier="DT_MEDIUM" level="6">

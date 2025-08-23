@@ -326,6 +326,46 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+        {
+            type = "checkbox",
+            name = "Show Your Name",
+            tooltip = "Show your character's name instead of NPC name in dialogue",
+            getFunc = function() return self.savedVars.usePlayerName end,
+            setFunc = function(value)
+                self.savedVars.usePlayerName = value
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },
+        {
+            type = "colorpicker",
+            name = "Player Name Color",
+            tooltip = "Color for your character's name when displayed",
+            getFunc = function()
+                local color = self.savedVars.playerNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.playerNameColor = { r = r, g = g, b = b, a = a }
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
+                end
+            end,
+            disabled = function()
+                return not self.savedVars.usePlayerName or self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+        },
         --[[{
             type = "editbox",
             name = "NPC Name Filter", -- Give it a proper name
@@ -368,38 +408,8 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "divider"
         },
-        --TODO: functionality to show your name by player options
-        {
-            type = "checkbox",
-            name = "Show Your Name",
-        },
-        --TODO: functionality to color your characters name
-        {
-            type = "colorpicker",
-            name = "Your Name Color",
-            tooltip = "",
-            getFunc = function()
-                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
-                self:UpdateNPCNameColor()
 
-                -- If we're in prepended mode and dialogue is active, refresh the text
-                if self.savedVars.npcNamePreset == "prepended" then
-                    local interactionType = GetInteractionType()
-                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
-                        -- Re-process the dialogue with the new color
-                        self:InterceptDialogueForChunking()
-                    end
-                end
-            end,
-            disabled = function()
-                return self.savedVars.npcNamePreset == "default"
-            end,
-            width = "full",
-        },]]
+        ]]
         {
             type = "header",
             name = "Font Settings",
@@ -554,6 +564,7 @@ function CinematicCam:CreateSettingsMenu()
     LAM:RegisterOptionControls(panelName, optionsData)
 end
 
+---=============================================================================
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()
