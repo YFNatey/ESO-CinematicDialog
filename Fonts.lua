@@ -87,23 +87,6 @@ function CinematicCam:OnFontChanged()
     end
 end
 
--- Repositioning preset system
-local repositionPresets = {
-    ["default"] = {
-        name = "Default ESO Layout",
-        applyFunction = function(self)
-            self:ApplyDefaultPosition()
-        end
-    },
-    ["cinematic"] = {
-        name = "Cinematic",
-        applyFunction = function(self)
-            self:ApplyCinematicPreset()
-        end
-    },
-}
-
-
 function CinematicCam:ApplyFontToElement(element, fontSize)
     if not element then
         return

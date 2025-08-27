@@ -28,7 +28,7 @@
                
                 <!-- Player Options Background -->
                 <Texture name="CinematicCam_PlayerOptionsBackground" mouseEnabled="false"
-                         textureFile="/esoui/art/miscellaneous/centerscreen_left.dds"
+                         textureFile=""
                          layer="DL_CONTROLS" tier="DT_HIGH" level="8">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="400" y="200" />

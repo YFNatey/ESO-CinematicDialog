@@ -29,7 +29,8 @@ function CinematicCam:ApplyNPCNamePreset(preset)
     elseif preset == "prepended" then
         -- Hide original name element
         if originalElement then
-            originalElement:SetHidden(true)
+            originalElement:SetHidden(false)
+            originalElement:SetText("")
             if self.savedVars.usePlayerName then
                 originalElement:SetHidden(false)
                 originalElement:SetText(GetUnitName("player"))
@@ -120,7 +121,7 @@ function CinematicCam:CreateNPCNameControl()
     return control
 end
 
-function CinematicCam:ProcessNPCNameForPreset(dialogueText, npcName, preset)
+function CinematicCam:HandleNPCName(dialogueText, npcName, preset)
     if not npcName or npcName == "" then
         return dialogueText
     end

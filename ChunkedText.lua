@@ -14,82 +14,31 @@ CinematicCam.chunkedDialogueData = {
     backgroundControl = nil,
     playerOptionsBackgroundControl = nil,
     sourceElement = nil,
-    rawDialogueText = ""
+    rawDialogueText = "",
+    playerOptionsHidden = false,
+    originalPlayerOptionsVisibility = {}
 }
+function CinematicCam:GetDialogueText()
+    local sources = {
+        ZO_InteractWindow_GamepadContainerText,
+        ZO_InteractWindowTargetAreaBodyText
+    }
 
----=============================================================================
--- INITIALIZATION AND SETUP
---=============================================================================
-
-function CinematicCam:CreateChunkedTextControl()
-    if CinematicCam.chunkedDialogueData.customControl then
-        return CinematicCam.chunkedDialogueData.customControl
+    for _, element in ipairs(sources) do
+        if element then
+            local text = element.text or element:GetText() or ""
+            if string.len(text) > 0 then
+                return text, element
+            end
+        end
     end
 
-    local control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
-
-    -- Apply font styling
-    self:ApplyFontToElement(control, self.savedVars.interface.customFontSize)
-
-    -- Text properties
-    control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
-    control:SetVerticalAlignment(TEXT_ALIGN_TOP)
-    control:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-    control:SetColor(0.9, 0.9, 0.8, 1.0)
-
-    -- Initial state
-    control:SetHidden(true)
-
-    -- Position the control
-    self:PositionChunkedTextControl(control)
-
-    -- Store reference
-    CinematicCam.chunkedDialogueData.customControl = control
-
-    -- Initialize background
-    self:ConfigureChunkedTextBackground()
-
-    return control
+    return nil, nil
 end
 
-function CinematicCam:ConfigureChunkedTextBackground()
-    local background = _G["CinematicCam_ChunkedTextBackground"]
-    if background then
-        -- Background properties
-        background:SetAlpha(0.6)
-        background:SetDrawLayer(DL_CONTROLS)
-        background:SetDrawLevel(9)
-        background:SetHidden(true)
-
-        -- Store reference
-        CinematicCam.chunkedDialogueData.backgroundControl = background
-
-        -- Initialize position
-        background:ClearAnchors()
-        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
-        background:SetDimensions(1, 1)
-    end
-end
-
-function CinematicCam:ConfigurePlayerOptionsBackground()
-    local background = _G["CinematicCam_PlayerOptionsBackground"]
-    if background then
-        -- Background properties
-        background:SetColor(0.2, 0.2, 0.2, 0.7)
-        background:SetDrawLayer(DL_CONTROLS)
-        background:SetDrawLevel(8) -- slightly lower than subtitle background (9)
-        background:SetHidden(true)
-
-        -- Store reference
-        CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl = background
-
-        -- Initialize position
-        background:ClearAnchors()
-        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
-        background:SetDimensions(1, 1)
-    end
-end
-
+--TODO, make a function that returns true if the word store is found in the player options
+--Iterate all player options,
+-- Only check forstr word
 ---=============================================================================
 -- MAIN DIALOGUE INTERCEPTION AND PROCESSING
 --=============================================================================
@@ -97,31 +46,33 @@ end
 function CinematicCam:InterceptDialogueForChunking()
     local originalText, sourceElement = self:GetDialogueText()
 
+    d("intercepting dialogue for chunking: ", originalText)
+    -- if the word "Store", show player options
+    if originalText and string.find(originalText, "Steel") then
+        d("Found Steel, showing player options")
+        CinematicCam.PlayerOptionsAlways = true
+        CinematicCam:OnPlayerOptionsSettingChanged(false, true)
+    else
+        CinematicCam.PlayerOptionsAlways = false
+    end
     if not originalText or string.len(originalText) == 0 then
         return false
     end
-
     -- Apply NPC name preset
     self:ApplyNPCNamePreset()
 
     -- Prepare text versions
     local textForTiming = originalText
-    local processedTextForDisplay = self:ProcessNPCNameForPreset(
+    local processedTextForDisplay = self:HandleNPCName(
         originalText,
         CinematicCam.npcNameData.originalName,
         self.savedVars.npcNamePreset
     )
 
-    -- Handle source element visibility
-    self:HandleSourceElementVisibility(sourceElement)
-
-    -- Clean up any existing display
-    if CinematicCam.chunkedDialogueData.isActive then
-        self:CleanupChunkedDialogue()
-    end
-
     -- Store dialogue data
-    self:StoreDialogueData(processedTextForDisplay, sourceElement, originalText)
+    CinematicCam.chunkedDialogueData.originalText = processedTextForDisplay
+    CinematicCam.chunkedDialogueData.sourceElement = sourceElement
+    CinematicCam.chunkedDialogueData.rawDialogueText = originalText
 
     -- Process and display if chunked dialogue is enabled
     if self.savedVars.interaction.subtitles.useChunkedDialogue then
@@ -129,22 +80,6 @@ function CinematicCam:InterceptDialogueForChunking()
     end
 
     return false
-end
-
-function CinematicCam:HandleSourceElementVisibility(sourceElement)
-    if not sourceElement then return end
-
-    if self.savedVars.interaction.layoutPreset == "default" then
-        sourceElement:SetHidden(false)
-    elseif self.savedVars.interaction.layoutPreset == "cinematic" then
-        sourceElement:SetHidden(true)
-    end
-end
-
-function CinematicCam:StoreDialogueData(processedText, sourceElement, originalText)
-    CinematicCam.chunkedDialogueData.originalText = processedText
-    CinematicCam.chunkedDialogueData.sourceElement = sourceElement
-    CinematicCam.chunkedDialogueData.rawDialogueText = originalText
 end
 
 function CinematicCam:ProcessAndDisplayChunkedDialogue(textForTiming, processedTextForDisplay)
@@ -167,7 +102,6 @@ end
 ---=============================================================================
 -- TEXT PROCESSING AND CHUNKING
 --=============================================================================
-
 function CinematicCam:ProcessTextIntoChunks(fullText)
     if not fullText or fullText == "" then
         return {}
@@ -268,42 +202,6 @@ end
 -- DISPLAY AND RENDERING
 --=============================================================================
 
-function CinematicCam:InitializeChunkedDisplay()
-    if #CinematicCam.chunkedDialogueData.chunks == 0 then
-        return false
-    end
-
-    -- Hide source element
-    if CinematicCam.chunkedDialogueData.sourceElement then
-        CinematicCam.chunkedDialogueData.sourceElement:SetHidden(true)
-    end
-
-    -- Ensure control exists
-    if not CinematicCam.chunkedDialogueData.customControl then
-        self:InitializeChunkedTextControl()
-    end
-
-    local control = CinematicCam.chunkedDialogueData.customControl
-    if not control then
-        return false
-    end
-
-    -- Setup display
-    self:ApplyChunkedTextPositioning()
-    CinematicCam.chunkedDialogueData.currentChunkIndex = 1
-    CinematicCam.chunkedDialogueData.isActive = true
-
-    -- Display first chunk
-    self:DisplayCurrentChunk()
-
-    -- Schedule next chunk if multiple chunks exist
-    if #CinematicCam.chunkedDialogueData.chunks > 1 then
-        self:ScheduleNextChunk()
-    end
-
-    return true
-end
-
 function CinematicCam:DisplayCurrentChunk()
     local control = CinematicCam.chunkedDialogueData.customControl
     local background = CinematicCam.chunkedDialogueData.backgroundControl
@@ -337,6 +235,17 @@ function CinematicCam:DisplayCurrentChunk()
 
     -- Update overall visibility
     self:UpdateChunkedTextVisibility()
+end
+
+function CinematicCam:ShouldHidePlayerOptionsForInteraction()
+    if not self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
+        return false
+    end
+
+    local interactionType = GetInteractionType()
+
+    -- Only hide for dialogue/conversation interactions, NEVER for merchants/banks/etc
+    return interactionType == INTERACTION_CONVERSATION or interactionType == INTERACTION_QUEST
 end
 
 function CinematicCam:ShouldHideForInteractionType()
@@ -377,8 +286,8 @@ function CinematicCam:UpdateChunkBackground(control, background)
         local backgroundHeight = textHeight + (padding * 2)
 
         -- Apply size constraints
-        local minWidth, maxWidth = 200, 2200
-        local minHeight, maxHeight = 40, 230
+        local minWidth, maxWidth = 200, 2800
+        local minHeight, maxHeight = 40, 200
 
         backgroundWidth = math.max(minWidth, math.min(maxWidth, backgroundWidth))
         backgroundHeight = math.max(minHeight, math.min(maxHeight, backgroundHeight))
@@ -397,6 +306,82 @@ function CinematicCam:UpdateChunkBackground(control, background)
     elseif background then
         background:SetHidden(true)
     end
+end
+
+---=============================================================================
+-- HIDE PLAYER OPTIONS
+--=============================================================================
+function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
+    d("Player options setting changed to: " .. tostring(newValue))
+    -- If we're currently in dialogue and chunked dialogue is active
+    if isVendor then
+        d("Player options always true, not hiding")
+        return
+    end
+    if CinematicCam.chunkedDialogueData.isActive then
+        if newValue then
+            -- Setting was turned ON - hide player options if we have multiple chunks
+            -- and we're not on the last chunk
+            local currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex
+            local totalChunks = #CinematicCam.chunkedDialogueData.chunks
+
+            if totalChunks > 1 and currentChunk < totalChunks then
+                self:HidePlayerOptionsUntilLastChunk()
+            end
+        else
+            -- Setting was turned OFF - show player options immediately
+            if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+                self:ShowPlayerOptionsOnLastChunk()
+            end
+        end
+    end
+end
+
+function CinematicCam:HidePlayerOptionsUntilLastChunk()
+    d("Hiding player options until last chunk")
+    if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        return -- Already hidden
+    end
+
+    local playerOptionElements = {
+        "ZO_InteractWindowPlayerAreaOptions",
+        "ZO_InteractWindow_GamepadContainerInteractList",
+        "ZO_InteractWindow_GamepadContainerInteract",
+        "ZO_InteractWindowPlayerAreaHighlight"
+    }
+
+    -- Store original visibility and hide elements
+    for _, elementName in ipairs(playerOptionElements) do
+        local element = _G[elementName]
+        if element then
+            -- Store original visibility state in chunkedDialogueData, NOT savedVars
+            CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility[elementName] = not element:IsHidden()
+            element:SetHidden(true)
+        end
+    end
+
+    CinematicCam.chunkedDialogueData.playerOptionsHidden = true -- Use chunkedDialogueData
+end
+
+function CinematicCam:ShowPlayerOptionsOnLastChunk()
+    d("Calling Showing player options")
+    if not CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        d("Not hidden, nothing to show")
+        return -- Not hidden, nothing to show
+    end
+
+    -- Restore original visibility for all stored elements
+    for elementName, wasVisible in pairs(CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility) do
+        local element = _G[elementName]
+        if element and wasVisible then
+            element:SetHidden(false)
+        end
+        d("restored visibility")
+    end
+    d("now showing")
+    CinematicCam.chunkedDialogueData.playerOptionsHidden = false
+    CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility = {}
+    d("reset")
 end
 
 ---=============================================================================
@@ -422,6 +407,8 @@ function CinematicCam:PositionForDefaultPreset(control)
 end
 
 function CinematicCam:PositionForCinematicPreset(control)
+    local safeWidth, safeHeight, screenWidth, screenHeight = self:GetSafeScreenDimensions()
+
     local targetX, targetY = self:ConvertToScreenCoordinates(
         self.savedVars.interaction.subtitles.posX or 0.5,
         self.savedVars.interaction.subtitles.posY or 0.7
@@ -429,7 +416,10 @@ function CinematicCam:PositionForCinematicPreset(control)
 
     control:ClearAnchors()
     control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
-    control:SetDimensions(2700, 200)
+
+    -- Use safe screen width instead of fixed 2700
+    -- Limit height to prevent vertical overflow
+    control:SetDimensions(safeWidth, math.min(safeHeight * 0.3, 200))
 end
 
 ---=============================================================================
@@ -458,9 +448,18 @@ function CinematicCam:AdvanceToNextChunk()
     CinematicCam.chunkedDialogueData.currentChunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex + 1
 
     if CinematicCam.chunkedDialogueData.currentChunkIndex <= #CinematicCam.chunkedDialogueData.chunks then
+        -- Check if this is the last chunk
+        local isLastChunk = CinematicCam.chunkedDialogueData.currentChunkIndex ==
+            #CinematicCam.chunkedDialogueData.chunks
+
+        -- Show player options if this is the last chunk
+        if isLastChunk then
+            self:ShowPlayerOptionsOnLastChunk()
+        end
+
         self:DisplayCurrentChunk()
 
-        if self.savedVars.interaction.subtitles.useChunkedDialogue and #CinematicCam.chunkedDialogueData.chunks > 1 then
+        if self.savedVars.interaction.subtitles.useChunkedDialogue and #CinematicCam.chunkedDialogueData.chunks > 1 and not isLastChunk then
             self:ScheduleNextChunk()
         end
     end
@@ -558,6 +557,7 @@ end
 --=============================================================================
 
 function CinematicCam:StartDialogueChangeMonitoring()
+    d("Starting dialogue change monitoring")
     -- Cancel any existing monitoring
     if dialogueChangeCheckTimer then
         zo_removeCallLater(dialogueChangeCheckTimer)
@@ -572,31 +572,37 @@ function CinematicCam:StartDialogueChangeMonitoring()
 
         local currentRawText, _ = self:GetDialogueText()
 
-        -- Check for dialogue text changes
+        -- AGGRESSIVE: Check for dialogue text changes
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
-                self:CleanupChunkedDialogue()
+                -- IMMEDIATE: Hide player options before any processing
+                if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
+                    self:HidePlayerOptionsUntilLastChunk()
+                end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    self:InterceptDialogueForChunking()
+                    -- Small delay to ensure ESO's UI has updated
+                    zo_callLater(function()
+                        self:InterceptDialogueForChunking()
+                    end, 1)
                 end
                 return
             end
         end
 
-        -- Check for interaction end conditions
+        -- AGGRESSIVE: Check for interaction end conditions
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_ANTIQUITY_DIG_SPOT or interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
             return
         end
 
-        -- Schedule next check
-        dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200)
+        -- AGGRESSIVE: Very fast polling - 16ms (approximately one frame)
+        dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 16)
     end
 
-    -- Start monitoring
-    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 200)
+    -- AGGRESSIVE: Start immediately
+    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 1)
 end
 
 function CinematicCam:CleanupChunkedDialogue()
@@ -609,6 +615,11 @@ function CinematicCam:CleanupChunkedDialogue()
     if dialogueChangeCheckTimer then
         zo_removeCallLater(dialogueChangeCheckTimer)
         dialogueChangeCheckTimer = nil
+    end
+
+    -- Restore player options if they were hidden
+    if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        self:ShowPlayerOptionsOnLastChunk()
     end
 
     -- Hide all controls
@@ -655,6 +666,7 @@ function CinematicCam:RestoreOriginalElements()
 end
 
 function CinematicCam:ResetChunkedDialogueState()
+    d("resetting dialog state")
     -- Preserve control references
     local backgroundControl = CinematicCam.chunkedDialogueData.backgroundControl
     local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
@@ -671,11 +683,128 @@ function CinematicCam:ResetChunkedDialogueState()
         playerOptionsBackgroundControl = playerOptionsBackgroundControl,
         displayTimer = nil,
         sourceElement = nil,
-        rawDialogueText = ""
+        rawDialogueText = "",
+        playerOptionsHidden = false,
+        originalPlayerOptionsVisibility = {}
     }
 
     CinematicCam.npcNameData.originalName = ""
     CinematicCam.npcNameData.currentPreset = "default"
+end
+
+---=============================================================================
+-- INITIALIZATION AND SETUP
+--=============================================================================
+
+function CinematicCam:CreateChunkedTextControl()
+    if CinematicCam.chunkedDialogueData.customControl then
+        return CinematicCam.chunkedDialogueData.customControl
+    end
+
+    local control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
+
+    -- Apply font styling
+    self:ApplyFontToElement(control, self.savedVars.interface.customFontSize)
+
+    -- Text properties
+    control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    control:SetVerticalAlignment(TEXT_ALIGN_TOP)
+    control:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
+    control:SetColor(0.9, 0.9, 0.8, 1.0)
+
+    -- Initial state
+    control:SetHidden(true)
+
+    -- Position the control
+    self:PositionChunkedTextControl(control)
+
+    -- Store reference
+    CinematicCam.chunkedDialogueData.customControl = control
+
+    -- Initialize background
+    self:ConfigureChunkedTextBackground()
+
+    return control
+end
+
+function CinematicCam:InitializeChunkedDisplay()
+    d("Initializing chunked display")
+    if #CinematicCam.chunkedDialogueData.chunks == 0 then
+        return false
+    end
+
+    -- Hide source element
+    if CinematicCam.chunkedDialogueData.sourceElement then
+        CinematicCam.chunkedDialogueData.sourceElement:SetHidden(true)
+    end
+
+    -- Hide player options ONLY for dialogue interactions and if we have multiple chunks
+    if self:ShouldHidePlayerOptionsForInteraction() and #CinematicCam.chunkedDialogueData.chunks > 1 and CinematicCam.PlayerOptionsAlways == false then
+        self:HidePlayerOptionsUntilLastChunk()
+    end
+
+    -- Ensure control exists
+    if not CinematicCam.chunkedDialogueData.customControl then
+        self:InitializeChunkedTextControl()
+    end
+
+    local control = CinematicCam.chunkedDialogueData.customControl
+    if not control then
+        return false
+    end
+
+    -- Setup display
+    self:ApplyChunkedTextPositioning()
+    CinematicCam.chunkedDialogueData.currentChunkIndex = 1
+    CinematicCam.chunkedDialogueData.isActive = true
+
+    -- Display first chunk
+    self:DisplayCurrentChunk()
+
+    -- Schedule next chunk if multiple chunks exist
+    if #CinematicCam.chunkedDialogueData.chunks > 1 then
+        self:ScheduleNextChunk()
+    end
+
+    return true
+end
+
+function CinematicCam:ConfigureChunkedTextBackground()
+    local background = _G["CinematicCam_ChunkedTextBackground"]
+    if background then
+        -- Background properties
+        background:SetAlpha(0.3)
+        background:SetDrawLayer(DL_CONTROLS)
+        background:SetDrawLevel(9)
+        background:SetHidden(true)
+
+        -- Store reference
+        CinematicCam.chunkedDialogueData.backgroundControl = background
+
+        -- Initialize position
+        background:ClearAnchors()
+        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+        background:SetDimensions(1, 1)
+    end
+end
+
+function CinematicCam:ConfigurePlayerOptionsBackground()
+    local background = _G["CinematicCam_PlayerOptionsBackground"]
+    if background then
+        -- Background properties
+        background:SetColor(0.2, 0.2, 0.2, 0.7)
+        background:SetDrawLayer(DL_CONTROLS)
+        background:SetDrawLevel(8) -- slightly lower than subtitle background (9)
+        background:SetHidden(true)
+
+        -- Store reference
+        CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl = background
+
+        -- Initialize position
+        background:ClearAnchors()
+        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+        background:SetDimensions(1, 1)
+    end
 end
 
 ---=============================================================================
@@ -771,4 +900,20 @@ function CinematicCam:FindWordBoundary(text, maxPosition)
         end
     end
     return maxPosition
+end
+
+function CinematicCam:GetSafeScreenDimensions()
+    local screenWidth, screenHeight = GuiRoot:GetDimensions()
+
+    -- Account for letterbox if active
+    local availableHeight = screenHeight
+    if self.savedVars.letterbox.letterboxVisible then
+        availableHeight = screenHeight - (self.savedVars.letterbox.size * 2)
+    end
+
+    -- Leave margins for safety (10% on each side)
+    local safeWidth = screenWidth * 0.8
+    local safeHeight = availableHeight * 0.8
+
+    return safeWidth, safeHeight, screenWidth, screenHeight
 end

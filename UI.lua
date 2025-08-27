@@ -79,24 +79,6 @@ function CinematicCam:ShowNPCText()
     end
 end
 
-function CinematicCam:GetDialogueText()
-    local sources = {
-        ZO_InteractWindow_GamepadContainerText,
-        ZO_InteractWindowTargetAreaBodyText
-    }
-
-    for _, element in ipairs(sources) do
-        if element then
-            local text = element.text or element:GetText() or ""
-            if string.len(text) > 0 then
-                return text, element
-            end
-        end
-    end
-
-    return nil, nil
-end
-
 function CinematicCam:HideUI()
     if not self.savedVars.interface.UiElementsVisible then
         return
@@ -194,5 +176,195 @@ function CinematicCam:StopUIMonitoring()
     if uiMonitoringTimer then
         zo_removeCallLater(uiMonitoringTimer)
         uiMonitoringTimer = nil
+    end
+end
+
+---=============================================================================
+-- Hide Questing Dialoge Panels
+--=============================================================================
+function CinematicCam:HideDialoguePanels()
+    -- Main dialogue window elements
+    if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
+
+    if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
+
+    if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
+    if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
+
+    -- Text elements - handle title and body text separately
+    if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(true) end
+
+    -- Options and highlights
+    if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(true) end
+    if ZO_InteractWindowPlayerAreaHighlight then ZO_InteractWindowPlayerAreaHighlight:SetHidden(true) end
+    if ZO_InteractWindowCollapseContainerRewardArea then ZO_InteractWindowCollapseContainerRewardArea:SetHidden(true) end
+
+    -- Gamepad elements
+    if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(true) end
+    if ZO_InteractWindow_GamepadContainerText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
+        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    end
+end
+
+function CinematicCam:ShowDialoguePanels()
+    -- Main dialogue window elements
+    if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(false) end
+
+    if ZO_InteractWindowDivider then ZO_InteractWindowDivider:SetHidden(false) end
+    if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(false) end
+    if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
+    if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(false) end
+
+    -- Text elements
+    if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(false) end
+
+    -- Only show NPC text if the hideNPCText setting is enabled
+    if ZO_InteractWindowTargetAreaBodyText then ZO_InteractWindowTargetAreaBodyText:SetHidden(true) end
+
+    -- Options and highlights
+    if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(false) end
+    if ZO_InteractWindowPlayerAreaHighlight then ZO_InteractWindowPlayerAreaHighlight:SetHidden(false) end
+    if ZO_InteractWindowCollapseContainerRewardArea then ZO_InteractWindowCollapseContainerRewardArea:SetHidden(false) end
+
+    -- Gamepad elements
+    if ZO_InteractWindow_GamepadBG then ZO_InteractWindow_GamepadBG:SetHidden(false) end
+    if ZO_InteractWindow_GamepadContainerText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
+        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    end
+end
+
+---=============================================================================
+-- Reposition UI
+--=============================================================================
+local npcTextContainer = ZO_InteractWindow_GamepadContainerText
+if npcTextContainer then
+    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+    local addedWidth = originalWidth + 10
+    local addedHeight = originalHeight + 100
+end
+
+function CinematicCam:ApplyCinematicPreset()
+    ZO_InteractWindow_GamepadContainerText:SetHidden(true)
+    if npcTextContainer then
+        local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+        npcTextContainer:SetWidth(originalWidth)
+        npcTextContainer:SetHeight(originalHeight + 100)
+    end
+    self:ApplySubtitlePosition()
+end
+
+function CinematicCam:ApplySubtitlePosition()
+    local targetX, targetY = self:ConvertToScreenCoordinates(
+        self.savedVars.interaction.subtitles.posX or 0.5,
+        self.savedVars.interaction.subtitles.posY or 0.7
+    )
+
+    if npcTextContainer then
+        npcTextContainer:ClearAnchors()
+        npcTextContainer:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
+    end
+
+    -- Apply to custom chunked dialogue control
+    if CinematicCam.chunkedDialogueData.customControl then
+        CinematicCam.chunkedDialogueData.customControl:ClearAnchors()
+        CinematicCam.chunkedDialogueData.customControl:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
+    end
+end
+
+function CinematicCam:ApplyChunkedTextPositioning()
+    local control = CinematicCam.chunkedDialogueData.customControl
+    local background = CinematicCam.chunkedDialogueData.backgroundControl
+
+    if not control then return end
+
+    local preset = self.savedVars.interaction.layoutPreset
+    local safeWidth, safeHeight, screenWidth, screenHeight = self:GetSafeScreenDimensions()
+
+    if preset == "cinematic" then
+        -- Use the same positioning logic as native subtitles
+        local targetX, targetY = self:ConvertToScreenCoordinates(
+            self.savedVars.interaction.subtitles.posX or 0.5,
+            self.savedVars.interaction.subtitles.posY or 0.7
+        )
+
+        control:ClearAnchors()
+        control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
+        -- Use safe width instead of fixed 2700
+        control:SetDimensions(safeWidth, math.min(safeHeight * 0.3, 200))
+
+        -- Position background to match with dynamic sizing
+        if background then
+            background:ClearAnchors()
+            background:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
+            -- Make background responsive too
+            background:SetDimensions(math.min(safeWidth * 1.1, 900), 150)
+        end
+    else
+        -- Default positioning for non-cinematic presets
+        -- Use percentage of screen width instead of fixed 683
+        local defaultWidth = math.min(screenWidth * 0.35, 683)
+        local defaultHeight = math.min(safeHeight * 0.7, 550)
+
+        control:ClearAnchors()
+        control:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
+        control:SetDimensions(defaultWidth, defaultHeight)
+
+        -- Position background to match
+        if background then
+            background:ClearAnchors()
+            background:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT, -50, 100)
+            background:SetDimensions(defaultWidth + 37, defaultHeight + 30)
+        end
+    end
+end
+
+function CinematicCam:ApplyDefaultPosition()
+    ZO_InteractWindow_GamepadContainerText:SetHidden(false)
+    zo_callLater(function()
+        local rootWindow = _G["ZO_InteractWindow_Gamepad"]
+        if rootWindow then
+            local screenWidth, screenHeight = GuiRoot:GetDimensions()
+
+            -- Calculate positions
+            local centerX = screenWidth * self.savedVars.interface.dialogueHorizontalOffset
+            local centerY = 0
+            if self.savedVars.interface.dialogueVerticalOffset then
+                centerY = (self.savedVars.interface.dialogueVerticalOffset - 0.5) * screenHeight * 0.8
+            end
+
+            -- Coordinate with letterbox if active
+            if self.savedVars.letterbox.letterboxVisible then
+                centerY = centerY + (self.savedVars.letterbox.size * 0.3)
+            end
+
+            -- Move root window
+            rootWindow:ClearAnchors()
+            rootWindow:SetAnchor(CENTER, GuiRoot, CENTER, centerX, 0)
+            rootWindow:SetWidth(683)
+            rootWindow:SetHeight(2000)
+
+            -- Move the player options elements with same offset
+            local playerOptionsElements = {
+                "ZO_InteractWindow_GamepadContainerInteract",
+                "ZO_InteractWindow_GamepadContainerInteractList",
+                "ZO_InteractWindow_GamepadContainerInteractListScroll",
+                "ZO_InteractWindow_GamepadContainer",
+                "ZO_InteractWindow_GamepadTitle"
+            }
+
+            for _, elementName in ipairs(playerOptionsElements) do
+                local element = _G[elementName]
+                if element then
+                    element:ClearAnchors()
+                    element:SetAnchor(CENTER, GuiRoot, CENTER, centerX, centerY)
+                end
+            end
+        end
+    end)
+end
+
+function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
+    if CinematicCam.chunkedDialogueData.isActive and CinematicCam.chunkedDialogueData.customControl then
+        self:ApplyChunkedTextPositioning()
     end
 end

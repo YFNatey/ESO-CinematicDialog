@@ -5,6 +5,8 @@ CinematicCam.defaults = {
     npcNameFontSize = 42,
     usePlayerName = false,
     playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
+    dialogueElementsHidden = false,
+
     letterbox = {
         size = 100,
         opacity = 1.0,
@@ -22,6 +24,7 @@ CinematicCam.defaults = {
         forceThirdPersonCrafting = false,
         forceThirdPersonDye = false,
         hidePlayerOptions = false,
+        forceThirdPersonInteractiveNotes = false,
         layoutPreset = "default",
         ui = {
             hidePanelsESO = false,
@@ -39,7 +42,8 @@ CinematicCam.defaults = {
             isHidden = false,
             useChunkedDialogue = false,
             posY = 0.8,
-            posX = 0.5
+            posX = 0.5,
+            hidePlayerOptionsUntilLastChunk = false,
 
         },
     },
@@ -78,4 +82,5 @@ CinematicCam.defaults = {
         dashPauseTime = 0.4,
         ellipsisPauseTime = 0.5,
     },
+
 }

@@ -83,10 +83,22 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+        {
+            type = "checkbox",
+            name = "Notes & Boards",
+            tooltip =
+            "Keep camera in 3rd person when reading interactive notes and books (quest starting notes, items, writ boards, etc.)",
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonInteractiveNotes end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonInteractiveNotes = value
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
 
         {
             type = "header",
-            name = "Subtitle Settings",
+            name = "General Settings",
         },
         {
             type = "checkbox",
@@ -95,6 +107,22 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 self.savedVars.interaction.subtitles.isHidden = not value
                 self:UpdateChunkedTextVisibility()
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Hide Choices Until Last Line",
+            tooltip =
+            "Hide player response options until the NPC finishes speaking.",
+            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
+                self:OnPlayerOptionsSettingChanged(value)
+            end,
+            disabled = function()
+                return not self.savedVars.interaction.subtitles.useChunkedDialogue or
+                    self.savedVars.interaction.layoutPreset ~= "cinematic"
             end,
             width = "full",
         },
@@ -132,6 +160,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+
         {
             type = "dropdown",
             name = "Default Layout Backgrounds",
@@ -162,8 +191,10 @@ function CinematicCam:CreateSettingsMenu()
             type = "dropdown",
             name = "Cinematic Layout Backgrounds",
             tooltip = "Custom background options when using Cinematic layout style",
-            choices = { "All", "Only Subtitles", "Only Player Choices", "None" },
-            choicesValues = { "all", "subtitles", "playerOptions", "none" },
+            --choices = { "All", "Only Subtitles", "Only Player Choices", "None" },
+            --choicesValues = { "all", "subtitles", "playerOptions", "none" },
+            choices = { "Subtitles", "None" },
+            choicesValues = { "subtitles", "none" },
             getFunc = function()
                 return self.savedVars.interface.cinematicBackgroundMode or "all"
             end,
@@ -186,96 +217,7 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-            type = "header",
-            name = "Position Settings",
-        },
-        {
-            type = "slider",
-            name = "Cinematic Subtitle X Position",
-            tooltip = "Adjust horizontal position of dialogue text.",
-            min = 0,
-            max = 100,
-            step = 1,
-            getFunc = function()
-                local normalizedPos = self.savedVars.interaction.subtitles.posX or 0.5
-                return math.floor(normalizedPos * 100)
-            end,
-            setFunc = function(value)
-                local normalizedX = value / 100
-                self.savedVars.interaction.subtitles.posX = normalizedX
-                self:OnSubtitlePositionChanged(normalizedX, nil)
-                -- Show preview when slider changes
-                CinematicCam:ShowSubtitlePreview(value, nil)
-            end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Cinematic Subtitle Y Position",
-            tooltip = "Adjust vertical position of dialogue text.",
-            min = 0,
-            max = 100,
-            step = 1,
-            getFunc = function()
-                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
-                return math.floor(normalizedPos * 100)
-            end,
-            setFunc = function(value)
-                local normalizedY = value / 100
-                self.savedVars.interaction.subtitles.posY = normalizedY
-                CinematicCam:OnSubtitlePositionChanged(nil, normalizedY)
-                -- Show preview when slider changes
-                CinematicCam:ShowSubtitlePreview(nil, value)
-            end,
-            width = "full",
-        },
-        {
             type = "divider"
-        },
-        {
-            type = "slider",
-            name = "Player Choices X Position",
-            tooltip = "Adjust the horizontal position of the dialogue window. Move the slider to see a preview.",
-            min = 10,
-            max = 34,
-            step = 2,
-            getFunc = function()
-                return math.floor(self.savedVars.interface.dialogueHorizontalOffset * 100)
-            end,
-            setFunc = function(value)
-                self.savedVars.interface.dialogueHorizontalOffset = value / 100
-                self:ApplyDefaultPosition()
-                -- Show preview when slider changes
-                self:ShowPlayerOptionsPreview(value)
-            end,
-            -- Real-time preview while dragging (if supported by your settings library)
-            onValueChanged = function(value)
-                if isPlayerOptionsPreviewActive then
-                    self:UpdatePlayerOptionsPreviewPosition(value)
-                end
-            end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Player Choices Y Position",
-            tooltip = "Adjust the vertical position of the dialogue window.",
-            min = 0,
-            max = 2000,
-            step = 30,
-            getFunc = function()
-                return math.floor(self.savedVars.interface.dialogueVerticalOffset)
-            end,
-            setFunc = function(value)
-                self.savedVars.interface.dialogueVerticalOffset = value
-
-                self:ApplyDefaultPosition()
-            end,
-            width = "full",
-        },
-        {
-            type = "header",
-            name = "Name Settings",
         },
         {
             type = "dropdown",
@@ -327,6 +269,98 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
+            type = "header",
+            name = "Position Settings",
+        },
+        {
+            type = "slider",
+            name = "Cinematic Subtitle X Position",
+            tooltip = "Adjust horizontal position of dialogue text. Limited range prevents text cutoff.",
+            min = 30, -- Prevents positioning too far left
+            max = 70, -- Prevents positioning too far right
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posX or 0.5
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedX = value / 100
+                self.savedVars.interaction.subtitles.posX = normalizedX
+                self:OnSubtitlePositionChanged(normalizedX, nil)
+                CinematicCam:ShowSubtitlePreview(value, nil)
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Cinematic Subtitle Y Position",
+            tooltip = "Adjust vertical position of dialogue text.",
+            min = 0,
+            max = 100,
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedY = value / 100
+                self.savedVars.interaction.subtitles.posY = normalizedY
+                CinematicCam:OnSubtitlePositionChanged(nil, normalizedY)
+                -- Show preview when slider changes
+                CinematicCam:ShowSubtitlePreview(nil, value)
+            end,
+            width = "full",
+        },
+        {
+            type = "divider"
+        },
+        --[[ {
+            type = "slider",
+            name = "Player Choices X Position",
+            tooltip = "Adjust the horizontal position of the dialogue window. Move the slider to see a preview.",
+            min = 10,
+            max = 34,
+            step = 2,
+            getFunc = function()
+                return math.floor(self.savedVars.interface.dialogueHorizontalOffset * 100)
+            end,
+            setFunc = function(value)
+                self.savedVars.interface.dialogueHorizontalOffset = value / 100
+                self:ApplyDefaultPosition()
+                -- Show preview when slider changes
+                self:ShowPlayerOptionsPreview(value)
+            end,
+            -- Real-time preview while dragging (if supported by your settings library)
+            onValueChanged = function(value)
+                if isPlayerOptionsPreviewActive then
+                    self:UpdatePlayerOptionsPreviewPosition(value)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Player Choices Y Position",
+            tooltip = "Adjust the vertical position of the dialogue window.",
+            min = 0,
+            max = 2000,
+            step = 30,
+            getFunc = function()
+                return math.floor(self.savedVars.interface.dialogueVerticalOffset)
+            end,
+            setFunc = function(value)
+                self.savedVars.interface.dialogueVerticalOffset = value
+
+                self:ApplyDefaultPosition()
+            end,
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Name Settings",
+        --},]]
+
+        --[[{
             type = "checkbox",
             name = "Show Your Name",
             tooltip = "Show your character's name instead of NPC name in dialogue",
@@ -365,7 +399,7 @@ function CinematicCam:CreateSettingsMenu()
                 return not self.savedVars.usePlayerName or self.savedVars.npcNamePreset == "default"
             end,
             width = "full",
-        },
+        --},]]
         --[[{
             type = "editbox",
             name = "NPC Name Filter", -- Give it a proper name
@@ -558,6 +592,7 @@ function CinematicCam:CreateSettingsMenu()
             func = function() RequestOpenUnsafeURL("https://Ko-fi.com/yfnatey") end,
             width = "half"
         },
+
     }
 
     LAM:RegisterAddonPanel(panelName, panelData)
