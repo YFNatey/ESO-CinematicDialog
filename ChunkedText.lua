@@ -39,6 +39,79 @@ end
 --TODO, make a function that returns true if the word store is found in the player options
 --Iterate all player options,
 -- Only check forstr word
+
+function CinematicCam:FindPlayerOptionTextElement(option)
+    -- Try direct properties first
+    if option.text and option.text.GetText then
+        return option.text
+    elseif option.label and option.label.GetText then
+        return option.label
+    elseif option.optionText and option.optionText.GetText then
+        return option.optionText
+    elseif option.GetText then
+        return option
+    else
+        -- Search through children for text elements
+        for j = 1, option:GetNumChildren() do
+            local child = option:GetChild(j)
+            if child and child.GetText then
+                local childText = child:GetText()
+                if childText and childText ~= "" then
+                    return child
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function CinematicCam:CheckPlayerOptionsForVendorText()
+    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
+        "Morphs:", "Skill Lines" }
+    -- Check individual option elements (matching KhajiitVoice pattern exactly)
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
+        local option = _G[longOptionName]
+        if option then
+            local textElement = self:FindPlayerOptionTextElement(option)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                if optionText ~= "" then
+                    -- Check if first option is "Goodbye."
+                    if i == 1 and optionText == "Goodbye." then
+                        return true
+                    end
+                    for _, pattern in ipairs(vendorPatterns) do
+                        if optionText and pattern and string.find(optionText, pattern) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
+        local option2 = _G[shortOptionName]
+        if option2 then
+            local textElement = self:FindPlayerOptionTextElement(option2)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                if optionText ~= "" then
+                    -- Check if first option is "Goodbye."
+                    if i == 1 and optionText == "Goodbye." then
+                        return true
+                    end
+                    for _, pattern in ipairs(vendorPatterns) do
+                        if string.find(optionText, pattern) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
+end
+
 ---=============================================================================
 -- MAIN DIALOGUE INTERCEPTION AND PROCESSING
 --=============================================================================
@@ -46,18 +119,18 @@ end
 function CinematicCam:InterceptDialogueForChunking()
     local originalText, sourceElement = self:GetDialogueText()
 
-    d("intercepting dialogue for chunking: ", originalText)
     -- if the word "Store", show player options
-    if originalText and string.find(originalText, "Steel") then
-        d("Found Steel, showing player options")
+    if self:CheckPlayerOptionsForVendorText() then
         CinematicCam.PlayerOptionsAlways = true
         CinematicCam:OnPlayerOptionsSettingChanged(false, true)
     else
         CinematicCam.PlayerOptionsAlways = false
+        CinematicCam:OnPlayerOptionsSettingChanged(true, false)
     end
     if not originalText or string.len(originalText) == 0 then
         return false
     end
+
     -- Apply NPC name preset
     self:ApplyNPCNamePreset()
 
@@ -75,10 +148,10 @@ function CinematicCam:InterceptDialogueForChunking()
     CinematicCam.chunkedDialogueData.rawDialogueText = originalText
 
     -- Process and display if chunked dialogue is enabled
-    if self.savedVars.interaction.subtitles.useChunkedDialogue then
+    if self.savedVars.interaction.subtitles.useChunkedDialogue or
+        self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
         return self:ProcessAndDisplayChunkedDialogue(textForTiming, processedTextForDisplay)
     end
-
     return false
 end
 
@@ -89,14 +162,69 @@ function CinematicCam:ProcessAndDisplayChunkedDialogue(textForTiming, processedT
 
     if #CinematicCam.chunkedDialogueData.chunks >= 1 then
         self:StartDialogueChangeMonitoring()
-        return self:InitializeChunkedDisplay()
+        if self.savedVars.interaction.layoutPreset == "default" then
+            return self:InitializeHiddenChunkedDisplay()
+        else
+            return self:InitializeChunkedDisplay()
+        end
     else
         -- Fallback to single chunk
         CinematicCam.chunkedDialogueData.chunks = { textForTiming }
         CinematicCam.chunkedDialogueData.displayChunks = { processedTextForDisplay }
         self:StartDialogueChangeMonitoring()
-        return self:InitializeCompleteTextDisplay()
+        if self.savedVars.interaction.layoutPreset == "default" then
+            return self:InitializeHiddenCompleteTextDisplay()
+        else
+            return self:InitializeCompleteTextDisplay()
+        end
     end
+end
+
+function CinematicCam:InitializeHiddenChunkedDisplay()
+    if #CinematicCam.chunkedDialogueData.chunks == 0 then
+        return false
+    end
+
+    -- DON'T hide source element for default preset
+    -- Keep original dialogue visible
+
+    -- Hide player options ONLY for dialogue interactions and if we have multiple chunks
+    if self:ShouldHidePlayerOptionsForInteraction() and #CinematicCam.chunkedDialogueData.chunks > 1 and CinematicCam.PlayerOptionsAlways == false then
+        self:HidePlayerOptionsUntilLastChunk()
+    end
+
+    -- Don't create or show custom control for default preset
+    -- Just setup timing logic
+    CinematicCam.chunkedDialogueData.currentChunkIndex = 1
+    CinematicCam.chunkedDialogueData.isActive = true
+
+    -- Schedule next chunk if multiple chunks exist (for timing only)
+    if #CinematicCam.chunkedDialogueData.chunks > 1 then
+        self:ScheduleNextChunk()
+    else
+        -- For single chunk, immediately show player options if they were hidden
+        if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+            self:ShowPlayerOptionsOnLastChunk()
+        end
+    end
+
+    return true
+end
+
+-- New function for hidden complete text display (default preset, single chunk)
+function CinematicCam:InitializeHiddenCompleteTextDisplay()
+    -- DON'T hide source element for default preset
+    -- Keep original dialogue visible
+
+    -- For single chunk, immediately show player options if they were hidden
+    if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        self:ShowPlayerOptionsOnLastChunk()
+    end
+
+    CinematicCam.chunkedDialogueData.currentChunkIndex = 1
+    CinematicCam.chunkedDialogueData.isActive = true
+
+    return true
 end
 
 ---=============================================================================
@@ -206,7 +334,10 @@ function CinematicCam:DisplayCurrentChunk()
     local control = CinematicCam.chunkedDialogueData.customControl
     local background = CinematicCam.chunkedDialogueData.backgroundControl
     local chunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex
-
+    if self.savedVars.interaction.layoutPreset == "default" then
+        -- Just handle the timing logic, no visual display
+        return
+    end
     if not control or chunkIndex > #CinematicCam.chunkedDialogueData.chunks then
         return
     end
@@ -312,10 +443,8 @@ end
 -- HIDE PLAYER OPTIONS
 --=============================================================================
 function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
-    d("Player options setting changed to: " .. tostring(newValue))
     -- If we're currently in dialogue and chunked dialogue is active
     if isVendor then
-        d("Player options always true, not hiding")
         return
     end
     if CinematicCam.chunkedDialogueData.isActive then
@@ -338,7 +467,6 @@ function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
 end
 
 function CinematicCam:HidePlayerOptionsUntilLastChunk()
-    d("Hiding player options until last chunk")
     if CinematicCam.chunkedDialogueData.playerOptionsHidden then
         return -- Already hidden
     end
@@ -364,9 +492,7 @@ function CinematicCam:HidePlayerOptionsUntilLastChunk()
 end
 
 function CinematicCam:ShowPlayerOptionsOnLastChunk()
-    d("Calling Showing player options")
     if not CinematicCam.chunkedDialogueData.playerOptionsHidden then
-        d("Not hidden, nothing to show")
         return -- Not hidden, nothing to show
     end
 
@@ -376,12 +502,10 @@ function CinematicCam:ShowPlayerOptionsOnLastChunk()
         if element and wasVisible then
             element:SetHidden(false)
         end
-        d("restored visibility")
     end
-    d("now showing")
+
     CinematicCam.chunkedDialogueData.playerOptionsHidden = false
     CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility = {}
-    d("reset")
 end
 
 ---=============================================================================
@@ -557,7 +681,6 @@ end
 --=============================================================================
 
 function CinematicCam:StartDialogueChangeMonitoring()
-    d("Starting dialogue change monitoring")
     -- Cancel any existing monitoring
     if dialogueChangeCheckTimer then
         zo_removeCallLater(dialogueChangeCheckTimer)
@@ -572,10 +695,10 @@ function CinematicCam:StartDialogueChangeMonitoring()
 
         local currentRawText, _ = self:GetDialogueText()
 
-        -- AGGRESSIVE: Check for dialogue text changes
+
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
-                -- IMMEDIATE: Hide player options before any processing
+                -- Hide player options before any processing
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
                     self:HidePlayerOptionsUntilLastChunk()
                 end
@@ -584,25 +707,26 @@ function CinematicCam:StartDialogueChangeMonitoring()
                     -- Small delay to ensure ESO's UI has updated
                     zo_callLater(function()
                         self:InterceptDialogueForChunking()
-                    end, 1)
+                    end)
                 end
                 return
             end
         end
 
-        -- AGGRESSIVE: Check for interaction end conditions
+        -- Check for interaction end conditions
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_ANTIQUITY_DIG_SPOT or interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
             return
         end
 
-        -- AGGRESSIVE: Very fast polling - 16ms (approximately one frame)
-        dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 16)
+
+        dialogueChangeCheckTimer = zo_callLater(function()
+            checkForDialogueChange()
+        end, 1)
     end
 
-    -- AGGRESSIVE: Start immediately
-    dialogueChangeCheckTimer = zo_callLater(checkForDialogueChange, 1)
+    checkForDialogueChange()
 end
 
 function CinematicCam:CleanupChunkedDialogue()
@@ -666,7 +790,6 @@ function CinematicCam:RestoreOriginalElements()
 end
 
 function CinematicCam:ResetChunkedDialogueState()
-    d("resetting dialog state")
     -- Preserve control references
     local backgroundControl = CinematicCam.chunkedDialogueData.backgroundControl
     local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
@@ -728,7 +851,6 @@ function CinematicCam:CreateChunkedTextControl()
 end
 
 function CinematicCam:InitializeChunkedDisplay()
-    d("Initializing chunked display")
     if #CinematicCam.chunkedDialogueData.chunks == 0 then
         return false
     end
@@ -773,7 +895,7 @@ function CinematicCam:ConfigureChunkedTextBackground()
     local background = _G["CinematicCam_ChunkedTextBackground"]
     if background then
         -- Background properties
-        background:SetAlpha(0.3)
+        background:SetAlpha(0.4)
         background:SetDrawLayer(DL_CONTROLS)
         background:SetDrawLevel(9)
         background:SetHidden(true)
@@ -828,6 +950,7 @@ function CinematicCam:UpdateChunkedTextVisibility()
             if background then background:SetHidden(true) end
         else
             control:SetAlpha(1.0)
+            --TODO Fix the background apeparenign when the option was selected, but disabled when the user change preset from cinematic to defalt
             if background and self.savedVars.interface and self.savedVars.interface.useSubtitleBackground then
                 background:SetHidden(false)
             end

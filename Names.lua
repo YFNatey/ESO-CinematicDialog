@@ -29,7 +29,7 @@ function CinematicCam:ApplyNPCNamePreset(preset)
     elseif preset == "prepended" then
         -- Hide original name element
         if originalElement then
-            originalElement:SetHidden(false)
+            originalElement:SetHidden(true)
             originalElement:SetText("")
             if self.savedVars.usePlayerName then
                 originalElement:SetHidden(false)

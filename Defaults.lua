@@ -7,6 +7,10 @@ CinematicCam.defaults = {
     playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
     dialogueElementsHidden = false,
 
+
+    lastSeenUpdateVersion = "0.0.0",
+    hasSeenWelcomeMessage = false,
+
     letterbox = {
         size = 100,
         opacity = 1.0,

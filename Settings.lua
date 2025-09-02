@@ -24,6 +24,13 @@ function CinematicCam:CreateSettingsMenu()
 
     local optionsData = {
         {
+            type = "description",
+            text = "Update Notes",
+            tooltip =
+            "• Added Feature to hide player options until the character is finished speaking\n• This excludes bankers, merchants, writ boards, or other non-story interactions",
+            width = "full",
+        },
+        {
             type = "header",
             name = "3rd Person Dialog Toggles",
         },
@@ -31,7 +38,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "checkbox",
             name = "Citizens",
-            tooltip = "Keep camera in 3rd person when talking to regular NPCs",
+            tooltip = "Keep camera in 3rd person when talking to regular characters",
             getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
             setFunc = function(value)
                 self.savedVars.interaction.forceThirdPersonDialogue = value
@@ -83,7 +90,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
+        --[[{
             type = "checkbox",
             name = "Notes & Boards",
             tooltip =
@@ -95,6 +102,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+`      --}]]
 
         {
             type = "header",
@@ -112,17 +120,13 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Hide Choices Until Last Line",
+            name = "Hide Choices until Dialogue finishes",
             tooltip =
-            "Hide player response options until the NPC finishes speaking.",
+            "Hide player response options until the character finishes speaking.",
             getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
             setFunc = function(value)
                 self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
                 self:OnPlayerOptionsSettingChanged(value)
-            end,
-            disabled = function()
-                return not self.savedVars.interaction.subtitles.useChunkedDialogue or
-                    self.savedVars.interaction.layoutPreset ~= "cinematic"
             end,
             width = "full",
         },
@@ -130,14 +134,13 @@ function CinematicCam:CreateSettingsMenu()
             type = "dropdown",
             name = "Style",
             tooltip =
-            "Choose how dialogue elements are positioned:\n• Default: Original positioning\n• Cinematic: Bottom centered\n",
+            "Choose how dialogue elements are positioned:\n• Default: Original ESO positioning\n• Cinematic: Bottom centered with visual chunking\n",
             choices = { "Default", "Cinematic" },
             choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
                 self.savedVars.interaction.layoutPreset = value
                 currentRepositionPreset = value
-
                 -- Force hide dialogue panels for center layouts
                 if value == "cinematic" then
                     self.savedVars.interaction.ui.hidePanelsESO = true
@@ -148,8 +151,9 @@ function CinematicCam:CreateSettingsMenu()
                 elseif value == "default" then
                     self.savedVars.interaction.ui.hidePanelsESO = false
                     CinematicCam:ShowDialoguePanels()
+                    -- For default preset, only enable visual chunking if explicitly set
+                    -- But always allow timing processing for "Hide Choices Until Last Line"
                 end
-
                 -- Apply immediately if in dialogue
                 local interactionType = GetInteractionType()
                 if interactionType ~= INTERACTION_NONE then
@@ -160,7 +164,6 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-
         {
             type = "dropdown",
             name = "Default Layout Backgrounds",
@@ -269,6 +272,34 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
+            type = "divider"
+        },
+        {
+            type = "dropdown",
+            name = "Font",
+            choices = choices,
+            choicesValues = choicesValues,
+            getFunc = function() return self.savedVars.interface.selectedFont end,
+            setFunc = function(value)
+                self.savedVars.interface.selectedFont = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Font Size",
+            min = 10,
+            max = 64,
+            step = 1,
+            getFunc = function() return self.savedVars.interface.customFontSize end,
+            setFunc = function(value)
+                self.savedVars.interface.customFontSize = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
             type = "header",
             name = "Position Settings",
         },
@@ -311,9 +342,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
-            type = "divider"
-        },
+
         --[[ {
             type = "slider",
             name = "Player Choices X Position",
@@ -444,37 +473,9 @@ function CinematicCam:CreateSettingsMenu()
         },
 
         ]]
-        {
-            type = "header",
-            name = "Font Settings",
-        },
 
         --- FONT SETTINGS
-        {
-            type = "dropdown",
-            name = "Font",
-            choices = choices,
-            choicesValues = choicesValues,
-            getFunc = function() return self.savedVars.interface.selectedFont end,
-            setFunc = function(value)
-                self.savedVars.interface.selectedFont = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Font Size",
-            min = 10,
-            max = 64,
-            step = 1,
-            getFunc = function() return self.savedVars.interface.customFontSize end,
-            setFunc = function(value)
-                self.savedVars.interface.customFontSize = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
+
         {
             type = "header",
             name = "Cinematic Settings",
@@ -560,13 +561,24 @@ function CinematicCam:CreateSettingsMenu()
 /ccbars - Black Bars]],
             width = "full"
         },
-        {
-            type = "divider",
-            width = "full"
-        },
+
         {
             type = "header",
             name = "Support"
+        },
+        {
+            {
+                type = "button",
+                name = "Changelog",
+                tooltip = [[Version 3.14
+• Added option to show player options when NPC is finished speaking. Shows immediately for vendors, bankers, writs]],
+                func = function() end,
+                width = "full"
+            },
+        },
+        {
+            type = "divider",
+            width = "full"
         },
         {
             type = "description",
@@ -592,7 +604,6 @@ function CinematicCam:CreateSettingsMenu()
             func = function() RequestOpenUnsafeURL("https://Ko-fi.com/yfnatey") end,
             width = "half"
         },
-
     }
 
     LAM:RegisterAddonPanel(panelName, panelData)
