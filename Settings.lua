@@ -27,7 +27,9 @@ function CinematicCam:CreateSettingsMenu()
             type = "description",
             text = "Update Notes",
             tooltip =
-            "• Added Feature to hide player options until the character is finished speaking\n• This excludes bankers, merchants, writ boards, or other non-story interactions",
+            [[3.19 Fix text flashing when advancing through dialogue
+3.18 Added Feature to hide player options until the character is finished speaking
+• This excludes bankers, merchants, writ boards, or other non-story interactions]],
             width = "full",
         },
         {
@@ -122,11 +124,10 @@ function CinematicCam:CreateSettingsMenu()
             type = "checkbox",
             name = "Hide Choices until Dialogue finishes",
             tooltip =
-            "Hide player response options until the character finishes speaking.",
+            "Cinematic layout only: Hide player response options until the character finishes speaking. ",
             getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
             setFunc = function(value)
                 self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
-                self:OnPlayerOptionsSettingChanged(value)
             end,
             width = "full",
         },
@@ -134,7 +135,7 @@ function CinematicCam:CreateSettingsMenu()
             type = "dropdown",
             name = "Style",
             tooltip =
-            "Choose how dialogue elements are positioned:\n• Default: Original ESO positioning\n• Cinematic: Bottom centered with visual chunking\n",
+            "Choose how dialogue elements are positioned:\n• Default: Original ESO positioning\n• Cinematic: Bottom centered with visual chunking\n*Reloadui if default subtitles are not showing",
             choices = { "Default", "Cinematic" },
             choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,

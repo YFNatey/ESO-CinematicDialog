@@ -117,10 +117,11 @@ end
 --=============================================================================
 
 function CinematicCam:InterceptDialogueForChunking()
+    --d("intercepting dialogue")
     local originalText, sourceElement = self:GetDialogueText()
 
     -- if the word "Store", show player options
-    if self:CheckPlayerOptionsForVendorText() then
+    if self:CheckPlayerOptionsForVendorText() or self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
         CinematicCam.PlayerOptionsAlways = true
         CinematicCam:OnPlayerOptionsSettingChanged(false, true)
     else
@@ -695,25 +696,21 @@ function CinematicCam:StartDialogueChangeMonitoring()
 
         local currentRawText, _ = self:GetDialogueText()
 
-
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
-                -- Hide player options before any processing
-                if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
-                    self:HidePlayerOptionsUntilLastChunk()
-                end
+                -- Remove this problematic line:
+                -- if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
+                --     self:HidePlayerOptionsUntilLastChunk()
+                -- end
 
-                if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    -- Small delay to ensure ESO's UI has updated
-                    zo_callLater(function()
-                        self:InterceptDialogueForChunking()
-                    end)
-                end
+
+                self:InterceptDialogueForChunking()     -- Let this handle visibility decisions
+
                 return
             end
         end
 
-        -- Check for interaction end conditions
+        -- AGGRESSIVE: Check for interaction end conditions
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_ANTIQUITY_DIG_SPOT or interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
@@ -748,9 +745,6 @@ function CinematicCam:CleanupChunkedDialogue()
 
     -- Hide all controls
     self:HideAllChunkedControls()
-
-    -- Restore original elements
-    self:RestoreOriginalElements()
 
     -- Reset state
     self:ResetChunkedDialogueState()
@@ -790,11 +784,33 @@ function CinematicCam:RestoreOriginalElements()
 end
 
 function CinematicCam:ResetChunkedDialogueState()
+    -- CRITICAL: Restore player options BEFORE resetting state
+    if CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        self:ShowPlayerOptionsOnLastChunk()
+    end
+
+    -- Cancel any active timers
+    if CinematicCam.chunkedDialogueData.displayTimer then
+        zo_removeCallLater(CinematicCam.chunkedDialogueData.displayTimer)
+    end
+
+    if dialogueChangeCheckTimer then
+        zo_removeCallLater(dialogueChangeCheckTimer)
+        dialogueChangeCheckTimer = nil
+    end
+
+    -- Hide all controls
+    self:HideAllChunkedControls()
+
+    -- Restore original elements
+    --self:RestoreOriginalElements()
+
     -- Preserve control references
     local backgroundControl = CinematicCam.chunkedDialogueData.backgroundControl
     local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
     local customControl = CinematicCam.chunkedDialogueData.customControl
 
+    -- COMPLETE reset of ALL state variables
     CinematicCam.chunkedDialogueData = {
         originalText = "",
         chunks = {},
@@ -807,12 +823,18 @@ function CinematicCam:ResetChunkedDialogueState()
         displayTimer = nil,
         sourceElement = nil,
         rawDialogueText = "",
-        playerOptionsHidden = false,
-        originalPlayerOptionsVisibility = {}
+        playerOptionsHidden = false,         -- This was missing in reset!
+        originalPlayerOptionsVisibility = {} -- This was missing in reset!
     }
 
-    CinematicCam.npcNameData.originalName = ""
-    CinematicCam.npcNameData.currentPreset = "default"
+    -- Reset additional related state
+    if CinematicCam.npcNameData then
+        CinematicCam.npcNameData.originalName = ""
+        CinematicCam.npcNameData.currentPreset = "default"
+    end
+
+    -- Reset any vendor-related flags
+    CinematicCam.PlayerOptionsAlways = false
 end
 
 ---=============================================================================
