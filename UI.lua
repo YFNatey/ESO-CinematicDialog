@@ -1,6 +1,6 @@
-local uiElementsMap = {} -- table for hiding ui elements, used in HideUI()
+CinematicCam.uiElementsMap = {} -- table for hiding ui elements, used in HideUI()
 -- UI elements to hide
-local uiElements = {
+CinematicCam.uiElements = {
     -- Compass
     "ZO_CompassFrame",
     "ZO_CompassFrameCenter",
@@ -25,9 +25,9 @@ local uiElements = {
 
     -- Reticle
     "ZO_ReticleContainerReticle",
-    "ZO_ReticleContainer",
+    --"ZO_ReticleContainer",
     "ZO_ReticleContainerStealthIcon",
-    "ZO_ReticleContainerNoneInteract",
+    --"ZO_ReticleContainerNoneInteract",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -83,10 +83,10 @@ function CinematicCam:HideUI()
     if not self.savedVars.interface.UiElementsVisible then
         return
     end
-    for _, elementName in ipairs(uiElements) do
+    for _, elementName in ipairs(CinematicCam.uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
-            uiElementsMap[elementName] = true
+            CinematicCam.uiElementsMap[elementName] = true
             element:SetHidden(true)
         end
     end
@@ -95,7 +95,7 @@ function CinematicCam:HideUI()
         if shouldHide then
             local element = _G[elementName]
             if element and not element:IsHidden() then
-                uiElementsMap[elementName] = true
+                CinematicCam.uiElementsMap[elementName] = true
                 element:SetHidden(true)
             end
         end
@@ -110,13 +110,13 @@ function CinematicCam:ShowUI()
         return
     end
     self:StopUIMonitoring()
-    for elementName, _ in pairs(uiElementsMap) do
+    for elementName, _ in pairs(CinematicCam.uiElementsMap) do
         local element = _G[elementName]
         if element then
             element:SetHidden(false)
         end
     end
-    uiElementsMap = {}
+    CinematicCam.uiElementsMap = {}
     self.savedVars.interface.UiElementsVisible = true
 end
 
@@ -146,7 +146,7 @@ function CinematicCam:StartUIMonitoring()
         end
 
         -- Hide elements from the predefined list if they've become visible
-        for _, elementName in ipairs(uiElements) do
+        for _, elementName in ipairs(CinematicCam.uiElements) do
             local element = _G[elementName]
             if element and not element:IsHidden() then
                 element:SetHidden(true)
@@ -176,6 +176,60 @@ function CinematicCam:StopUIMonitoring()
     if uiMonitoringTimer then
         zo_removeCallLater(uiMonitoringTimer)
         uiMonitoringTimer = nil
+    end
+end
+
+CinematicCam.compassElements = {
+    "ZO_CompassFrame",
+    "ZO_CompassFrameCenter",
+    "ZO_CompassFrameLeft",
+    "ZO_CompassFrameRight",
+    "ZO_CompassContainer",
+}
+CinematicCam.actionbar = {
+    -- Action  Bar
+    "ZO_PlayerAttributeHealth",
+    "ZO_PlayerAttributeMagicka",
+    "ZO_PlayerAttributeStamina",
+    "ZO_ActionBar1",
+    "ZO_ActionBar2",
+    "ZO_TargetUnitFrame",
+    "ZO_UnitFrames",
+    "ZO_MinimapContainer",
+    -- Buff bar
+    "ZO_PowerBlock",
+    "ZO_BuffTracker",
+}
+CinematicCam.reticle = {
+    -- Reticle
+    "ZO_ReticleContainerReticle",
+    "ZO_ReticleContainerStealthIcon",
+}
+-- Function to toggle compass visibility
+function CinematicCam:ToggleCompass(hide)
+    for _, elementName in ipairs(CinematicCam.compassElements) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(hide)
+        end
+    end
+end
+
+function CinematicCam:ToggleActionBar(hide)
+    for _, elementName in ipairs(CinematicCam.actionbar) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(hide)
+        end
+    end
+end
+
+function CinematicCam:ToggleReticle(hide)
+    for _, elementName in ipairs(CinematicCam.reticle) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(hide)
+        end
     end
 end
 

@@ -163,6 +163,7 @@ function CinematicCam:ProcessAndDisplayChunkedDialogue(textForTiming, processedT
 
     if #CinematicCam.chunkedDialogueData.chunks >= 1 then
         self:StartDialogueChangeMonitoring()
+        self:StartDialogueEndMonitoring()
         if self.savedVars.interaction.layoutPreset == "default" then
             return self:InitializeHiddenChunkedDisplay()
         else
@@ -698,19 +699,12 @@ function CinematicCam:StartDialogueChangeMonitoring()
 
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
-                -- Remove this problematic line:
-                -- if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk then
-                --     self:HidePlayerOptionsUntilLastChunk()
-                -- end
-
-
-                self:InterceptDialogueForChunking()     -- Let this handle visibility decisions
+                self:InterceptDialogueForChunking()
 
                 return
             end
         end
 
-        -- AGGRESSIVE: Check for interaction end conditions
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_ANTIQUITY_DIG_SPOT or interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
@@ -823,8 +817,8 @@ function CinematicCam:ResetChunkedDialogueState()
         displayTimer = nil,
         sourceElement = nil,
         rawDialogueText = "",
-        playerOptionsHidden = false,         -- This was missing in reset!
-        originalPlayerOptionsVisibility = {} -- This was missing in reset!
+        playerOptionsHidden = false,
+        originalPlayerOptionsVisibility = {}
     }
 
     -- Reset additional related state

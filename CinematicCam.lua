@@ -269,7 +269,7 @@ function CinematicCam:OnInteractionEnd()
         self:HidePlayerOptionsBackground()
 
         -- Hide letterbox if was visible
-        if dialogLetterbox and self.savedVars.letterbox.letterboxVisible then
+        if self.savedVars.interaction.auto.autoLetterboxDialogue and self.savedVars.letterbox.letterboxVisible then
             self:HideLetterbox()
         end
 
@@ -328,6 +328,10 @@ local function Initialize()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterSceneCallbacks()
     end, 100)
+    zo_callLater(function()
+        CinematicCam:RegisterUIRefreshEvent()
+    end, 1000)
+
     -- Initialize update system
     CinematicCam:InitializeUpdateSystem()
 
@@ -451,10 +455,10 @@ end
 function CinematicCam:InitializeUI()
     if not CinematicCam.savedVars.interface.UiElementsVisible then
         zo_callLater(function()
-            for _, elementName in ipairs(uiElements) do
+            for _, elementName in ipairs(CinematicCam.uiElements) do
                 local element = _G[elementName]
                 if element and not element:IsHidden() then
-                    uiElementsMap[elementName] = true
+                    CinematicCam.uiElementsMap[elementName] = true
                     element:SetHidden(true)
                 end
             end
@@ -462,7 +466,7 @@ function CinematicCam:InitializeUI()
                 if shouldHide then
                     local element = _G[elementName]
                     if element and not element:IsHidden() then
-                        uiElementsMap[elementName] = true
+                        CinematicCam.uiElementsMap[elementName] = true
                         element:SetHidden(true)
                     end
                 end
@@ -502,7 +506,7 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CHATTER_END, function()
 end)
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_QUEST_COMPLETE_DIALOG, function()
-    CinematicCam:OnInteractionEnd()
+    CinematicCam:ShowPlayerOptionsOnLastChunk()
 end)
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_QUEST_COMPLETE, function()
     CinematicCam:OnInteractionEnd()
@@ -522,6 +526,28 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function
         CinematicCam:OnMountDown()
     end
 end)
+
+function CinematicCam:RegisterUIRefreshEvent()
+    EVENT_MANAGER:RegisterForEvent("CinematicCam", EVENT_RETICLE_HIDDEN_UPDATE, function(eventCode, hidden)
+        if not hidden then
+            -- Reticle is now visible - player has exited menus/settings
+            zo_callLater(function()
+                -- Check each setting independently
+                if self.savedVars.interface.hideCompass then
+                    CinematicCam:ToggleCompass(true)
+                end
+
+                if self.savedVars.interface.hideActionBar then
+                    CinematicCam:ToggleActionBar(true)
+                end
+
+                if self.savedVars.interface.hideReticle then
+                    CinematicCam:ToggleReticle(true)
+                end
+            end, 200)
+        end
+    end)
+end
 
 -- Font events
 function CinematicCam:RegisterFontEvents()

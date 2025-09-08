@@ -54,6 +54,10 @@ CinematicCam.defaults = {
     interface = {
         UiElementsVisible = true,
         hideDialoguePanels = false,
+        hideCompass = false,
+        hideReticle = "never",
+        hideActionBar = false,
+
         selectedFont = "ESO_Standard",
         customFontSize = 42,
         fontScale = 1.0,

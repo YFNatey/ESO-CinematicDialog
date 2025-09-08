@@ -27,7 +27,11 @@ function CinematicCam:CreateSettingsMenu()
             type = "description",
             text = "Update Notes",
             tooltip =
-            [[3.19 Fix text flashing when advancing through dialogue
+            [[3.23 The compass, reticle, and action bar can now be individually hidden in settings
+• Fix auto black bars not disabling when exiting dialogue
+--
+3.19 Fix text flashing when advancing through dialogue
+--
 3.18 Added Feature to hide player options until the character is finished speaking
 • This excludes bankers, merchants, writ boards, or other non-story interactions]],
             width = "full",
@@ -481,7 +485,42 @@ function CinematicCam:CreateSettingsMenu()
             type = "header",
             name = "Cinematic Settings",
         },
+        {
+            type = "checkbox",
+            name = "Hide Compass",
+            tooltip = "Hide compass bar at the top of the screen",
+            getFunc = function() return self.savedVars.interface.hideCompass end,
+            setFunc = function(value)
+                self.savedVars.interface.hideCompass = value
+                CinematicCam:ToggleCompass(value)
+                self.pendingUIRefresh = true
+            end,
 
+        },
+        {
+            type = "checkbox",
+            name = "Hide Action Bar",
+            tooltip = "Quickly hide skills and buffs",
+            getFunc = function() return self.savedVars.interface.hideActionBar end,
+            setFunc = function(value)
+                self.savedVars.interface.hideActionBar = value
+                CinematicCam:ToggleActionBar(value)
+                self.pendingUIRefresh = true
+            end,
+
+        },
+        {
+            type = "checkbox",
+            name = "Hide Reticle",
+            tooltip = "Hide center reticle",
+            getFunc = function() return self.savedVars.interface.hideReticle end,
+            setFunc = function(value)
+                self.savedVars.interface.hideReticle = value
+                CinematicCam:ToggleReticle(value)
+                self.pendingUIRefresh = true
+            end,
+
+        },
         {
             type = "checkbox",
             name = "Auto Black Bars During Dialog",
@@ -566,16 +605,6 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "header",
             name = "Support"
-        },
-        {
-            {
-                type = "button",
-                name = "Changelog",
-                tooltip = [[Version 3.14
-• Added option to show player options when NPC is finished speaking. Shows immediately for vendors, bankers, writs]],
-                func = function() end,
-                width = "full"
-            },
         },
         {
             type = "divider",
