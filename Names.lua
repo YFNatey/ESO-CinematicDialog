@@ -125,9 +125,7 @@ function CinematicCam:HandleNPCName(dialogueText, npcName, preset)
     if not npcName or npcName == "" then
         return dialogueText
     end
-
     preset = preset or self.savedVars.npcNamePreset or "default"
-
     if preset == "prepended" then
         local color = self.savedVars.npcNameColor
         local hexColor = self:RGBToHexString(color.r, color.g, color.b)

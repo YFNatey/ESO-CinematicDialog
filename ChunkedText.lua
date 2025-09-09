@@ -137,11 +137,7 @@ function CinematicCam:InterceptDialogueForChunking()
 
     -- Prepare text versions
     local textForTiming = originalText
-    local processedTextForDisplay = self:HandleNPCName(
-        originalText,
-        CinematicCam.npcNameData.originalName,
-        self.savedVars.npcNamePreset
-    )
+    local processedTextForDisplay = originalText
 
     -- Store dialogue data
     CinematicCam.chunkedDialogueData.originalText = processedTextForDisplay
@@ -350,6 +346,10 @@ function CinematicCam:DisplayCurrentChunk()
 
     -- Process text and apply formatting
     chunkText = string.gsub(chunkText, "§ABBREV§", ".")
+
+    -- Add NPC name to each chunk if using prepended preset
+    chunkText = self:HandleNPCName(chunkText, CinematicCam.npcNameData.originalName, self.savedVars.npcNamePreset)
+
     local fontString = self:BuildUserFontString()
     control:SetFont(fontString)
     control:SetText(chunkText)
