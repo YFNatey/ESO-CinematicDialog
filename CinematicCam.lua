@@ -1,9 +1,3 @@
---TODO make a function to parse the npc dialogue AND the player options interation before processing to modify the should show 3rd perosn and if you want to hide the playher options
--- Example NPC dialogue starting with "<" forceThirdPersonDialogue = False
--- Example Player option starting with "Store" playeroptions hidden = false
--- Issues Multiple data structures for hiding and tracking player options state
--- Likely race conditions when determining whether to hide player options
-
 --[[
 ===============================================================================
 Cinematic Dialog - Elder Scrolls Online Addon
@@ -56,7 +50,7 @@ CinematicCam.debugEventLog = {}
 CinematicCam.debugSessionId = 0
 
 function CinematicCam:LogDebugEvent(eventName, details)
-    --[[local timestamp = GetTimeStamp()
+    local timestamp = GetTimeStamp()
     local logEntry = {
         session = self.debugSessionId,
         time = timestamp,
@@ -83,7 +77,6 @@ function CinematicCam:LogDebugEvent(eventName, details)
         logEntry.chunkData.currentChunk,
         logEntry.chunkData.totalChunks
     ))
-    --]]
 end
 
 function CinematicCam:GetCurrentPlayerOptionsState()
@@ -122,7 +115,7 @@ function CinematicCam:OnGameCameraDeactivated()
     self.debugSessionId = self.debugSessionId + 1
     self:LogDebugEvent("CAMERA_DEACTIVATED_START")
 
-    -- COMPLETE state reset at the beginning - this is crucial
+    -- COMPLETE state reset at the beginning
     if not CinematicCam.isInteractionModified then
         self:ResetChunkedDialogueState()
     end
@@ -211,8 +204,41 @@ function CinematicCam:OnGameCameraDeactivated()
                 end
             end
         )
+        EVENT_MANAGER:RegisterForEvent(
+            ADDON_NAME .. "_QuestOffered",
+            EVENT_QUEST_OFFERED,
+            function(eventCode, conversationBodyText, conversationOptionCount)
+                self:LogDebugEvent("CONVERSATION_UPDATED_FIRED", {
+                    textLength = string.len(conversationBodyText or ""),
+                    optionCount = conversationOptionCount
+                })
 
-        -- Move NPC dialogue text off-screen for cinematic mode (instead of hiding)
+                if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
+                    self:LogDebugEvent("CONVERSATION_UPDATE_FORCE_SHOW")
+                    CinematicCam:ForceShowAllPlayerOptions()
+                else
+                    self:LogDebugEvent("CONVERSATION_UPDATE_NO_ACTION")
+                end
+
+                if self.savedVars.interaction.layoutPreset == "cinematic" then
+                    self:LogDebugEvent("CONVERSATION_UPDATE_CINEMATIC")
+                    if ZO_InteractWindowTargetAreaBodyText then
+                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+                    end
+                    if ZO_InteractWindow_GamepadContainerText then
+                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
+                    end
+                    self:LogDebugEvent("BEFORE_INTERCEPT", {
+                        isActive = CinematicCam.chunkedDialogueData.isActive,
+                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
+                    })
+                    self:InterceptDialogueForChunking()
+                    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
+                    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
+                end
+            end
+        )
+        -- Move NPC dialogue text off-screen for cinematic mode (instead of hiding) to prevent flashing
         if self.savedVars.interaction.layoutPreset == "cinematic" then
             if ZO_InteractWindowTargetAreaBodyText then
                 ZO_InteractWindowTargetAreaBodyText:ClearAnchors()
@@ -258,6 +284,7 @@ end
 function CinematicCam:OnInteractionEnd()
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
+    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestOffered", EVENT_QUEST_OFFERED)
 
     if CinematicCam.isInteractionModified then
         CinematicCam.isInteractionModified = false

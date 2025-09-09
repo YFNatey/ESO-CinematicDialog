@@ -68,7 +68,7 @@ end
 function CinematicCam:CheckPlayerOptionsForVendorText()
     local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
         "Morphs:", "Skill Lines" }
-    -- Check individual option elements (matching KhajiitVoice pattern exactly)
+    -- Check individual option elements
     for i = 1, 10 do
         local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
         local option = _G[longOptionName]
@@ -163,7 +163,7 @@ function CinematicCam:ProcessAndDisplayChunkedDialogue(textForTiming, processedT
 
     if #CinematicCam.chunkedDialogueData.chunks >= 1 then
         self:StartDialogueChangeMonitoring()
-        self:StartDialogueEndMonitoring()
+
         if self.savedVars.interaction.layoutPreset == "default" then
             return self:InitializeHiddenChunkedDisplay()
         else
