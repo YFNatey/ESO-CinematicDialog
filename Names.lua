@@ -69,7 +69,7 @@ function CinematicCam:ApplyNPCNamePreset(preset)
 end
 
 ---=============================================================================
--- YUTILITY FUNCTIONS
+-- UTILITY FUNCTIONS
 --=============================================================================
 function CinematicCam:GetNPCName()
     local sources = {

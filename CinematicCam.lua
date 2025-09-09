@@ -50,7 +50,7 @@ CinematicCam.debugEventLog = {}
 CinematicCam.debugSessionId = 0
 
 function CinematicCam:LogDebugEvent(eventName, details)
-    local timestamp = GetTimeStamp()
+    --[[ local timestamp = GetTimeStamp()
     local logEntry = {
         session = self.debugSessionId,
         time = timestamp,
@@ -76,7 +76,7 @@ function CinematicCam:LogDebugEvent(eventName, details)
         logEntry.playerOptionsState,
         logEntry.chunkData.currentChunk,
         logEntry.chunkData.totalChunks
-    ))
+   -- ))]]
 end
 
 function CinematicCam:GetCurrentPlayerOptionsState()

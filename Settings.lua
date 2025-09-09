@@ -27,18 +27,18 @@ function CinematicCam:CreateSettingsMenu()
             type = "description",
             text = "Update Notes",
             tooltip =
-            [[3.23 The compass, reticle, and action bar can now be individually hidden in settings
-• Fix auto black bars not disabling when exiting dialogue
---
-3.19 Fix text flashing when advancing through dialogue
---
-3.18 Added Feature to hide player options until the character is finished speaking
-• This excludes bankers, merchants, writ boards, or other non-story interactions]],
+            [[3.24 Bug Fixes:
+• Fixed showing player responses too late
+• NPC names now display correctly in conversations
+• Mount stamina bar now hides with the action bar
+---
+3.23 The compass, reticle, and action bar can now be individually hidden in settings
+• Fix auto black bars not disabling when exiting dialogue]],
             width = "full",
         },
         {
             type = "header",
-            name = "3rd Person Dialog Toggles",
+            name = "Apply to",
         },
 
         {
@@ -156,8 +156,6 @@ function CinematicCam:CreateSettingsMenu()
                 elseif value == "default" then
                     self.savedVars.interaction.ui.hidePanelsESO = false
                     CinematicCam:ShowDialoguePanels()
-                    -- For default preset, only enable visual chunking if explicitly set
-                    -- But always allow timing processing for "Hide Choices Until Last Line"
                 end
                 -- Apply immediately if in dialogue
                 local interactionType = GetInteractionType()
@@ -255,7 +253,7 @@ function CinematicCam:CreateSettingsMenu()
             name = "Default NPC Name Color",
             tooltip = "Color for NPC names when using 'Attached' location",
             getFunc = function()
-                local color = self.savedVars.npcNameColor or namePresetDefaults.npcNameColor
+                local color = self.savedVars.npcNameColor
                 return color.r, color.g, color.b, color.a
             end,
             setFunc = function(r, g, b, a)
@@ -500,7 +498,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "checkbox",
             name = "Hide Action Bar",
-            tooltip = "Quickly hide skills and buffs",
+            tooltip = "Quickly hide skills and attribute bars",
             getFunc = function() return self.savedVars.interface.hideActionBar end,
             setFunc = function(value)
                 self.savedVars.interface.hideActionBar = value
@@ -523,7 +521,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto Black Bars During Dialog",
+            name = "Auto Black Bars During Dialogue",
             tooltip = "Automatically show black bars during dialogue interactions (conversations and quests)",
             getFunc = function() return self.savedVars.interaction.auto.autoLetterboxDialogue end,
             setFunc = function(value)

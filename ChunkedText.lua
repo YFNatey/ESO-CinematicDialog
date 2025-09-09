@@ -36,10 +36,6 @@ function CinematicCam:GetDialogueText()
     return nil, nil
 end
 
---TODO, make a function that returns true if the word store is found in the player options
---Iterate all player options,
--- Only check forstr word
-
 function CinematicCam:FindPlayerOptionTextElement(option)
     -- Try direct properties first
     if option.text and option.text.GetText then
@@ -117,11 +113,16 @@ end
 --=============================================================================
 
 function CinematicCam:InterceptDialogueForChunking()
-    --d("intercepting dialogue")
     local originalText, sourceElement = self:GetDialogueText()
 
-    -- if the word "Store", show player options
-    if self:CheckPlayerOptionsForVendorText() or self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
+    -- Check voice over status
+    local voStatus = self:CheckVoiceOverStatus()
+
+    -- Show player options immediately if VO can be replayed
+    if voStatus.shouldShowOptionsImmediately or
+
+        self:CheckPlayerOptionsForVendorText() or
+        self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
         CinematicCam.PlayerOptionsAlways = true
         CinematicCam:OnPlayerOptionsSettingChanged(false, true)
     else
@@ -183,24 +184,16 @@ function CinematicCam:InitializeHiddenChunkedDisplay()
         return false
     end
 
-    -- DON'T hide source element for default preset
-    -- Keep original dialogue visible
 
-    -- Hide player options ONLY for dialogue interactions and if we have multiple chunks
     if self:ShouldHidePlayerOptionsForInteraction() and #CinematicCam.chunkedDialogueData.chunks > 1 and CinematicCam.PlayerOptionsAlways == false then
         self:HidePlayerOptionsUntilLastChunk()
     end
-
-    -- Don't create or show custom control for default preset
-    -- Just setup timing logic
     CinematicCam.chunkedDialogueData.currentChunkIndex = 1
     CinematicCam.chunkedDialogueData.isActive = true
 
-    -- Schedule next chunk if multiple chunks exist (for timing only)
     if #CinematicCam.chunkedDialogueData.chunks > 1 then
         self:ScheduleNextChunk()
     else
-        -- For single chunk, immediately show player options if they were hidden
         if CinematicCam.chunkedDialogueData.playerOptionsHidden then
             self:ShowPlayerOptionsOnLastChunk()
         end
@@ -209,12 +202,7 @@ function CinematicCam:InitializeHiddenChunkedDisplay()
     return true
 end
 
--- New function for hidden complete text display (default preset, single chunk)
 function CinematicCam:InitializeHiddenCompleteTextDisplay()
-    -- DON'T hide source element for default preset
-    -- Keep original dialogue visible
-
-    -- For single chunk, immediately show player options if they were hidden
     if CinematicCam.chunkedDialogueData.playerOptionsHidden then
         self:ShowPlayerOptionsOnLastChunk()
     end
@@ -377,7 +365,6 @@ function CinematicCam:ShouldHidePlayerOptionsForInteraction()
 
     local interactionType = GetInteractionType()
 
-    -- Only hide for dialogue/conversation interactions, NEVER for merchants/banks/etc
     return interactionType == INTERACTION_CONVERSATION or interactionType == INTERACTION_QUEST
 end
 
@@ -451,8 +438,6 @@ function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
     end
     if CinematicCam.chunkedDialogueData.isActive then
         if newValue then
-            -- Setting was turned ON - hide player options if we have multiple chunks
-            -- and we're not on the last chunk
             local currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex
             local totalChunks = #CinematicCam.chunkedDialogueData.chunks
 
@@ -470,7 +455,7 @@ end
 
 function CinematicCam:HidePlayerOptionsUntilLastChunk()
     if CinematicCam.chunkedDialogueData.playerOptionsHidden then
-        return -- Already hidden
+        return
     end
 
     local playerOptionElements = {
@@ -598,7 +583,7 @@ function CinematicCam:CalculateChunkDisplayTime(chunkText)
     local timingText = timingChunks[chunkIndex]
 
     if not timingText or timingText == "" then
-        return self.savedVars.chunkedDialog.baseDisplayTime or 1.0
+        return self.savedVars.chunkedDialog.baseDisplayTime
     end
 
     local cleanText = self:CleanTextForTiming(timingText)
@@ -675,7 +660,6 @@ function CinematicCam:PreviewChunkTiming(chunks)
         local chunkTime = self:CalculateChunkDisplayTime(chunk)
         totalTime = totalTime + chunkTime
     end
-    -- Could add debug output here if needed
 end
 
 ---=============================================================================
@@ -695,16 +679,23 @@ function CinematicCam:StartDialogueChangeMonitoring()
             return
         end
 
-        local currentRawText, _ = self:GetDialogueText()
+        -- Check VO status and show options if VO finished
+        local voStatus = self:CheckVoiceOverStatus()
 
+
+
+        if voStatus.canReplay and not voStatus.isPlaying and CinematicCam.chunkedDialogueData.playerOptionsHidden then
+            self:ShowPlayerOptionsOnLastChunk()
+        end
+
+        local currentRawText, _ = self:GetDialogueText()
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
                 self:InterceptDialogueForChunking()
-
-                return
             end
         end
 
+        -- Check for interaction end
         local interactionType = GetInteractionType()
         if interactionType == INTERACTION_ANTIQUITY_DIG_SPOT or interactionType == INTERACTION_NONE then
             self:CleanupChunkedDialogue()
@@ -712,11 +703,12 @@ function CinematicCam:StartDialogueChangeMonitoring()
         end
 
 
+
+        -- Always schedule next check to maintain polling
         dialogueChangeCheckTimer = zo_callLater(function()
             checkForDialogueChange()
-        end, 1)
+        end, 2000)
     end
-
     checkForDialogueChange()
 end
 
@@ -742,6 +734,25 @@ function CinematicCam:CleanupChunkedDialogue()
 
     -- Reset state
     self:ResetChunkedDialogueState()
+end
+
+--[[ESO Update 47 introduced new API functions for tracking voice over completion
+and replaying dialogue. The previous timing system could sometimes cause player response options to
+appear long after the NPC finished speaking.
+
+This implementation hooks into the new voice completion tracking to ensure
+player responses display at the latest when the voice over
+ends or slightly early if the internal timing system triggers first.]]
+function CinematicCam:CheckVoiceOverStatus()
+    local canReplay = CanReplayLastInteractVO()
+    local isPlaying = IsInteractVOPlaying()
+
+
+    return {
+        canReplay = canReplay,
+        isPlaying = isPlaying,
+        shouldShowOptionsImmediately = canReplay and not isPlaying
+    }
 end
 
 function CinematicCam:HideAllChunkedControls()
@@ -778,7 +789,7 @@ function CinematicCam:RestoreOriginalElements()
 end
 
 function CinematicCam:ResetChunkedDialogueState()
-    -- CRITICAL: Restore player options BEFORE resetting state
+    -- Restore player options
     if CinematicCam.chunkedDialogueData.playerOptionsHidden then
         self:ShowPlayerOptionsOnLastChunk()
     end

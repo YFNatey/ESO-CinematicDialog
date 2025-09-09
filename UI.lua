@@ -191,6 +191,7 @@ CinematicCam.actionbar = {
     "ZO_PlayerAttributeHealth",
     "ZO_PlayerAttributeMagicka",
     "ZO_PlayerAttributeStamina",
+    "ZO_PlayerAttributeMountStamina",
     "ZO_ActionBar1",
     "ZO_ActionBar2",
     "ZO_TargetUnitFrame",
