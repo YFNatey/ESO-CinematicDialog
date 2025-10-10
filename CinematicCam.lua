@@ -645,6 +645,16 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVAT
     zo_callLater(function()
         local zoneId = GetZoneId(GetCurrentMapZoneIndex())
         CinematicCam:CheckAndApplyHomePreset(zoneId)
+
+
+        if IsUnitInDungeon("player") then
+            d("In dungeon - applying preset 3")
+            CinematicCam:LoadFromPresetSlot(3)
+        elseif not IsUnitInDungeon("player") and not CinematicCam.savedVars.isHome then
+            -- Not in home or dungeon - apply preset 2 (overland)
+            d("In overland - applying preset 2")
+            CinematicCam:LoadFromPresetSlot(2)
+        end
     end, 1000)
 end)
 ---=============================================================================

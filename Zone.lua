@@ -1,7 +1,7 @@
 ---=============================================================================
 -- Home Auto-Preset System
 ---=============================================================================
-
+CinematicCam.isHome = false
 -- List of all trackable home IDs
 CinematicCam.homeIds = {
     -- Inn Rooms
@@ -105,9 +105,11 @@ function CinematicCam:BuildHomeIdsLookup()
 end
 
 function CinematicCam:CheckAndApplyHomePreset()
+    CinematicCam.savedVars.isHome = false
     local currentHouseId = GetCurrentZoneHouseId()
     -- Check if we're in a trackable home
     if currentHouseId and self.homeIdsLookup[currentHouseId] then
+        CinematicCam.savedVars.isHome = true
         -- Check if this home has an assigned preset
         self:LoadFromPresetSlot(1)
         d("Cinematic Dialog: Applied Home preset.")

@@ -449,6 +449,6 @@ function CinematicCam:GetSlotDisplayName(slotNumber)
     end
 
     local hasData = slot.settings ~= nil
-    local statusIcon = hasData and "✓ " or "○ "
-    return statusIcon .. (slot.name or ("Custom " .. slotNumber))
+
+    return slot.name
 end

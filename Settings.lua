@@ -27,7 +27,13 @@ function CinematicCam:CreateSettingsMenu()
             type = "description",
             text = "Update Notes",
             tooltip =
-            [[3.26
+            [[
+3.27
+• Custom presets now auto-load in appropriate zones
+• Added custom companion name coloring
+• Cleaned up settings menu
+---
+3.26
 • Added customizable presets]],
             width = "full",
         },
@@ -36,6 +42,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "dropdown",
             name = "Custom Presets",
+            tooltip = "These presets automatically load based on your current",
             choices = {
                 self:GetSlotDisplayName(1),
                 self:GetSlotDisplayName(2),
@@ -70,7 +77,13 @@ function CinematicCam:CreateSettingsMenu()
        -- },]]
         {
             type = "button",
-            name = "Save to Current Preset",
+            name = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotName = self:GetSlotDisplayName(slot)
+
+
+                return "[Save to " .. slotName .. "]"
+            end,
             tooltip = "Save all settings to the current preset",
             func = function()
                 local slot = self.selectedPresetSlot or 1
@@ -303,7 +316,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Companion Colors",
+            name = "Name Colors",
             width = "full",
         },
 
@@ -382,7 +395,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "colorpicker",
-            name = "NPC Name Color",
+            name = "NPC Color",
             tooltip = "Default color for NPC names (companions use their custom colors if set)",
             getFunc = function()
                 local color = self.savedVars.npcNameColor
@@ -406,7 +419,9 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-            type = "divider"
+            type = "header",
+            name = "Fonts",
+            width = "full",
         },
         {
             type = "dropdown",

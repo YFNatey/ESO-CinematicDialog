@@ -7,7 +7,7 @@ CinematicCam.defaults = {
     playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
     dialogueElementsHidden = false,
     homePresets = {},
-
+    isHome = false,
     lastSeenUpdateVersion = "0.0.0",
     hasSeenWelcomeMessage = false,
     selectedCompanion = "ember",
