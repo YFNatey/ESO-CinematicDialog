@@ -349,9 +349,7 @@ function CinematicCam:ForceHideAllPlayerOptions()
 end
 
 function CinematicCam:UpdateHorizontal()
-    d("horizontal is good!")
     if self.savedVars.interaction.subtitles.posX ~= 0.5 then
-        d("horizontal is" .. self.savedVars.interaction.subtitles.posX .. " changing to 0.5")
         self.savedVars.interaction.subtitles.posX = 0.5
     end
 end
@@ -379,6 +377,7 @@ local function Initialize()
     zo_callLater(function()
         CinematicCam:RegisterUIRefreshEvent()
         CinematicCam:InitializeLetterbox()
+        CinematicCam:BuildHomeIdsLookup()
     end, 1000)
 
     -- Initialize update system
@@ -642,6 +641,12 @@ function CinematicCam:RegisterFontEvents()
     end)
 end
 
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVATED, function()
+    zo_callLater(function()
+        local zoneId = GetZoneId(GetCurrentMapZoneIndex())
+        CinematicCam:CheckAndApplyHomePreset(zoneId)
+    end, 1000)
+end)
 ---=============================================================================
 -- Debug
 --=============================================================================
