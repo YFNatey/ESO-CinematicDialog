@@ -10,7 +10,17 @@ CinematicCam.defaults = {
 
     lastSeenUpdateVersion = "0.0.0",
     hasSeenWelcomeMessage = false,
-
+    selectedCompanion = "ember",
+    companionColors = {
+        ["bastian hallix"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["mirri elendis"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ember = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["isobel veloise"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["azandar al-cybiades"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["sharp-as-night"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        tanlorin = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["zerith-var"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+    },
     letterbox = {
         size = 100,
         opacity = 1.0,
@@ -29,6 +39,7 @@ CinematicCam.defaults = {
         forceThirdPersonDye = false,
         hidePlayerOptions = false,
         forceThirdPersonInteractiveNotes = false,
+
         layoutPreset = "default",
         ui = {
             hidePanelsESO = false,
@@ -48,10 +59,12 @@ CinematicCam.defaults = {
             posY = 0.8,
             posX = 0.5,
             hidePlayerOptionsUntilLastChunk = false,
+            textColor = { r = 0.9, g = 0.9, b = 0.8, a = 1.0 },
 
         },
     },
     interface = {
+        currentPreset = "none",
         UiElementsVisible = true,
         hideDialoguePanels = false,
         hideCompass = false,
@@ -78,7 +91,7 @@ CinematicCam.defaults = {
         chunkMinLength = 10,
         chunkMaxLength = 200,
         baseDisplayTime = 0.8,
-        timePerCharacter = 0.07,
+        timePerCharacter = 0.08,
         minDisplayTime = 0.6,
         maxDisplayTime = 8.0,
         timingMode = "dynamic",

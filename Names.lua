@@ -150,8 +150,18 @@ end
 function CinematicCam:UpdateNPCNameColor()
     local control = CinematicCam.npcNameData.customNameControl
     if control then
+        local npcName = CinematicCam.npcNameData.currentNPCName
         local color = self.savedVars.npcNameColor
-        control:SetColor(color.r, color.g, color.b, color.a)
+
+        -- Check if this is a companion with a custom color
+        if npcName and self.savedVars.companionColors then
+            local companionKey = npcName:lower()
+            if self.savedVars.companionColors[companionKey] then
+                color = self.savedVars.companionColors[companionKey]
+            end
+        end
+
+        control:SetColor(color.r, color.g, color.b, color.a or 1)
     end
 end
 

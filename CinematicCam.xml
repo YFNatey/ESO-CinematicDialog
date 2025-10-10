@@ -1,27 +1,49 @@
 <GuiXml>
     <Controls>
-        <TopLevelControl name="CinematicCam_Container" mouseEnabled="false"
-                         layer="DL_BACKGROUND" tier="DT_LOW" level="-5">
+    
+        <!-- Separate Letterbox Controls - NOT inside container -->
+        <!-- Letterbox Top -->
+        <TopLevelControl name="CinematicCam_LetterboxTopContainer" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="600">
+            <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
+            <Anchor point="TOPRIGHT" relativeTo="GuiRoot" relativePoint="TOPRIGHT" />
+            <Dimensions y="100" />
             <Controls>
-                <!-- Letterbox Top -->
-                <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false"
-                         layer="DL_CONTROLS" tier ="DT_LOW" level="-10">
-                    <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
-                    <Anchor point="TOPRIGHT" relativeTo="GuiRoot" relativePoint="TOPRIGHT" />
+                <Texture name="CinematicCam_LetterboxTop" mouseEnabled="false" layer="DL_CONTROLS" tier="DT_HIGH" level="600">
+                    <Anchor point="TOPLEFT" relativeTo="CinematicCam_LetterboxTopContainer" relativePoint="TOPLEFT" />
+                    <Anchor point="TOPRIGHT" relativeTo="CinematicCam_LetterboxTopContainer" relativePoint="TOPRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
-                 <!-- Letterbox Bottom -->
-                <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false"
-                         drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="9">
-                    <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" />
-                    <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
+            </Controls>
+        </TopLevelControl>
+        
+        <!-- Letterbox Bottom -->
+        <TopLevelControl name="CinematicCam_LetterboxBottomContainer" mouseEnabled="false"
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="600">
+            <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" />
+            <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
+            <Dimensions y="100" />
+            <Controls>
+                <Texture name="CinematicCam_LetterboxBottom" mouseEnabled="false" layer="DL_CONTROLS" tier="DT_HIGH" level="6000">
+                    <Anchor point="BOTTOMLEFT" relativeTo="CinematicCam_LetterboxBottomContainer" relativePoint="BOTTOMLEFT" />
+                    <Anchor point="BOTTOMRIGHT" relativeTo="CinematicCam_LetterboxBottomContainer" relativePoint="BOTTOMRIGHT" />
                     <Dimensions y="100" />
                 </Texture>
-
+            </Controls>
+        </TopLevelControl>
+    
+        <TopLevelControl name="CinematicCam_Container" mouseEnabled="false"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="20">
+            <Controls>
                 <!-- Subtitles Background -->
                 <Texture name="CinematicCam_ChunkedTextBackground" mouseEnabled="false"
-                         textureFile="/esoui/art/buttons/eso_buttonlarge_normal.dds"
-                         layer="DL_CONTROLS" tier="DT_HIGH" level="9">
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="590">
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
+                    <Dimensions x="820" y="120" />
+                </Texture>
+                <Texture name="CinematicCam_ChunkedTextBackground_Kingdom" mouseEnabled="false"
+                         textureFile="/esoui/art/tribute/tributecardnamebanner.dds"
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
@@ -29,13 +51,13 @@
                 <!-- Player Options Background -->
                 <Texture name="CinematicCam_PlayerOptionsBackground" mouseEnabled="false"
                          textureFile=""
-                         layer="DL_CONTROLS" tier="DT_HIGH" level="8">
+                         layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="400" y="200" />
                 </Texture>
                 <!-- Chunked Text (Subtitles) -->
                 <Label name="CinematicCam_ChunkedText" mouseEnabled="false">
-                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="10" />
+                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" drawLayer="DL_CONTROLS" drawTier="DT_HIGH" drawLevel="15900" />
                     <Dimensions x="800" y="240" />
                 </Label>
             </Controls>
@@ -100,9 +122,9 @@
             <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationIcon" relativePoint="RIGHT" offsetX="10" offsetY="0" />
             <Anchor point="RIGHT" relativeTo="CinematicCam_UpdateNotificationBackground" relativePoint="RIGHT" offsetX="-15" offsetY="0" />
         </Label>
-        
-       
     </Controls>
 </TopLevelControl>
+
+       
     </Controls>
 </GuiXml>

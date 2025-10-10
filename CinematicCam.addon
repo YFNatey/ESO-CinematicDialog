@@ -20,6 +20,6 @@ UI.lua
 Names.lua
 Letterbox.lua
 Settings.lua
-
+presets.lua
 ## XML
 CinematicCam.xml

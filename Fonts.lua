@@ -6,12 +6,12 @@ local fontBook = {
     },
     ["ESO_Bold"] = {
         name = "ESO Bold",
-        path = "EsoUI/Common/Fonts/FTN57.slug|30|thick-outline",
+        path = "EsoUI/Common/Fonts/FTN87.slug|30|thick-outline",
         description = "Bold ESO font"
     },
     ["Handwritten"] = {
         name = "Handwritten",
-        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|soft-shadow-thick",
+        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|thick-outline",
         description = "Handwritten-style font"
     },
 }
@@ -71,9 +71,9 @@ function CinematicCam:BuildUserFontString()
     if selectedFont == "ESO_Standard" then
         return "EsoUI/Common/Fonts/FTN57.slug|" .. finalSize .. "|soft-shadow-thick"
     elseif selectedFont == "ESO_Bold" then
-        return "EsoUI/Common/Fonts/FTN57.slug|" .. finalSize .. "|thick-outline"
+        return "EsoUI/Common/Fonts/FTN87.slug|" .. finalSize .. "|soft-shadow-thick"
     elseif selectedFont == "Handwritten" then
-        return "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|" .. finalSize .. "|soft-shadow-thick"
+        return "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|" .. finalSize .. ""
     end
 end
 

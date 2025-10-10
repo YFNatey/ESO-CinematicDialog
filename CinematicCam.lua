@@ -34,11 +34,20 @@ CinematicCam = {}
 CinematicCam.savedVars = nil
 CinematicCam.globalCount = 0
 local interactionTypeMap = {}
-local CURRENT_VERSION = "3.16"
+local CURRENT_VERSION = "3.26"
 
 -- State tracking
 CinematicCam.isInteractionModified = false -- overriden default cam
-local dialogLetterbox = false
+
+local SERVERS = {
+    ["NA Megaserver"] = "NA",
+    ["EU Megaserver"] = "EU",
+    ["XB1live"] = "NA",
+    ["XB1live-eu"] = "EU",
+    ["PS4live"] = "NA",
+    ["PS4live-eu"] = "EU",
+}
+
 function CinematicCam:ApplyDialogueRepositioning()
     local preset = self.savedVars.interaction.layoutPreset
     if preset and preset.applyFunction then
@@ -130,7 +139,9 @@ function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
     if self:ShouldBlockInteraction(interactionType) then
         self:LogDebugEvent("INTERACTION_BLOCKED", { interactionType = interactionType })
+        if self:AutoShowLetterbox(interactionType) or self.savedVars.letterbox.letterboxVisible then
 
+        end
         CinematicCam:RegisterFontEvents()
         SetInteractionUsingInteractCamera(false)
         CinematicCam.isInteractionModified = true
@@ -337,6 +348,14 @@ function CinematicCam:ForceHideAllPlayerOptions()
     end
 end
 
+function CinematicCam:UpdateHorizontal()
+    d("horizontal is good!")
+    if self.savedVars.interaction.subtitles.posX ~= 0.5 then
+        d("horizontal is" .. self.savedVars.interaction.subtitles.posX .. " changing to 0.5")
+        self.savedVars.interaction.subtitles.posX = 0.5
+    end
+end
+
 ---=============================================================================
 -- Initialize
 --=============================================================================
@@ -345,11 +364,13 @@ local function Initialize()
     CinematicCam:InitializeChunkedTextControl()
 
 
-    CinematicCam:InitializeLetterbox()
+
     CinematicCam:InitializeUI()
     CinematicCam:ConfigurePlayerOptionsBackground()
     CinematicCam:InitializePreviewSystem()
     CinematicCam:InitializeInteractionSettings()
+    CinematicCam:UpdateHorizontal()
+    CinematicCam:InitializeCustomPresets()
 
     zo_callLater(function()
         CinematicCam:CreateSettingsMenu()
@@ -357,6 +378,7 @@ local function Initialize()
     end, 100)
     zo_callLater(function()
         CinematicCam:RegisterUIRefreshEvent()
+        CinematicCam:InitializeLetterbox()
     end, 1000)
 
     -- Initialize update system
@@ -385,7 +407,7 @@ function CinematicCam:InitializeInteractionSettings()
         [INTERACTION_TRADINGHOUSE] = self.savedVars.interaction.forceThirdPersonVendor,
         [INTERACTION_STABLE] = self.savedVars.interaction.forceThirdPersonVendor,
         [INTERACTION_CRAFT] = self.savedVars.interaction.forceThirdPersonCrafting,
-        [INTERACTION_DYE_STATION] = self.savedVars.interaction.forceThirdPersonCrafting,
+        [INTERACTION_DYE_STATION] = self.savedVars.interaction.forceThirdPersonDye,
 
     }
 end
@@ -404,14 +426,14 @@ function CinematicCam:InitializeChunkedTextControl()
     self:ConfigureChunkedTextBackground()
 
     -- visibility settings
-    control:SetColor(1, 1, 1, 1)
+    local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+    control:SetColor(color.r, color.g, color.b, color.a)
     if self.savedVars.interaction.subtitles.isHidden == true then
         control:SetAlpha(0)
     elseif self.savedVars.interaction.subtitles.isHidden == false then
         control:SetAlpha(1.0)
     end
-    control:SetDrawLayer(DL_OVERLAY)
-    control:SetDrawLevel(10)
+
 
     -- Text properties
     control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
@@ -428,6 +450,10 @@ function CinematicCam:InitializeChunkedTextControl()
 
     -- Store reference
     CinematicCam.chunkedDialogueData.customControl = control
+    self:ConfigureChunkedTextBackground()
+
+    -- Set the correct active background
+    self:SetActiveBackgroundControl()
     return control
 end
 
@@ -456,16 +482,14 @@ function CinematicCam:InitializeLetterbox()
         CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
         CinematicCam_LetterboxTop:SetHeight(CinematicCam.savedVars.letterbox.size)
         CinematicCam_LetterboxTop:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
-        CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
-        CinematicCam_LetterboxTop:SetDrawLevel(5)
+
         CinematicCam_LetterboxTop:SetHidden(false)
 
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
         CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
         CinematicCam_LetterboxBottom:SetHeight(CinematicCam.savedVars.letterbox.size)
         CinematicCam_LetterboxBottom:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
-        CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
-        CinematicCam_LetterboxBottom:SetDrawLevel(5)
+
         CinematicCam_LetterboxBottom:SetHidden(false)
     else
         CinematicCam_Container:SetHidden(false)
@@ -570,6 +594,24 @@ function CinematicCam:RegisterUIRefreshEvent()
 
                 if self.savedVars.interface.hideReticle then
                     CinematicCam:ToggleReticle(true)
+                end
+                if self.presetPending then
+                    CinematicCam:InitializeChunkedTextControl()
+
+                    CinematicCam:RegisterSceneCallbacks()
+                    CinematicCam:InitializeLetterbox()
+                    CinematicCam:InitializeUI()
+                    CinematicCam:ConfigurePlayerOptionsBackground()
+                    CinematicCam:InitializePreviewSystem()
+                    CinematicCam:InitializeInteractionSettings()
+                    self:ApplyPresetSettings()
+                    self:OnFontChanged()
+                    CinematicCam:checkhid()
+                    self.presetPending = false
+                end
+                if self.vanillaPending then
+                    ReloadUI()
+                    self.vanillaPending = false
                 end
             end, 200)
         end

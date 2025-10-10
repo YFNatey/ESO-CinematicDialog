@@ -63,7 +63,7 @@ end
 
 function CinematicCam:CheckPlayerOptionsForVendorText()
     local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
-        "Morphs:", "Skill Lines" }
+        "Morphs:", "Skill Lines", "Companion Menu" }
     -- Check individual option elements
     for i = 1, 10 do
         local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
@@ -339,6 +339,8 @@ function CinematicCam:DisplayCurrentChunk()
     chunkText = self:HandleNPCName(chunkText, CinematicCam.npcNameData.originalName, self.savedVars.npcNamePreset)
 
     local fontString = self:BuildUserFontString()
+    local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+    control:SetColor(color.r, color.g, color.b, color.a)
     control:SetFont(fontString)
     control:SetText(chunkText)
 
@@ -397,20 +399,37 @@ end
 
 function CinematicCam:UpdateChunkBackground(control, background)
     if background and self:ShouldShowSubtitleBackground() then
+        -- Apply color based on current mode EVERY TIME the background is shown
+        local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
+        if backgroundMode == "redemption_banner" then
+            background:SetColor(0.0, 0.0, 0.0, 0.6) -- Dark overlay
+        elseif backgroundMode == "kingdom" then
+            background:SetColor(1, 1, 1, 1.0)       -- Normal appearance
+        end
+
         -- Calculate dynamic dimensions
         local textWidth = control:GetTextWidth()
         local textHeight = control:GetTextHeight()
 
         local padding = 16
-        local backgroundWidth = textWidth + (padding * 2)
-        local backgroundHeight = textHeight + (padding * 2)
+        local backgroundWidth = textWidth + (padding * 6)
+        local backgroundHeight = textHeight + (padding * 6)
 
         -- Apply size constraints
-        local minWidth, maxWidth = 200, 2800
-        local minHeight, maxHeight = 40, 200
+        local minWidth, maxWidth = 200, 5500 -- Increased max width from 2800 to 3500
+        local minHeight, maxHeight = 60, 550
 
         backgroundWidth = math.max(minWidth, math.min(maxWidth, backgroundWidth))
         backgroundHeight = math.max(minHeight, math.min(maxHeight, backgroundHeight))
+
+        -- Special handling for kingdom background - it's a banner so adjust dimensions
+        local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
+        if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
+            backgroundHeight = math.max(100, backgroundHeight) -- Minimum height for banner
+            backgroundWidth = math.max(600, backgroundWidth)   -- Minimum width for banner to display properly
+            backgroundWidth = backgroundWidth + 280
+            backgroundHeight = backgroundHeight + 10
+        end
 
         -- Position and show background
         background:SetDimensions(backgroundWidth, backgroundHeight)
@@ -420,6 +439,11 @@ function CinematicCam:UpdateChunkBackground(control, background)
             self.savedVars.interaction.subtitles.posY or 0.7
         )
 
+        -- Move kingdom banner down a few pixels
+        if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
+            targetY = targetY + 38 -- Move banner 5 pixels down
+        end
+
         background:ClearAnchors()
         background:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
         background:SetHidden(false)
@@ -427,6 +451,21 @@ function CinematicCam:UpdateChunkBackground(control, background)
         background:SetHidden(true)
     end
 end
+
+function CinematicCam:UpdateSubtitleTextColor()
+    -- This function can be called when settings change to update any cached color values
+    -- Currently just ensures the color is saved properly
+end
+
+function CinematicCam:ApplySubtitleTextColor()
+    local control = CinematicCam.chunkedDialogueData.customControl
+    if control then
+        local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+        control:SetColor(color.r, color.g, color.b, color.a)
+    end
+end
+
+-- Update the CreateChunkedTextControl function to apply the color:
 
 ---=============================================================================
 -- HIDE PLAYER OPTIONS
@@ -815,7 +854,7 @@ function CinematicCam:ResetChunkedDialogueState()
     local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
     local customControl = CinematicCam.chunkedDialogueData.customControl
 
-    -- COMPLETE reset of ALL state variables
+    -- resetstate variables
     CinematicCam.chunkedDialogueData = {
         originalText = "",
         chunks = {},
@@ -860,7 +899,10 @@ function CinematicCam:CreateChunkedTextControl()
     control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     control:SetVerticalAlignment(TEXT_ALIGN_TOP)
     control:SetHorizontalAlignment(TEXT_ALIGN_LEFT)
-    control:SetColor(0.9, 0.9, 0.8, 1.0)
+
+    -- Apply user-defined color instead of hardcoded color
+    local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+    control:SetColor(color.r, color.g, color.b, color.a)
 
     -- Initial state
     control:SetHidden(true)
@@ -919,22 +961,28 @@ function CinematicCam:InitializeChunkedDisplay()
 end
 
 function CinematicCam:ConfigureChunkedTextBackground()
-    local background = _G["CinematicCam_ChunkedTextBackground"]
-    if background then
-        -- Background properties
-        background:SetAlpha(0.4)
-        background:SetDrawLayer(DL_CONTROLS)
-        background:SetDrawLevel(9)
-        background:SetHidden(true)
+    local backgroundNormal = _G["CinematicCam_ChunkedTextBackground"]
+    local backgroundKingdom = _G["CinematicCam_ChunkedTextBackground_Kingdom"]
 
-        -- Store reference
-        CinematicCam.chunkedDialogueData.backgroundControl = background
+    -- Configure normal background
+    if backgroundNormal then
+        backgroundNormal:SetColor(0, 0, 0, 0.6)
 
-        -- Initialize position
-        background:ClearAnchors()
-        background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
-        background:SetDimensions(1, 1)
+        backgroundNormal:SetHidden(true)
+        backgroundNormal:ClearAnchors()
+        backgroundNormal:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+        backgroundNormal:SetDimensions(1, 1)
     end
+
+    -- Configure kingdom background (color will be set dynamically)
+    if backgroundKingdom then
+        backgroundKingdom:SetHidden(true)
+        backgroundKingdom:ClearAnchors()
+        backgroundKingdom:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+        backgroundKingdom:SetDimensions(1, 1)
+    end
+
+    self:SetActiveBackgroundControl()
 end
 
 function CinematicCam:ConfigurePlayerOptionsBackground()
@@ -942,8 +990,7 @@ function CinematicCam:ConfigurePlayerOptionsBackground()
     if background then
         -- Background properties
         background:SetColor(0.2, 0.2, 0.2, 0.7)
-        background:SetDrawLayer(DL_CONTROLS)
-        background:SetDrawLevel(8) -- slightly lower than subtitle background (9)
+
         background:SetHidden(true)
 
         -- Store reference

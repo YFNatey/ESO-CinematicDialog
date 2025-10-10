@@ -16,8 +16,7 @@ function CinematicCam:ShowLetterbox()
     end
     self.savedVars.letterbox.letterboxVisible = true
 
-    CinematicCam_Container:SetHidden(false)
-
+    -- Don't need to set CinematicCam_Container visibility anymore since letterboxes are separate
     local barHeight = self.savedVars.letterbox.size
 
     CinematicCam_LetterboxTop:ClearAnchors()
@@ -30,13 +29,9 @@ function CinematicCam:ShowLetterbox()
     CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT, 0, barHeight)
     CinematicCam_LetterboxBottom:SetHeight(barHeight)
 
-    -- Set color and draw properties
+    -- Set color and draw properties - REMOVED the SetDrawLayer/SetDrawTier/SetDrawLevel calls
     CinematicCam_LetterboxTop:SetColor(0, 0, 0, self.savedVars.letterbox.opacity)
     CinematicCam_LetterboxBottom:SetColor(0, 0, 0, self.savedVars.letterbox.opacity)
-    CinematicCam_LetterboxTop:SetDrawLayer(DL_OVERLAY)
-    CinematicCam_LetterboxBottom:SetDrawLayer(DL_OVERLAY)
-    CinematicCam_LetterboxTop:SetDrawLevel(5)
-    CinematicCam_LetterboxBottom:SetDrawLevel(5)
 
     -- Show bars
     CinematicCam_LetterboxTop:SetHidden(false)
@@ -56,6 +51,12 @@ function CinematicCam:ShowLetterbox()
     bottomAnimation:SetDuration(2600)
 
     timeline:PlayFromStart()
+
+
+    local interactionType = GetInteractionType()
+    if self:ShouldBlockInteraction(interactionType) then
+
+    end
 end
 
 -- Hide letterbox bars
