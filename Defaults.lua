@@ -11,12 +11,13 @@ CinematicCam.defaults = {
     lastSeenUpdateVersion = "0.0.0",
     hasSeenWelcomeMessage = false,
     selectedCompanion = "ember",
+    autoSwapPresets = false,
     companionColors = {
         ["bastian hallix"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         ["mirri elendis"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         ember = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         ["isobel veloise"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
-        ["azandar al-cybiades"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
+        ["azandar"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         ["sharp-as-night"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         tanlorin = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
         ["zerith-var"] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
@@ -28,6 +29,7 @@ CinematicCam.defaults = {
         autoLetterboxMount = false,
         coordinateWithLetterbox = true,
         mountLetterboxDelay = 0,
+        perma = false
 
     },
     interaction = {
@@ -67,9 +69,9 @@ CinematicCam.defaults = {
         currentPreset = "none",
         UiElementsVisible = true,
         hideDialoguePanels = false,
-        hideCompass = false,
-        hideReticle = "never",
-        hideActionBar = false,
+        hideCompass = "always",
+        hideReticle = "always",
+        hideActionBar = "always",
 
         selectedFont = "ESO_Standard",
         customFontSize = 42,

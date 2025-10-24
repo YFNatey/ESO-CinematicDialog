@@ -11,7 +11,7 @@ function CinematicCam:AutoShowLetterbox(interactionType)
 end
 
 function CinematicCam:ShowLetterbox()
-    if self.savedVars.letterbox.letterboxVisible then
+    if self.savedVars.letterbox.letterboxVisible or CinematicCam:CheckPlayerOptionsForVendorText() then
         return
     end
     self.savedVars.letterbox.letterboxVisible = true
@@ -99,8 +99,11 @@ end
 
 function CinematicCam:ToggleLetterbox()
     if self.savedVars.letterbox.letterboxVisible then
+        self.savedVars.letterbox.perma = false
         self:HideLetterbox()
     else
+        self.savedVars.letterbox.letterboxVisible = false
+        self.savedVars.letterbox.perma = true
         self:ShowLetterbox()
     end
 end

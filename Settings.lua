@@ -23,58 +23,44 @@ function CinematicCam:CreateSettingsMenu()
     }
 
     local optionsData = {
-        {
-            type = "description",
-            text = "Update Notes",
-            tooltip =
-            [[
-3.27
-• Custom presets now auto-load in appropriate zones
-• Added custom companion name coloring
-• Cleaned up settings menu
----
-3.26
-• Added customizable presets]],
-            width = "full",
-        },
-        { type = "divider"
-        },
+
         {
             type = "dropdown",
             name = "Custom Presets",
-            tooltip = "These presets automatically load based on your current",
+            tooltip = function()
+                local slot = self.selectedPresetSlot or 1
+                return self:GetPresetTooltip(slot)
+            end,
             choices = {
                 self:GetSlotDisplayName(1),
                 self:GetSlotDisplayName(2),
                 self:GetSlotDisplayName(3)
             },
             choicesValues = { 1, 2, 3 },
+            choicesTooltips = {
+                function() return self:GetPresetTooltip(1) end,
+                function() return self:GetPresetTooltip(2) end,
+                function() return self:GetPresetTooltip(3) end
+            },
             getFunc = function()
                 return self.selectedPresetSlot or 1
             end,
             setFunc = function(value)
                 self.selectedPresetSlot = value
-
                 self:LoadFromPresetSlot(value)
+
+                -- Force refresh the LibAddonMenu2 settings tooltip
+                zo_callLater(function()
+                    local tooltip = LibAddonMenu2 and LibAddonMenu2.tooltip
+                    if tooltip and not tooltip:IsHidden() then
+                        tooltip:ClearLines()
+
+                        tooltip:AddLine(self:GetPresetTooltip(value), "", ZO_TOOLTIP_DEFAULT_COLOR:UnpackRGB())
+                    end
+                end, 10)
             end,
             width = "full",
         },
-        --[[{
-            type = "editbox",
-            name = "Rename Preset",
-            tooltip = "Enter a new name for the selected preset slot",
-            getFunc = function()
-                if not self.savedVars.customPresets then return "" end
-                local slot = self.selectedPresetSlot or 1
-                local slotKey = "slot" .. slot
-                return self.savedVars.customPresets[slotKey].name or ""
-            end,
-            setFunc = function(value)
-                local slot = self.selectedPresetSlot or 1
-                self:RenamePresetSlot(slot, value)
-            end,
-            width = "full",
-       -- },]]
         {
             type = "button",
             name = function()
@@ -92,6 +78,16 @@ function CinematicCam:CreateSettingsMenu()
             width = "half",
         },
         {
+            type = "checkbox",
+            name = "Auto Presets",
+            tooltip = "Automatically apply the correct preset in homes, overland, or dungeon zones",
+            getFunc = function() return self.savedVars.autoSwapPresets end,
+            setFunc = function(value)
+                self.savedVars.autoSwapPresets = value
+            end,
+            width = "full",
+        },
+        {
             type = "header",
             name = "Apply to",
         },
@@ -100,7 +96,7 @@ function CinematicCam:CreateSettingsMenu()
             type = "checkbox",
             name = "Citizens",
             tooltip = [[Keep game camera when talking to regular characters
-*Turning OFF will ReloadUI]],
+*Turning off will trigger a load screen]],
             getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
             setFunc = function(value)
                 self.savedVars.interaction.forceThirdPersonDialogue = value
@@ -117,7 +113,7 @@ function CinematicCam:CreateSettingsMenu()
             name = "Merchants & Bankers",
             tooltip =
             [[Keep game camera when using stores, stables, and banks
-*Turning OFF will ReloadUI]],
+*Turning of will trigger a load screen]],
             getFunc = function()
                 return self.savedVars.interaction.forceThirdPersonVendor and
                     self.savedVars.interaction.forceThirdPersonBank
@@ -161,21 +157,10 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-            type = "checkbox",
-            name = "Hide Choices until Dialogue finishes",
-            tooltip =
-            "Cinematic layout only: Hide player response options until the character finishes speaking",
-            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
-            setFunc = function(value)
-                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
-            end,
-            width = "full",
-        },
-        {
             type = "dropdown",
             name = "Style",
             tooltip =
-            "Choose how dialogue elements are positioned:\n• Default: Original ESO positioning\n• Cinematic: Bottom centered with movie style captions\n",
+            "Default: Original style\n Cinematic: Centered captions with additional customization\n",
             choices = { "Default(ReloadUI)", "Cinematic" },
             choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
@@ -214,10 +199,80 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+
+
+
+        {
+            type = "checkbox",
+            name = "Hide Choices until Dialogue finishes",
+            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
+            end,
+            width = "full",
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+        },
+
+
+
+        {
+        },
+        {
+            type = "header",
+            name = "Subtitle Appearance",
+            width = "full",
+        },
         {
             type = "dropdown",
-            name = "Backgrounds",
-            tooltip = "Background options for dialogue layouts",
+            name = "Font",
+            choices = choices,
+            choicesValues = choicesValues,
+            getFunc = function() return self.savedVars.interface.selectedFont end,
+            setFunc = function(value)
+                self.savedVars.interface.selectedFont = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Size",
+            min = 10,
+            max = 64,
+            step = 1,
+            getFunc = function() return self.savedVars.interface.customFontSize end,
+            setFunc = function(value)
+                self.savedVars.interface.customFontSize = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "colorpicker",
+            name = "Text Color",
+            getFunc = function()
+                local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.interaction.subtitles.textColor = { r = r, g = g, b = b, a = a }
+
+                -- Apply immediately if in dialogue
+                local control = CinematicCam.chunkedDialogueData.customControl
+                if control then
+                    control:SetColor(r, g, b, a)
+                end
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Background",
             choices = { "Default", "Light", "None" },
             choicesValues = { "default", "light", "none" },
             getFunc = function()
@@ -227,17 +282,21 @@ function CinematicCam:CreateSettingsMenu()
                     local bgMode = self.savedVars.interface.defaultBackgroundMode or "esoDefault"
                     if bgMode == "esoDefault" then
                         return "default"
+                    elseif bgMode == "none" then
+                        return "none"
                     else
-                        return bgMode
+                        return "default" -- Fallback to default for any unexpected values
                     end
-                else -- cinematic
-                    local bgMode = self.savedVars.interface.cinematicBackgroundMode or "redemption_banner"
+                else                     -- cinematic
+                    local bgMode = self.savedVars.interface.cinematicBackgroundMode or "none"
                     if bgMode == "redemption_banner" then
-                        return "default"
+                        return "none"
                     elseif bgMode == "kingdom" then
-                        return "light"
+                        return "none"
+                    elseif bgMode == "none" then
+                        return "none"
                     else
-                        return bgMode
+                        return "default" -- Fallback
                     end
                 end
             end,
@@ -249,8 +308,10 @@ function CinematicCam:CreateSettingsMenu()
                     local defaultValue
                     if value == "default" then
                         defaultValue = "esoDefault"
-                    else
-                        defaultValue = value -- "none"
+                    elseif value == "light" then
+                        defaultValue = "esoDefault" -- Default layout doesn't support light mode, default to esoDefault
+                    else                            -- "none"
+                        defaultValue = "none"
                     end
 
                     self.savedVars.interface.defaultBackgroundMode = defaultValue
@@ -267,12 +328,10 @@ function CinematicCam:CreateSettingsMenu()
                     local cinematicValue
                     if value == "default" then
                         cinematicValue = "redemption_banner"
-                    elseif value == "dark" then
-                        cinematicValue = "redemption_banner"
                     elseif value == "light" then
                         cinematicValue = "kingdom"
-                    else
-                        cinematicValue = value -- "none"
+                    else -- "none"
+                        cinematicValue = "none"
                     end
 
                     self.savedVars.interface.cinematicBackgroundMode = cinematicValue
@@ -288,6 +347,8 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+
+
         {
             type = "slider",
             name = "Position",
@@ -311,19 +372,15 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
 
-
-        {
-        },
         {
             type = "header",
-            name = "Name Colors",
+            name = "Name Appearance",
             width = "full",
         },
 
         {
             type = "dropdown",
             name = "Select Companion",
-            tooltip = "Choose which companion to customize",
             choices = {
                 "Bastian Hallix",
                 "Mirri Elendis",
@@ -339,7 +396,7 @@ function CinematicCam:CreateSettingsMenu()
                 "mirri elendis",
                 "ember",
                 "isobel veloise",
-                "azandar al-cybiades",
+                "azandar",
                 "sharp-as-night",
                 "tanlorin",
                 "zerith-var"
@@ -350,6 +407,9 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 self.savedVars.selectedCompanion = value
                 CALLBACK_MANAGER:FireCallbacks("LAM-RefreshPanel", controlPanel)
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
             end,
             width = "half",
         },
@@ -363,7 +423,6 @@ function CinematicCam:CreateSettingsMenu()
                 end)
                 return displayName .. " Color"
             end,
-            tooltip = "Set the dialogue text color for this companion",
             getFunc = function()
                 local companionName = self.savedVars.selectedCompanion or "ember"
                 if not self.savedVars.companionColors then
@@ -391,12 +450,14 @@ function CinematicCam:CreateSettingsMenu()
                     end
                 end
             end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
             width = "half",
         },
         {
             type = "colorpicker",
-            name = "NPC Color",
-            tooltip = "Default color for NPC names (companions use their custom colors if set)",
+            name = "Default NPC Color",
             getFunc = function()
                 local color = self.savedVars.npcNameColor
                 return color.r, color.g, color.b, color.a
@@ -417,56 +478,9 @@ function CinematicCam:CreateSettingsMenu()
                 return self.savedVars.npcNamePreset == "default"
             end,
             width = "full",
-        },
-        {
-            type = "header",
-            name = "Fonts",
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = "Font",
-            choices = choices,
-            choicesValues = choicesValues,
-            getFunc = function() return self.savedVars.interface.selectedFont end,
-            setFunc = function(value)
-                self.savedVars.interface.selectedFont = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Font Size",
-            min = 10,
-            max = 64,
-            step = 1,
-            getFunc = function() return self.savedVars.interface.customFontSize end,
-            setFunc = function(value)
-                self.savedVars.interface.customFontSize = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
-        {
-            type = "colorpicker",
-            name = "Font Color",
-            tooltip = "Color for the dialogue subtitle text",
-            getFunc = function()
-                local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                self.savedVars.interaction.subtitles.textColor = { r = r, g = g, b = b, a = a }
 
-                -- Apply immediately if in dialogue
-                local control = CinematicCam.chunkedDialogueData.customControl
-                if control then
-                    control:SetColor(r, g, b, a)
-                end
-            end,
-            width = "full",
         },
+
 
         --- FONT SETTINGS
 
@@ -475,44 +489,49 @@ function CinematicCam:CreateSettingsMenu()
             name = "Cinematic Settings",
         },
         {
-            type = "checkbox",
-            name = "Hide Compass",
-
+            type = "dropdown",
+            name = "Show Compass",
+            choices = { "Always", "Never", "Combat Only" },
+            choicesValues = { "always", "never", "combat" },
             getFunc = function() return self.savedVars.interface.hideCompass end,
             setFunc = function(value)
                 self.savedVars.interface.hideCompass = value
-                CinematicCam:ToggleCompass(value)
+                CinematicCam:UpdateCompassVisibility()
                 self.pendingUIRefresh = true
             end,
-
         },
         {
-            type = "checkbox",
-            name = "Hide Action Bar",
-
+            type = "dropdown",
+            name = "Show Skill Bar",
+            choices = { "Always", "Never", "Combat Only" },
+            choicesValues = { "always", "never", "combat" },
             getFunc = function() return self.savedVars.interface.hideActionBar end,
             setFunc = function(value)
                 self.savedVars.interface.hideActionBar = value
-                CinematicCam:ToggleActionBar(value)
+                CinematicCam:UpdateActionBarVisibility()
                 self.pendingUIRefresh = true
             end,
-
         },
         {
-            type = "checkbox",
-            name = "Hide Reticle",
-
+            type = "dropdown",
+            name = "Show Reticle",
+            choices = { "Always", "Never", "Combat Only" },
+            choicesValues = { "always", "never", "combat" },
             getFunc = function() return self.savedVars.interface.hideReticle end,
             setFunc = function(value)
-                self.savedVars.interface.hideReticle = valuee
-                CinematicCam:ToggleReticle(value)
+                self.savedVars.interface.hideReticle = value
+                CinematicCam:UpdateReticleVisibility()
                 self.pendingUIRefresh = true
             end,
+        },
+        {
 
+            type = "divider"
         },
         {
             type = "button",
             name = "Toggle Black Bars",
+            tooltip = "Add movie-like black bars",
             func = function()
                 self:ToggleLetterbox()
             end,
@@ -530,7 +549,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "checkbox",
             name = "Auto Black Bars on Mount",
-            tooltip = "Automatically show black bars when mounting or after a delay while riding.",
+
             getFunc = function() return CinematicCam.savedVars.letterbox.autoLetterboxMount end,
             setFunc = function(value) CinematicCam.savedVars.letterbox.autoLetterboxMount = value end,
             width = "full",
@@ -538,7 +557,7 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "slider",
             name = "Mount Black Bars Delay",
-            tooltip = "Delay before showing black bars when mounting (in seconds)",
+            tooltip = "Delay showing black bars when mounting (in seconds)",
             min = 0,
             max = 60,
             step = 20,
@@ -570,7 +589,6 @@ function CinematicCam:CreateSettingsMenu()
 
             type = "dropdown",
             name = "Quick Presets",
-            tooltip = "Quick setup configurations for different cinematic styles.",
             choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla(ReloadUI)" },
             choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
             getFunc = function() return self.savedVars.interface.currentPreset end,
@@ -599,6 +617,17 @@ function CinematicCam:CreateSettingsMenu()
             text = [[/ccui - Photo Mdde
 /ccbars - Black Bars]],
             width = "full"
+        },
+        {
+            type = "description",
+            text = "Update Notes",
+            tooltip =
+            [[
+4.01
+• Bug Fixes
+• Settings menu improvements
+• Auto-swap presets]],
+            width = "full",
         },
 
         {

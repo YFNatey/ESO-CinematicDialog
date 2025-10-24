@@ -127,7 +127,16 @@ function CinematicCam:HandleNPCName(dialogueText, npcName, preset)
     end
     preset = preset or self.savedVars.npcNamePreset or "default"
     if preset == "prepended" then
-        local color = self.savedVars.npcNameColor
+        -- Check if this is a companion with a custom color
+        local color = self.savedVars.npcNameColor -- Default to NPC color
+
+        if self.savedVars.companionColors then
+            local companionKey = npcName:lower()
+            if self.savedVars.companionColors[companionKey] then
+                color = self.savedVars.companionColors[companionKey]
+            end
+        end
+
         local hexColor = self:RGBToHexString(color.r, color.g, color.b)
         local coloredName = "|c" .. hexColor .. npcName .. ": |r"
         return coloredName .. dialogueText

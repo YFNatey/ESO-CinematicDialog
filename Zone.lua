@@ -27,7 +27,7 @@ CinematicCam.homeIds = {
     11, -- The Ample Domicile
     14, -- Bouldertree Refuge
     26, -- Domus Phrasticus
-    49, -- Exorcised Coven Cottage
+    49, -- Exorciseddven Cottage
     29, -- Grymharth's Woe
     35, -- House of the Silent Magnifico
     32, -- Mournoth Keep
@@ -112,6 +112,5 @@ function CinematicCam:CheckAndApplyHomePreset()
         CinematicCam.savedVars.isHome = true
         -- Check if this home has an assigned preset
         self:LoadFromPresetSlot(1)
-        d("Cinematic Dialog: Applied Home preset.")
     end
 end

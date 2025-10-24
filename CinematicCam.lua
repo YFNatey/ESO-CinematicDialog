@@ -118,13 +118,9 @@ end
 
 -- Handles the logic when the default interaction camera is deactivated.
 -- Applies UI changes, letterbox, and font updates based on user settings and interaction type.
--- Modified OnGameCameraDeactivated - just show/hide the background based on setting
 function CinematicCam:OnGameCameraDeactivated()
-    -- Start new debug session
     self.debugSessionId = self.debugSessionId + 1
     self:LogDebugEvent("CAMERA_DEACTIVATED_START")
-
-    -- COMPLETE state reset at the beginning
     if not CinematicCam.isInteractionModified then
         self:ResetChunkedDialogueState()
     end
@@ -249,6 +245,38 @@ function CinematicCam:OnGameCameraDeactivated()
                 end
             end
         )
+        EVENT_MANAGER:RegisterForEvent(
+            ADDON_NAME .. "_QuestCompleteDialog",
+            EVENT_QUEST_COMPLETE_DIALOG,
+            function(eventCode)
+                self:LogDebugEvent("QUEST_COMPLETE_DIALOG_FIRED")
+
+                if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
+                    self:LogDebugEvent("QUEST_COMPLETE_FORCE_SHOW")
+                    CinematicCam:ForceShowAllPlayerOptions()
+                else
+                    self:LogDebugEvent("QUEST_COMPLETE_NO_ACTION")
+                end
+
+                if self.savedVars.interaction.layoutPreset == "cinematic" then
+                    self:LogDebugEvent("QUEST_COMPLETE_CINEMATIC")
+                    if ZO_InteractWindowTargetAreaBodyText then
+                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+                    end
+                    if ZO_InteractWindow_GamepadContainerText then
+                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
+                    end
+                    self:LogDebugEvent("BEFORE_INTERCEPT", {
+                        isActive = CinematicCam.chunkedDialogueData.isActive,
+                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
+                    })
+                    self:InterceptDialogueForChunking()
+                    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
+                    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
+                    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestOffered", EVENT_QUEST_OFFERED)
+                end
+            end
+        )
         -- Move NPC dialogue text off-screen for cinematic mode (instead of hiding) to prevent flashing
         if self.savedVars.interaction.layoutPreset == "cinematic" then
             if ZO_InteractWindowTargetAreaBodyText then
@@ -272,14 +300,16 @@ function CinematicCam:OnGameCameraDeactivated()
         end
 
         -- Letterbox handling
-        if self:AutoShowLetterbox(interactionType) then
-            if not self.savedVars.letterbox.letterboxVisible then
-                dialogLetterbox = true
-                self:ShowLetterbox()
-            else
-                dialogLetterbox = false
+        zo_callLater(function()
+            if self:AutoShowLetterbox(interactionType) and not CinematicCam:CheckPlayerOptionsForVendorText() then
+                if not self.savedVars.letterbox.letterboxVisible then
+                    dialogLetterbox = true
+                    self:ShowLetterbox()
+                else
+                    dialogLetterbox = false
+                end
             end
-        end
+        end, 200)
     end
 end
 
@@ -296,7 +326,7 @@ function CinematicCam:OnInteractionEnd()
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestOffered", EVENT_QUEST_OFFERED)
-
+    EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestCompleteDialog", EVENT_QUEST_COMPLETE_DIALOG)
     if CinematicCam.isInteractionModified then
         CinematicCam.isInteractionModified = false
 
@@ -307,7 +337,7 @@ function CinematicCam:OnInteractionEnd()
         self:HidePlayerOptionsBackground()
 
         -- Hide letterbox if was visible
-        if self.savedVars.interaction.auto.autoLetterboxDialogue and self.savedVars.letterbox.letterboxVisible then
+        if self.savedVars.interaction.auto.autoLetterboxDialogue and not self.savedVars.letterbox.perma then
             self:HideLetterbox()
         end
 
@@ -354,6 +384,23 @@ function CinematicCam:UpdateHorizontal()
     end
 end
 
+function CinematicCam:MigrateSettings()
+    -- Migrate hideCompass from boolean to string
+    if type(self.savedVars.interface.hideCompass) == "boolean" then
+        self.savedVars.interface.hideCompass = self.savedVars.interface.hideCompass and "never" or "always"
+    end
+
+    -- Migrate hideReticle from boolean to string
+    if type(self.savedVars.interface.hideReticle) == "boolean" then
+        self.savedVars.interface.hideReticle = self.savedVars.interface.hideReticle and "never" or "always"
+    end
+
+    -- Migrate hideActionBar from boolean to string
+    if type(self.savedVars.interface.hideActionBar) == "boolean" then
+        self.savedVars.interface.hideActionBar = self.savedVars.interface.hideActionBar and "never" or "always"
+    end
+end
+
 ---=============================================================================
 -- Initialize
 --=============================================================================
@@ -361,7 +408,7 @@ local function Initialize()
     CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, CinematicCam.defaults)
     CinematicCam:InitializeChunkedTextControl()
 
-
+    CinematicCam:MigrateSettings()
 
     CinematicCam:InitializeUI()
     CinematicCam:ConfigurePlayerOptionsBackground()
@@ -583,17 +630,13 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle is now visible - player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                if self.savedVars.interface.hideCompass then
-                    CinematicCam:ToggleCompass(true)
-                end
+                CinematicCam:UpdateCompassVisibility()
 
-                if self.savedVars.interface.hideActionBar then
-                    CinematicCam:ToggleActionBar(true)
-                end
+                -- Check action bar setting
+                CinematicCam:UpdateActionBarVisibility()
 
-                if self.savedVars.interface.hideReticle then
-                    CinematicCam:ToggleReticle(true)
-                end
+                -- Check reticle setting
+                CinematicCam:UpdateReticleVisibility()
                 if self.presetPending then
                     CinematicCam:InitializeChunkedTextControl()
 
@@ -616,6 +659,36 @@ function CinematicCam:RegisterUIRefreshEvent()
         end
     end)
 end
+
+-- Combat state change for compass, reticle, and action bar
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Combat", EVENT_PLAYER_COMBAT_STATE, function(eventCode, inCombat)
+    -- Handle compass
+    if CinematicCam.savedVars.interface.hideCompass == "combat" then
+        CinematicCam:ToggleCompass(not inCombat) -- Hide when NOT in combat
+    elseif CinematicCam.savedVars.interface.hideCompass == "always" then
+        if inCombat then
+            CinematicCam:ToggleCompass(true) -- Always show in combat for health bar
+        end
+    end
+
+    -- Handle action bar
+    if CinematicCam.savedVars.interface.hideActionBar == "combat" then
+        CinematicCam:ToggleActionBar(not inCombat)
+    elseif CinematicCam.savedVars.interface.hideActionBar == "always" then
+        if inCombat then
+            CinematicCam:ToggleActionBar(true) -- Always show in combat for health bar
+        end
+    end
+
+    -- Handle reticle
+    if CinematicCam.savedVars.interface.hideReticle == "combat" then
+        CinematicCam:ToggleReticle(not inCombat)
+    elseif CinematicCam.savedVars.interface.hideReticle == "always" then
+        if inCombat then
+            CinematicCam:ToggleReticle(true) -- Always show in combat for health bar
+        end
+    end
+end)
 
 -- Font events
 function CinematicCam:RegisterFontEvents()
@@ -641,19 +714,63 @@ function CinematicCam:RegisterFontEvents()
     end)
 end
 
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_HousingState", EVENT_HOUSING_EDITOR_MODE_CHANGED,
+    function(eventCode, oldMode, newMode)
+        -- newMode values:
+        -- HOUSING_EDITOR_MODE_DISABLED = 0 (not in housing editor)
+        -- HOUSING_EDITOR_MODE_BROWSE = 1 (browsing/placing items)
+        -- HOUSING_EDITOR_MODE_PLACEMENT = 2 (actively placing an item)
+        -- HOUSING_EDITOR_MODE_NODE_SELECTION = 3 (path nodes)
+
+        if newMode ~= HOUSING_EDITOR_MODE_DISABLED then
+            -- Entering housing editor - force show reticle
+            CinematicCam:ToggleReticle(false)
+            CinematicCam.inHousingEditor = true
+        else
+            -- Exiting housing editor - restore reticle setting
+            CinematicCam.inHousingEditor = false
+            CinematicCam:UpdateReticleVisibility()
+        end
+    end)
+-- Add this at the top of your file with other state tracking variables
+CinematicCam.currentZoneType = nil -- Track current zone type: "home", "dungeon", or "overland"
+
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVATED, function()
     zo_callLater(function()
+        -- Only proceed if auto-swap is enabled
+        if not CinematicCam.savedVars.autoSwapPresets then
+            return
+        end
+
+        local newZoneType = nil
+        local presetToLoad = nil
+
+        -- Home
         local zoneId = GetZoneId(GetCurrentMapZoneIndex())
-        CinematicCam:CheckAndApplyHomePreset(zoneId)
+        local homeId = CinematicCam:CheckAndApplyHomePreset(zoneId)
 
-
-        if IsUnitInDungeon("player") then
-            d("In dungeon - applying preset 3")
-            CinematicCam:LoadFromPresetSlot(3)
+        if homeId then
+            newZoneType = "home"
+            if CinematicCam.savedVars.homePresets and CinematicCam.savedVars.homePresets[homeId] then
+                presetToLoad = CinematicCam.savedVars.homePresets[homeId]
+            end
+            -- Dungeon
+        elseif IsUnitInDungeon("player") then
+            newZoneType = "dungeon"
+            presetToLoad = 3
+            -- Overland
         elseif not IsUnitInDungeon("player") and not CinematicCam.savedVars.isHome then
-            -- Not in home or dungeon - apply preset 2 (overland)
-            d("In overland - applying preset 2")
-            CinematicCam:LoadFromPresetSlot(2)
+            newZoneType = "overland"
+            presetToLoad = 2
+        end
+
+        -- Only apply preset if zone type changed
+        if newZoneType and newZoneType ~= CinematicCam.currentZoneType then
+            CinematicCam.currentZoneType = newZoneType
+
+            if presetToLoad then
+                CinematicCam:LoadFromPresetSlot(presetToLoad)
+            end
         end
     end, 1000)
 end)

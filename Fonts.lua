@@ -1,11 +1,11 @@
 local fontBook = {
     ["ESO_Standard"] = {
-        name = "ESO Standard",
+        name = "Standard",
         path = nil,
         description = "Default ESO font"
     },
     ["ESO_Bold"] = {
-        name = "ESO Bold",
+        name = "Bold",
         path = "EsoUI/Common/Fonts/FTN87.slug|30|thick-outline",
         description = "Bold ESO font"
     },

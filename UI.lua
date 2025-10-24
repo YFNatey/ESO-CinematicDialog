@@ -25,9 +25,9 @@ CinematicCam.uiElements = {
 
     -- Reticle
     "ZO_ReticleContainerReticle",
-    --"ZO_ReticleContainer",
+    "ZO_ReticleContainer",
     "ZO_ReticleContainerStealthIcon",
-    --"ZO_ReticleContainerNoneInteract",
+    "ZO_ReticleContainerNoneInteract",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -179,6 +179,7 @@ function CinematicCam:StopUIMonitoring()
     end
 end
 
+-- UI element groups
 CinematicCam.compassElements = {
     "ZO_CompassFrame",
     "ZO_CompassFrameCenter",
@@ -186,8 +187,8 @@ CinematicCam.compassElements = {
     "ZO_CompassFrameRight",
     "ZO_CompassContainer",
 }
+
 CinematicCam.actionbar = {
-    -- Action  Bar
     "ZO_PlayerAttributeHealth",
     "ZO_PlayerAttributeMagicka",
     "ZO_PlayerAttributeStamina",
@@ -197,41 +198,152 @@ CinematicCam.actionbar = {
     "ZO_TargetUnitFrame",
     "ZO_UnitFrames",
     "ZO_MinimapContainer",
-    -- Buff bar
     "ZO_PowerBlock",
     "ZO_BuffTracker",
 }
+
 CinematicCam.reticle = {
-    -- Reticle
     "ZO_ReticleContainerReticle",
     "ZO_ReticleContainerStealthIcon",
 }
--- Function to toggle compass visibility
+
+-- Function to toggle compass visibility with animation
 function CinematicCam:ToggleCompass(hide)
     for _, elementName in ipairs(CinematicCam.compassElements) do
         local element = _G[elementName]
         if element then
-            element:SetHidden(hide)
+            if hide then
+                self:FadeOutElement(element, 200)
+            else
+                self:FadeInElement(element, 200)
+            end
         end
     end
 end
 
+-- Function to toggle action bar visibility with animation
 function CinematicCam:ToggleActionBar(hide)
     for _, elementName in ipairs(CinematicCam.actionbar) do
         local element = _G[elementName]
         if element then
-            element:SetHidden(hide)
+            if hide then
+                self:FadeOutElement(element, 200)
+            else
+                self:FadeInElement(element, 200)
+            end
         end
     end
 end
 
+-- Function to toggle reticle visibility with animation
 function CinematicCam:ToggleReticle(hide)
     for _, elementName in ipairs(CinematicCam.reticle) do
         local element = _G[elementName]
         if element then
-            element:SetHidden(hide)
+            if hide then
+                self:FadeOutElement(element, 200)
+            else
+                self:FadeInElement(element, 200)
+            end
         end
     end
+end
+
+-- Generic fade-in function for any UI element
+function CinematicCam:FadeInElement(element, duration)
+    if not element then return end
+
+    -- If already visible and at full alpha, skip animation
+    if not element:IsHidden() and element:GetAlpha() >= 0.99 then
+        return
+    end
+
+    -- Start with alpha at 0
+    element:SetAlpha(0)
+    element:SetHidden(false)
+
+    -- Create fade-in animation
+    local timeline = ANIMATION_MANAGER:CreateTimelineFromVirtual("ShowOnMouseOverLabelAnimation", element)
+    local animation = timeline:GetFirstAnimation()
+
+    if animation then
+        animation:SetAlphaValues(0, 1)
+        animation:SetDuration(duration or 300)
+        animation:SetEasingFunction(ZO_EaseInQuadratic)
+    end
+
+    timeline:PlayFromStart()
+end
+
+-- Generic fade-out function for any UI element
+function CinematicCam:FadeOutElement(element, duration)
+    if not element then return end
+
+    -- If already hidden, skip animation
+    if element:IsHidden() then
+        return
+    end
+
+    -- Create fade-out animation
+    local timeline = ANIMATION_MANAGER:CreateTimelineFromVirtual("ShowOnMouseOverLabelAnimation", element)
+    local animation = timeline:GetFirstAnimation()
+
+    if animation then
+        animation:SetAlphaValues(element:GetAlpha(), 0)
+        animation:SetDuration(duration or 300)
+        animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    end
+
+    -- Hide the element after animation completes
+    timeline:SetHandler("OnStop", function()
+        element:SetHidden(true)
+        element:SetAlpha(1) -- Reset alpha for next time
+    end)
+
+    timeline:PlayFromStart()
+end
+
+-- Update visibility functions to use animated toggles
+function CinematicCam:UpdateCompassVisibility()
+    local setting = self.savedVars.interface.hideCompass
+    local inCombat = IsUnitInCombat("player")
+
+    local shouldHide = false
+    if setting == "never" then
+        shouldHide = true
+    elseif setting == "combat" then
+        shouldHide = not inCombat -- Hide when NOT in combat
+    end
+
+    self:ToggleCompass(shouldHide)
+end
+
+function CinematicCam:UpdateActionBarVisibility()
+    local setting = self.savedVars.interface.hideActionBar
+    local inCombat = IsUnitInCombat("player")
+
+    local shouldHide = false
+    if setting == "never" then
+        shouldHide = true
+    elseif setting == "combat" then
+        shouldHide = not inCombat
+    end
+
+    self:ToggleActionBar(shouldHide)
+end
+
+function CinematicCam:UpdateReticleVisibility()
+    local setting = self.savedVars.interface.hideReticle
+    local inCombat = IsUnitInCombat("player")
+
+    local shouldHide = false
+    if setting == "never" then
+        shouldHide = true
+    elseif setting == "combat" then
+        shouldHide = not inCombat
+    end
+
+    self:ToggleReticle(shouldHide)
 end
 
 ---=============================================================================

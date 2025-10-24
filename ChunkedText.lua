@@ -5,9 +5,10 @@ local dialogueChangeCheckTimer = nil
 
 CinematicCam.chunkedDialogueData = {
     originalText = "",
-    chunks = {},
-    displayChunks = {},
-    currentChunkIndex = 0,
+    chunks = {},                  -- Short chunks for timing
+    displayChunks = {},           -- Long chunks for display
+    currentChunkIndex = 0,        -- Index for timing chunks
+    currentDisplayChunkIndex = 0, -- NEW: Separate index for display chunks
     isActive = false,
     customControl = nil,
     displayTimer = nil,
@@ -179,16 +180,45 @@ function CinematicCam:ProcessAndDisplayChunkedDialogue(textForTiming, processedT
     end
 end
 
+function CinematicCam:UpdateDisplayChunkIndex()
+    local timingChunks = CinematicCam.chunkedDialogueData.chunks
+    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
+    local currentTimingIndex = CinematicCam.chunkedDialogueData.currentChunkIndex
+
+    if not timingChunks or not displayChunks or #displayChunks == 0 then
+        return
+    end
+
+    -- If we only have one display chunk, always show it
+    if #displayChunks == 1 then
+        CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = 1
+        return
+    end
+
+    -- Calculate which display chunk should be shown based on timing progress
+    -- This maps the timing chunk index to the appropriate display chunk
+    local timingProgress = currentTimingIndex / #timingChunks
+    local displayChunkIndex = math.ceil(timingProgress * #displayChunks)
+
+    -- Clamp to valid range
+    displayChunkIndex = math.max(1, math.min(displayChunkIndex, #displayChunks))
+
+    CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = displayChunkIndex
+end
+
 function CinematicCam:InitializeHiddenChunkedDisplay()
     if #CinematicCam.chunkedDialogueData.chunks == 0 then
         return false
     end
 
-
-    if self:ShouldHidePlayerOptionsForInteraction() and #CinematicCam.chunkedDialogueData.chunks > 1 and CinematicCam.PlayerOptionsAlways == false then
+    if self:ShouldHidePlayerOptionsForInteraction() and
+        #CinematicCam.chunkedDialogueData.chunks > 1 and
+        CinematicCam.PlayerOptionsAlways == false then
         self:HidePlayerOptionsUntilLastChunk()
     end
+
     CinematicCam.chunkedDialogueData.currentChunkIndex = 1
+    CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = 1 -- Initialize display index
     CinematicCam.chunkedDialogueData.isActive = true
 
     if #CinematicCam.chunkedDialogueData.chunks > 1 then
@@ -228,6 +258,7 @@ function CinematicCam:ProcessTextIntoChunks(fullText)
 
     local processedText = self:PreprocessTextForChunking(fullText)
 
+    -- Keep short chunks for timing (player options timing)
     chunks = self:SplitTextIntoChunks(processedText, delimiters, minLength, maxLength)
 
     -- Preview timing for debugging
@@ -248,8 +279,71 @@ function CinematicCam:ProcessTextIntoDisplayChunks(fullText)
     local maxLength = self.savedVars.chunkedDialog.chunkMaxLength
 
     local processedText = self:PreprocessTextForChunking(fullText)
+    local chunks = self:SplitTextIntoChunks(processedText, delimiters, minLength, maxLength)
 
-    return self:SplitTextIntoChunks(processedText, delimiters, minLength, maxLength)
+    -- Combine into longer chunks for display (multi-sentence display)
+    return self:CombineShortChunks(chunks, minLength)
+end
+
+function CinematicCam:CombineShortChunks(chunks, minLength)
+    if not chunks or #chunks == 0 then
+        return {}
+    end
+
+    local combined = {}
+    local currentCombined = ""
+    local sentenceCount = 0
+    local minSentences = 1              -- Minimum sentences per chunk
+    local idealLength = minLength * 2.5 -- Target length for combined chunks
+
+    for i, chunk in ipairs(chunks) do
+        local trimmedChunk = self:TrimString(chunk)
+
+        if currentCombined == "" then
+            currentCombined = trimmedChunk
+            sentenceCount = 1
+        else
+            -- Add space between sentences
+            currentCombined = currentCombined .. " " .. trimmedChunk
+            sentenceCount = sentenceCount + 1
+        end
+
+        local isLastChunk = (i == #chunks)
+        local hasMinSentences = sentenceCount >= minSentences
+        local isLongEnough = string.len(currentCombined) >= idealLength
+        local wouldBeTooLong = false
+
+        -- Check if adding the next chunk would exceed maxLength
+        if not isLastChunk and i < #chunks then
+            local nextChunk = self:TrimString(chunks[i + 1])
+            local potentialLength = string.len(currentCombined) + string.len(nextChunk) + 1
+            wouldBeTooLong = potentialLength > self.savedVars.chunkedDialog.chunkMaxLength
+        end
+
+        -- Decide whether to finalize this chunk
+        local shouldFinalize = false
+
+        if isLastChunk then
+            -- Always add the last chunk
+            shouldFinalize = true
+        elseif hasMinSentences and (isLongEnough or wouldBeTooLong) then
+            -- We have enough sentences and either reached ideal length or next would be too long
+            shouldFinalize = true
+        end
+
+        if shouldFinalize then
+            table.insert(combined, currentCombined)
+            currentCombined = ""
+            sentenceCount = 0
+        end
+    end
+
+    -- Add any remaining text (shouldn't normally happen, but safety check)
+    if currentCombined ~= "" then
+        table.insert(combined, currentCombined)
+    end
+
+    return combined
 end
 
 function CinematicCam:SplitTextIntoChunks(processedText, delimiters, minLength, maxLength)
@@ -319,18 +413,34 @@ end
 function CinematicCam:DisplayCurrentChunk()
     local control = CinematicCam.chunkedDialogueData.customControl
     local background = CinematicCam.chunkedDialogueData.backgroundControl
-    local chunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex
+    local displayChunkIndex = CinematicCam.chunkedDialogueData.currentDisplayChunkIndex
+
     if self.savedVars.interaction.layoutPreset == "default" then
         -- Just handle the timing logic, no visual display
         return
     end
-    if not control or chunkIndex > #CinematicCam.chunkedDialogueData.chunks then
+
+    if not control then
         return
     end
 
-    -- Get chunk text
-    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks or CinematicCam.chunkedDialogueData.chunks
-    local chunkText = displayChunks[chunkIndex]
+    -- Check if we have display chunks
+    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
+    if not displayChunks or #displayChunks == 0 then
+        return
+    end
+
+    -- Make sure we have a valid display chunk index
+    if displayChunkIndex < 1 or displayChunkIndex > #displayChunks then
+        return
+    end
+
+    -- Get chunk text from display chunks
+    local chunkText = displayChunks[displayChunkIndex]
+
+    if not chunkText then
+        return
+    end
 
     -- Process text and apply formatting
     chunkText = string.gsub(chunkText, "§ABBREV§", ".")
@@ -394,6 +504,14 @@ function CinematicCam:HideChunkDisplay(control, background)
     control:SetHidden(true)
     if background then
         background:SetHidden(true)
+    end
+end
+
+function CinematicCam:RepositionInteractPrompt()
+    local interactContainer = ZO_ReticleContainer
+
+    if interactContainer then
+        interactContainer:SetScale(.4)
     end
 end
 
@@ -522,11 +640,25 @@ function CinematicCam:ShowPlayerOptionsOnLastChunk()
         return -- Not hidden, nothing to show
     end
 
-    -- Restore original visibility for all stored elements
+    -- Restore original visibility for all stored elements with fade-in animation
     for elementName, wasVisible in pairs(CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility) do
         local element = _G[elementName]
         if element and wasVisible then
+            -- Start with alpha at 0
+            element:SetAlpha(0)
             element:SetHidden(false)
+
+            -- Create fade-in animation
+            local timeline = ANIMATION_MANAGER:CreateTimelineFromVirtual("ShowOnMouseOverLabelAnimation", element)
+            local animation = timeline:GetFirstAnimation()
+
+            if animation then
+                animation:SetAlphaValues(0, 1)
+                animation:SetDuration(400) -- 400ms fade-in
+                animation:SetEasingFunction(ZO_EaseInQuadratic)
+            end
+
+            timeline:PlayFromStart()
         end
     end
 
@@ -581,10 +713,8 @@ function CinematicCam:ScheduleNextChunk()
         zo_removeCallLater(CinematicCam.chunkedDialogueData.displayTimer)
     end
 
-    -- Calculate timing for current chunk
-    local currentChunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex
-    local currentChunk = CinematicCam.chunkedDialogueData.chunks[currentChunkIndex]
-    local displayTime = self:CalculateChunkDisplayTime(currentChunk)
+    -- Calculate timing for current DISPLAY chunk (all timing chunks within it)
+    local displayTime = self:CalculateDisplayChunkTiming()
 
     -- Convert to milliseconds and schedule
     local displayTimeMs = displayTime * 1000
@@ -594,25 +724,104 @@ function CinematicCam:ScheduleNextChunk()
     end, displayTimeMs)
 end
 
+function CinematicCam:CalculateDisplayChunkTiming()
+    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
+    local currentDisplayIndex = CinematicCam.chunkedDialogueData.currentDisplayChunkIndex
+
+    if not displayChunks or #displayChunks == 0 then
+        return self.savedVars.chunkedDialog.baseDisplayTime or 3.0
+    end
+
+    -- Get the current display chunk text
+    local displayChunk = displayChunks[currentDisplayIndex]
+    if not displayChunk then
+        return self.savedVars.chunkedDialog.baseDisplayTime or 3.0
+    end
+
+    -- Calculate timing based on the FULL display chunk
+    local cleanText = self:CleanTextForTiming(displayChunk)
+    local textLength = string.len(cleanText)
+
+    -- Base calculation
+    local baseTime = 0.4
+    local timePerChar = 0.06
+    local displayTime = baseTime + (textLength * timePerChar)
+
+    -- Add punctuation timing if enabled
+    if self.savedVars.chunkedDialog.timingMode ~= "fixed" and self.savedVars.chunkedDialog.usePunctuationTiming then
+        local punctuationTime = self:CalculatePunctuationTime(cleanText)
+        displayTime = displayTime + punctuationTime
+    end
+
+    -- Apply min/max constraints
+    if self.savedVars.chunkedDialog.timingMode ~= "fixed" then
+        local minTime = self.savedVars.chunkedDialog.minDisplayTime or 1.5
+        local maxTime = self.savedVars.chunkedDialog.maxDisplayTime or 8.0
+        displayTime = math.max(minTime, displayTime)
+        displayTime = math.min(maxTime, displayTime)
+    end
+
+    return displayTime
+end
+
 function CinematicCam:AdvanceToNextChunk()
-    CinematicCam.chunkedDialogueData.currentChunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex + 1
+    -- Advance to next DISPLAY chunk
+    CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = CinematicCam.chunkedDialogueData
+    .currentDisplayChunkIndex + 1
 
-    if CinematicCam.chunkedDialogueData.currentChunkIndex <= #CinematicCam.chunkedDialogueData.chunks then
-        -- Check if this is the last chunk
-        local isLastChunk = CinematicCam.chunkedDialogueData.currentChunkIndex ==
-            #CinematicCam.chunkedDialogueData.chunks
+    -- Also update timing chunk index to the END of this display chunk
+    self:UpdateTimingChunkIndex()
 
-        -- Show player options if this is the last chunk
-        if isLastChunk then
-            self:ShowPlayerOptionsOnLastChunk()
-        end
+    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
+    local timingChunks = CinematicCam.chunkedDialogueData.chunks
 
+    -- Check if we've reached the end of ALL timing chunks (not just display chunks)
+    local allTimingChunksComplete = CinematicCam.chunkedDialogueData.currentChunkIndex >= #timingChunks
+
+    -- Show player options when ALL timing chunks are done
+    if allTimingChunksComplete and CinematicCam.chunkedDialogueData.playerOptionsHidden then
+        self:ShowPlayerOptionsOnLastChunk()
+    end
+
+    if CinematicCam.chunkedDialogueData.currentDisplayChunkIndex <= #displayChunks then
+        -- Display the current display chunk
         self:DisplayCurrentChunk()
 
-        if self.savedVars.interaction.subtitles.useChunkedDialogue and #CinematicCam.chunkedDialogueData.chunks > 1 and not isLastChunk then
+        -- Continue scheduling if we have more display chunks
+        local hasMoreDisplayChunks = CinematicCam.chunkedDialogueData.currentDisplayChunkIndex < #displayChunks
+
+        if self.savedVars.interaction.subtitles.useChunkedDialogue and
+            #displayChunks > 1 and
+            hasMoreDisplayChunks then
             self:ScheduleNextChunk()
         end
     end
+end
+
+function CinematicCam:UpdateTimingChunkIndex()
+    local timingChunks = CinematicCam.chunkedDialogueData.chunks
+    local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
+    local currentDisplayIndex = CinematicCam.chunkedDialogueData.currentDisplayChunkIndex
+
+    if not timingChunks or not displayChunks or #displayChunks == 0 then
+        return
+    end
+
+    -- If we're on the last display chunk, set timing to the last timing chunk
+    if currentDisplayIndex >= #displayChunks then
+        CinematicCam.chunkedDialogueData.currentChunkIndex = #timingChunks
+        return
+    end
+
+    -- Calculate which timing chunk we should be at based on display progress
+    -- This represents how many timing chunks have been "consumed" by display chunks shown
+    local displayProgress = currentDisplayIndex / #displayChunks
+    local timingChunkIndex = math.ceil(displayProgress * #timingChunks)
+
+    -- Clamp to valid range
+    timingChunkIndex = math.max(1, math.min(timingChunkIndex, #timingChunks))
+
+    CinematicCam.chunkedDialogueData.currentChunkIndex = timingChunkIndex
 end
 
 function CinematicCam:CalculateChunkDisplayTime(chunkText)
@@ -846,20 +1055,18 @@ function CinematicCam:ResetChunkedDialogueState()
     -- Hide all controls
     self:HideAllChunkedControls()
 
-    -- Restore original elements
-    --self:RestoreOriginalElements()
-
     -- Preserve control references
     local backgroundControl = CinematicCam.chunkedDialogueData.backgroundControl
     local playerOptionsBackgroundControl = CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl
     local customControl = CinematicCam.chunkedDialogueData.customControl
 
-    -- resetstate variables
+    -- Reset state variables
     CinematicCam.chunkedDialogueData = {
         originalText = "",
         chunks = {},
         displayChunks = {},
         currentChunkIndex = 0,
+        currentDisplayChunkIndex = 0, -- Reset display index
         isActive = false,
         customControl = customControl,
         backgroundControl = backgroundControl,
@@ -930,7 +1137,9 @@ function CinematicCam:InitializeChunkedDisplay()
     end
 
     -- Hide player options ONLY for dialogue interactions and if we have multiple chunks
-    if self:ShouldHidePlayerOptionsForInteraction() and #CinematicCam.chunkedDialogueData.chunks > 1 and CinematicCam.PlayerOptionsAlways == false then
+    if self:ShouldHidePlayerOptionsForInteraction() and
+        #CinematicCam.chunkedDialogueData.chunks > 1 and
+        CinematicCam.PlayerOptionsAlways == false then
         self:HidePlayerOptionsUntilLastChunk()
     end
 
@@ -947,6 +1156,7 @@ function CinematicCam:InitializeChunkedDisplay()
     -- Setup display
     self:ApplyChunkedTextPositioning()
     CinematicCam.chunkedDialogueData.currentChunkIndex = 1
+    CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = 1 -- Initialize display index
     CinematicCam.chunkedDialogueData.isActive = true
 
     -- Display first chunk

@@ -137,7 +137,7 @@ end
 function CinematicCam:ApplyKingdomPreset()
     self.vanillaPending = false
     -- Medieval/fantasy styling with elegant colors
-    local elegantWhite = { r = 0.2, g = 0.2, b = 0.2, a = 1.0 } -- Slightly warm white
+    local elegantWhite = { r = 0.2, g = 0.2, b = 0.2, a = 1.0 }
     self.savedVars.interface.currentPreset = "kingdom"
     self:ApplyNPCNamePreset("prepended")
     -- No letterbox for open view
@@ -228,7 +228,6 @@ function CinematicCam:ApplyVanillaPreset()
     CinematicCam:ToggleActionBar(false)
     CinematicCam:ToggleReticle(false)
 
-    -- IMPORTANT: Force refresh the text control properties
     if CinematicCam.chunkedDialogueData.customControl then
         local control = CinematicCam.chunkedDialogueData.customControl
         -- Apply the new font and color settings to the control
@@ -261,8 +260,6 @@ function CinematicCam:ApplyVanillaPreset()
     CinematicCam.vanillaPending = true
     CinematicCam.presetPending = true
 end
-
--- Add to your Presets.lua file (document 4)
 
 ---=============================================================================
 -- Custom Preset Slots - Simple 3-slot system
@@ -354,22 +351,18 @@ function CinematicCam:LoadFromPresetSlot(slotNumber)
     self.savedVars.interaction.layoutPreset = preset.layoutPreset
     self.savedVars.interface.defaultBackgroundMode = preset.defaultBackgroundMode
     self.savedVars.interface.cinematicBackgroundMode = preset.cinematicBackgroundMode
-    self.savedVars.letterbox.letterboxVisible = preset.letterboxVisible
-    self.savedVars.letterbox.size = preset.letterboxSize
-    self.savedVars.letterbox.opacity = preset.letterboxOpacity
     self.savedVars.interaction.auto.autoLetterboxDialogue = preset.autoLetterboxDialogue
     self.savedVars.letterbox.autoLetterboxMount = preset.autoLetterboxMount
     self.savedVars.letterbox.mountLetterboxDelay = preset.mountLetterboxDelay
-    self.savedVars.interface.selectedFont = preset.selectedFont
-    self.savedVars.interface.customFontSize = preset.customFontSize
+
     self.savedVars.interaction.subtitles.isHidden = preset.subtitlesHidden
     self.savedVars.interaction.subtitles.useChunkedDialogue = preset.useChunkedDialogue
     self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = preset.hidePlayerOptionsUntilLastChunk
-    self.savedVars.interaction.subtitles.textColor = preset.textColor
+
     self.savedVars.interaction.subtitles.posX = preset.posX
     self.savedVars.interaction.subtitles.posY = preset.posY
     self.savedVars.npcNamePreset = preset.npcNamePreset
-    self.savedVars.npcNameColor = preset.npcNameColor
+
     self.savedVars.interaction.ui.hidePanelsESO = preset.hidePanelsESO
     self.savedVars.interface.hideCompass = preset.hideCompass
     self.savedVars.interface.hideActionBar = preset.hideActionBar
@@ -385,9 +378,10 @@ function CinematicCam:LoadFromPresetSlot(slotNumber)
         self:HideLetterbox()
     end
 
-    CinematicCam:ToggleCompass(preset.hideCompass)
-    CinematicCam:ToggleActionBar(preset.hideActionBar)
-    CinematicCam:ToggleReticle(preset.hideReticle)
+    -- Use the new update functions instead of direct toggle
+    CinematicCam:UpdateCompassVisibility()
+    CinematicCam:UpdateActionBarVisibility()
+    CinematicCam:UpdateReticleVisibility()
 
     if preset.hidePanelsESO then
         self:HideDialoguePanels()
@@ -452,3 +446,125 @@ function CinematicCam:GetSlotDisplayName(slotNumber)
 
     return slot.name
 end
+
+function CinematicCam:GetPresetTooltip(slotNumber)
+    local slotKey = "slot" .. slotNumber
+    local slot = self.savedVars.customPresets[slotKey]
+
+    if not slot or not slot.settings then
+        return "No settings saved for this preset"
+    end
+
+    local settings = slot.settings
+    local tooltip = {}
+
+    -- Header
+    table.insert(tooltip, "|cFFD700" .. slot.name .. " Settings|r")
+    table.insert(tooltip, "")
+
+    -- Apply To settings
+    table.insert(tooltip, "|cFFFFFF• Apply To:|r")
+    if settings.forceThirdPersonDialogue then
+        table.insert(tooltip, "  - Citizens: |c00FF00Enabled|r")
+    else
+        table.insert(tooltip, "  - Citizens: |cFF0000Disabled|r")
+    end
+
+    if settings.forceThirdPersonVendor and settings.forceThirdPersonBank then
+        table.insert(tooltip, "  - Merchants & Bankers: |c00FF00Enabled|r")
+    else
+        table.insert(tooltip, "  - Merchants & Bankers: |cFF0000Disabled|r")
+    end
+
+    if settings.forceThirdPersonCrafting then
+        table.insert(tooltip, "  - Crafting Stations: |c00FF00Enabled|r")
+    else
+        table.insert(tooltip, "  - Crafting Stations: |cFF0000Disabled|r")
+    end
+
+    table.insert(tooltip, "")
+
+    -- Style settings
+    table.insert(tooltip, "|cFFFFFF• Style:|r")
+    local styleName = settings.layoutPreset == "cinematic" and "Cinematic" or "Default"
+    table.insert(tooltip, "  - " .. styleName)
+
+    table.insert(tooltip, "")
+
+    -- Subtitle settings
+    table.insert(tooltip, "|cFFFFFF• Subtitles:|r")
+    if settings.subtitlesHidden then
+        table.insert(tooltip, "  - |cFF0000Hidden|r")
+    else
+        table.insert(tooltip, "  - |c00FF00Visible|r")
+        if settings.hidePlayerOptionsUntilLastChunk then
+            table.insert(tooltip, "  - Hide choices until finished")
+        end
+    end
+
+    table.insert(tooltip, "")
+
+    -- Font settings
+    table.insert(tooltip, "|cFFFFFF• Font:|r")
+    table.insert(tooltip, "  - " .. settings.selectedFont .. " (" .. settings.customFontSize .. ")")
+
+    table.insert(tooltip, "")
+
+    -- Letterbox settings
+    table.insert(tooltip, "|cFFFFFF• Black Bars:|r")
+    if settings.letterboxVisible then
+        table.insert(tooltip, "  - |c00FF00ON|r (Size: " .. settings.letterboxSize .. ")")
+    else
+        table.insert(tooltip, "  - |cFF0000OFF|r")
+    end
+
+    if settings.autoLetterboxDialogue then
+        table.insert(tooltip, "  - Auto during dialogue")
+    end
+
+    if settings.autoLetterboxMount then
+        table.insert(tooltip, "  - Auto on mount (" .. settings.mountLetterboxDelay .. "s delay)")
+    end
+
+    table.insert(tooltip, "")
+
+    -- Cinematic UI settings
+    table.insert(tooltip, "|cFFFFFF• UI Visibility:|r")
+
+    local compassText = settings.hideCompass
+    if compassText == "never" then
+        table.insert(tooltip, "  - Compass: |cFF0000Never|r")
+    elseif compassText == "combat" then
+        table.insert(tooltip, "  - Compass: Combat Only")
+    else
+        table.insert(tooltip, "  - Compass: |c00FF00Always|r")
+    end
+
+    local actionBarText = settings.hideActionBar
+    if actionBarText == "never" then
+        table.insert(tooltip, "  - Skill Bar: |cFF0000Never|r")
+    elseif actionBarText == "combat" then
+        table.insert(tooltip, "  - Skill Bar: Combat Only")
+    else
+        table.insert(tooltip, "  - Skill Bar: |c00FF00Always|r")
+    end
+
+    local reticleText = settings.hideReticle
+    if reticleText == "never" then
+        table.insert(tooltip, "  - Reticle: |cFF0000Never|r")
+    elseif reticleText == "combat" then
+        table.insert(tooltip, "  - Reticle: Combat Only")
+    else
+        table.insert(tooltip, "  - Reticle: |c00FF00Always|r")
+    end
+
+    if settings.hidePanelsESO then
+        table.insert(tooltip, "  - ESO Panels: |cFF0000Hidden|r")
+    else
+        table.insert(tooltip, "  - ESO Panels: |c00FF00Visible|r")
+    end
+
+    return table.concat(tooltip, "\n")
+end
+
+-- Updated dropdown definition

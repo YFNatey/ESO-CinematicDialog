@@ -42,7 +42,7 @@
                     <Dimensions x="820" y="120" />
                 </Texture>
                 <Texture name="CinematicCam_ChunkedTextBackground_Kingdom" mouseEnabled="false"
-                         textureFile="/esoui/art/tribute/tributecardnamebanner.dds"
+                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
