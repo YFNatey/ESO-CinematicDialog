@@ -460,7 +460,7 @@ function CinematicCam:GetPresetTooltip(slotNumber)
 
     -- Header
     table.insert(tooltip,
-        "|cFFD700" .. slot.name .. " Settings\n(Type /cc" .. slotNumber .. " into the chat)|r")
+        "|cFFD700" .. slot.name .. " Settings\n(You can also type /cc" .. slotNumber .. " into chat)|r")
     table.insert(tooltip, "")
 
     -- Apply To settings
@@ -567,5 +567,3 @@ function CinematicCam:GetPresetTooltip(slotNumber)
 
     return table.concat(tooltip, "\n")
 end
-
--- Updated dropdown definition

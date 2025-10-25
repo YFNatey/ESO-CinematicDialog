@@ -103,8 +103,8 @@
         <Texture name="CinematicCam_UpdateNotificationBackground" mouseEnabled="false"
                  textureFile="/esoui/art/miscellaneous/toast_bg.dds"
                  layer="DL_OVERLAY" tier="DT_HIGH" level="9">
-            <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" offsetX="20" offsetY="-300" />
-            <Dimensions x="300" y="60" />
+            <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" offsetX="-200" offsetY="-550" />
+            <Dimensions x="300" y="90" />
         </Texture>
         
         <!-- Journal Icon -->
@@ -117,7 +117,7 @@
         
         <!-- Update Text -->
         <Label name="CinematicCam_UpdateNotificationText" mouseEnabled="false"
-               font="EsoUI/Common/Fonts/FTN57.slug|27|soft-shadow-thick" color="FFFFFF" text="Cinematic Dialog Updated. Check settings to see whats new!"
+               font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" text="Cinematic Dialog Updated. Check settings to see whats new!"
                layer="DL_OVERLAY" tier="DT_HIGH" level="10">
             <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationIcon" relativePoint="RIGHT" offsetX="10" offsetY="0" />
             <Anchor point="RIGHT" relativeTo="CinematicCam_UpdateNotificationBackground" relativePoint="RIGHT" offsetX="-15" offsetY="0" />

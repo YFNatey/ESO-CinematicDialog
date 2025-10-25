@@ -443,12 +443,15 @@ local function Initialize()
     end
     SLASH_COMMANDS["/cc1"] = function()
         CinematicCam:LoadFromPresetSlot(1)
+        CinematicCam:ShowPresetNotificationUI("Home")
     end
     SLASH_COMMANDS["/cc2"] = function()
         CinematicCam:LoadFromPresetSlot(2)
+        CinematicCam:ShowPresetNotificationUI("Overland")
     end
     SLASH_COMMANDS["/cc3"] = function()
         CinematicCam:LoadFromPresetSlot(3)
+        CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
     end
     CinematicCam:checkhid()
 end
@@ -765,15 +768,18 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVAT
             newZoneType = "home"
             if CinematicCam.savedVars.homePresets and CinematicCam.savedVars.homePresets[homeId] then
                 presetToLoad = CinematicCam.savedVars.homePresets[homeId]
+                CinematicCam:ShowPresetNotificationUI("Home")
             end
             -- Dungeon
         elseif IsUnitInDungeon("player") then
             newZoneType = "dungeon"
             presetToLoad = 3
+            CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
             -- Overland
         elseif not IsUnitInDungeon("player") and not CinematicCam.savedVars.isHome then
             newZoneType = "overland"
             presetToLoad = 2
+            CinematicCam:ShowPresetNotificationUI("Overland")
         end
 
         -- Only apply preset if zone type changed
@@ -935,9 +941,29 @@ function CinematicCam:ShowUpdateNotificationUI()
     end, 5000)
 end
 
+function CinematicCam:ShowPresetNotificationUI(slotName)
+    local notification = _G["CinematicCam_UpdateNotification"]
+    local notificationText = _G["CinematicCam_UpdateNotificationText"]
+    if not notification then
+        return
+    end
+
+    notification:SetHidden(false)
+    notification:SetAlpha(0)
+    notificationText:SetText("Cinematic Dialog: " .. slotName)
+
+    -- Start fade in animation
+    self:AnimateUpdateNotification(notification, true)
+
+    -- Auto-hide after 5 seconds
+    zo_callLater(function()
+        self:HideUpdateNotification()
+    end, 6000)
+end
+
 function CinematicCam:HideUpdateNotification()
     local notification = _G["CinematicCam_UpdateNotification"]
-
+    local notificationText = _G["CinematicCam_UpdateNotificationText"]
     if not notification then
         return
     end
@@ -950,6 +976,9 @@ function CinematicCam:HideUpdateNotification()
             notification:SetHidden(true)
         end
     end, 350)
+    zo_callLater(function()
+        notificationText:SetText("Cinematic Dialog Updated. Check settings to see whats new!")
+    end, 400)
 end
 
 -- Fixed animation function:
