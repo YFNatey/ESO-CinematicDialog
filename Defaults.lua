@@ -42,7 +42,7 @@ CinematicCam.defaults = {
         hidePlayerOptions = false,
         forceThirdPersonInteractiveNotes = false,
 
-        layoutPreset = "default",
+        layoutPreset = "cinematic",
         ui = {
             hidePanelsESO = false,
         },
@@ -79,12 +79,16 @@ CinematicCam.defaults = {
         dialogueHorizontalOffset = 0.34,
         dialogueVerticalOffset = 0.34,
 
-        defaultBackgroundMode = "esoDefault", -- "esoDefault", "none"
-        cinematicBackgroundMode = "none",     -- "all", "subtitles", "playerOptions", "none"
+        defaultBackgroundMode = "none",   -- "esoDefault", "none"
+        cinematicBackgroundMode = "none", -- "all", "subtitles", "playerOptions", "none"
 
         useSubtitleBackground = false,
         usePlayerOptionsBackground = false,
-
+        sepiaFilter = {
+            enabled = false,
+            intensity = 0.3,
+            useTextured = false,
+        },
     },
     hideUiElements = {},
     chunkedDialog = {

@@ -34,7 +34,7 @@ CinematicCam = {}
 CinematicCam.savedVars = nil
 CinematicCam.globalCount = 0
 local interactionTypeMap = {}
-local CURRENT_VERSION = "3.26"
+local CURRENT_VERSION = "3.27"
 
 -- State tracking
 CinematicCam.isInteractionModified = false -- overriden default cam
@@ -409,13 +409,13 @@ local function Initialize()
     CinematicCam:InitializeChunkedTextControl()
 
     CinematicCam:MigrateSettings()
-
+    CinematicCam:InitializeSepiaFilter()
     CinematicCam:InitializeUI()
     CinematicCam:ConfigurePlayerOptionsBackground()
     CinematicCam:InitializePreviewSystem()
     CinematicCam:InitializeInteractionSettings()
     CinematicCam:UpdateHorizontal()
-    CinematicCam:InitializeCustomPresets()
+
 
     zo_callLater(function()
         CinematicCam:CreateSettingsMenu()
@@ -426,6 +426,9 @@ local function Initialize()
         CinematicCam:InitializeLetterbox()
         CinematicCam:BuildHomeIdsLookup()
     end, 1000)
+    zo_callLater(function()
+        CinematicCam:InitializeCustomPresets()
+    end, 2000)
 
     -- Initialize update system
     CinematicCam:InitializeUpdateSystem()
@@ -437,6 +440,15 @@ local function Initialize()
 
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
+    end
+    SLASH_COMMANDS["/cc1"] = function()
+        CinematicCam:LoadFromPresetSlot(1)
+    end
+    SLASH_COMMANDS["/cc2"] = function()
+        CinematicCam:LoadFromPresetSlot(2)
+    end
+    SLASH_COMMANDS["/cc3"] = function()
+        CinematicCam:LoadFromPresetSlot(3)
     end
     CinematicCam:checkhid()
 end
@@ -905,26 +917,12 @@ function CinematicCam:IsNewerVersion(current, last)
     return false
 end
 
-function CinematicCam:ShowWelcomeMessage()
-    -- Text is set in XML, just show the notification
-    self:ShowUpdateNotificationUI()
-end
-
-function CinematicCam:ShowUpdateMessage()
-    -- Text is set in XML, just show the notification
-    self:ShowUpdateNotificationUI()
-end
-
--- Fixed ShowUpdateNotificationUI with better debugging:
 function CinematicCam:ShowUpdateNotificationUI()
     local notification = _G["CinematicCam_UpdateNotification"]
-
     if not notification then
         return
     end
 
-
-    -- Make sure it's visible and starts at alpha 0 for fade in
     notification:SetHidden(false)
     notification:SetAlpha(0)
 
@@ -937,7 +935,6 @@ function CinematicCam:ShowUpdateNotificationUI()
     end, 5000)
 end
 
--- Fixed HideUpdateNotification:
 function CinematicCam:HideUpdateNotification()
     local notification = _G["CinematicCam_UpdateNotification"]
 
@@ -945,12 +942,9 @@ function CinematicCam:HideUpdateNotification()
         return
     end
 
-
-
     -- Start fade out animation
     self:AnimateUpdateNotification(notification, false)
 
-    -- Actually hide after fade completes
     zo_callLater(function()
         if notification then
             notification:SetHidden(true)
@@ -963,7 +957,6 @@ function CinematicCam:AnimateUpdateNotification(control, fadeIn)
     if not control then
         return
     end
-
 
 
     local timeline = ANIMATION_MANAGER:CreateTimeline()
@@ -995,9 +988,9 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
         local isFirstInstall = (lastSeenVersion == "0.0.0" and not hasSeenWelcome)
 
         if isFirstInstall then
-            self:ShowWelcomeMessage()
+            self:ShowUpdateNotificationUI()
         else
-            self:ShowUpdateMessage()
+            self:ShowUpdateNotificationUI()
         end
 
         -- Mark this version as seen

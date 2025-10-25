@@ -87,60 +87,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
-            type = "header",
-            name = "Apply to",
-        },
 
-        {
-            type = "checkbox",
-            name = "Citizens",
-            tooltip = [[Keep game camera when talking to regular characters
-*Turning off will trigger a load screen]],
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonDialogue = value
-                self:InitializeInteractionSettings()
-                if not value then
-                    ReloadUI()
-                end
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Merchants & Bankers",
-            tooltip =
-            [[Keep game camera when using stores, stables, and banks
-*Turning of will trigger a load screen]],
-            getFunc = function()
-                return self.savedVars.interaction.forceThirdPersonVendor and
-                    self.savedVars.interaction.forceThirdPersonBank
-            end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonVendor = value
-                self.savedVars.interaction.forceThirdPersonBank = value
-                self:InitializeInteractionSettings()
-                if not value then
-                    ReloadUI()
-                end
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Crafting Stations",
-            tooltip = "Keep game camera when using crafting stations",
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonCrafting = value
-                self.savedVars.interaction.forceThirdPersonDye = false
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
         {
             type = "header",
             name = "General Settings",
@@ -488,6 +435,27 @@ function CinematicCam:CreateSettingsMenu()
             type = "header",
             name = "Cinematic Settings",
         },
+
+
+
+        --[[{
+            type = "dropdown",
+            name = "Sepia Style",
+            tooltip = "Choose between a vignette edge effect or solid color overlay",
+            choices = { "Vignette", "Solid Sepia" },
+            choicesValues = { true, false },
+            getFunc = function() return self.savedVars.interface.sepiaFilter.useTextured end,
+            setFunc = function(value)
+                self.savedVars.interface.sepiaFilter.useTextured = value
+                if self.savedVars.interface.sepiaFilter.enabled then
+                    self:UpdateSepiaFilter()
+                end
+            end,
+            disabled = function() return not self.savedVars.interface.sepiaFilter.enabled end,
+            width = "full",
+        --},]]
+
+        --]]
         {
             type = "dropdown",
             name = "Show Compass",
@@ -527,6 +495,18 @@ function CinematicCam:CreateSettingsMenu()
         {
 
             type = "divider"
+        },
+        {
+            type = "checkbox",
+            name = "Vignette",
+
+            getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
+            setFunc = function(value)
+                self.savedVars.interface.sepiaFilter.enabled = value
+                self.savedVars.interface.sepiaFilter.useTextured = value
+                self:UpdateSepiaFilter()
+            end,
+            width = "full",
         },
         {
             type = "button",
@@ -609,6 +589,60 @@ function CinematicCam:CreateSettingsMenu()
                 elseif value == "vanilla" then
                     self:ApplyVanillaPreset()
                 end
+            end,
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Apply to",
+        },
+
+        {
+            type = "checkbox",
+            name = "Citizens",
+            tooltip = [[Keep game camera when talking to regular characters
+*Turning off will trigger a load screen]],
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonDialogue = value
+                self:InitializeInteractionSettings()
+                if not value then
+                    ReloadUI()
+                end
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Merchants & Bankers",
+            tooltip =
+            [[Keep game camera when using stores, stables, and banks
+*Turning of will trigger a load screen]],
+            getFunc = function()
+                return self.savedVars.interaction.forceThirdPersonVendor and
+                    self.savedVars.interaction.forceThirdPersonBank
+            end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonVendor = value
+                self.savedVars.interaction.forceThirdPersonBank = value
+                self:InitializeInteractionSettings()
+                if not value then
+                    ReloadUI()
+                end
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Crafting Stations",
+            tooltip = "Keep game camera when using crafting stations",
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonCrafting = value
+                self.savedVars.interaction.forceThirdPersonDye = false
+                self:InitializeInteractionSettings()
             end,
             width = "full",
         },
@@ -1108,5 +1142,68 @@ function CinematicCam:SetActiveBackgroundControl()
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundKingdom
     else
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundNormal
+    end
+end
+
+function CinematicCam:InitializeSepiaFilter()
+    -- Initialize saved variable for sepia filter
+    if self.savedVars.interface.sepiaFilter == nil then
+        self.savedVars.interface.sepiaFilter = {
+            enabled = false,
+            intensity = 0.35,  -- Alpha value
+            useTextured = true -- Use the textured version or solid color version
+        }
+    end
+
+    -- Apply the initial state
+    self:UpdateSepiaFilter()
+end
+
+function CinematicCam:ToggleSepiaFilter()
+    self.savedVars.interface.sepiaFilter.enabled = not self.savedVars.interface.sepiaFilter.enabled
+    self:UpdateSepiaFilter()
+end
+
+function CinematicCam:ShowSepiaFilter()
+    local settings = self.savedVars.interface.sepiaFilter
+
+    if settings.useTextured then
+        -- Use the vignette effect (textured blur on top and bottom)
+        CinematicCam_SepiaFilterTexturedContainer:SetHidden(false)
+        CinematicCam_SepiaFilterTexturedTop:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterTexturedBottom:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterContainer:SetHidden(true)
+    else
+        -- Use the solid color sepia version
+        CinematicCam_SepiaFilterContainer:SetHidden(false)
+        CinematicCam_SepiaFilter:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
+    end
+end
+
+function CinematicCam:HideSepiaFilter()
+    CinematicCam_SepiaFilterContainer:SetHidden(true)
+    CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
+end
+
+function CinematicCam:UpdateSepiaFilter()
+    if self.savedVars.interface.sepiaFilter.enabled then
+        self:ShowSepiaFilter()
+    else
+        self:HideSepiaFilter()
+    end
+end
+
+function CinematicCam:SetSepiaIntensity(intensity)
+    self.savedVars.interface.sepiaFilter.intensity = intensity
+
+    -- Update the alpha if filter is currently active
+    if self.savedVars.interface.sepiaFilter.enabled then
+        if self.savedVars.interface.sepiaFilter.useTextured then
+            CinematicCam_SepiaFilterTexturedTop:SetAlpha(intensity)
+            CinematicCam_SepiaFilterTexturedBottom:SetAlpha(intensity)
+        else
+            CinematicCam_SepiaFilter:SetAlpha(intensity)
+        end
     end
 end

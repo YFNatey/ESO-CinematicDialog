@@ -124,7 +124,46 @@
         </Label>
     </Controls>
 </TopLevelControl>
+   <TopLevelControl name="CinematicCam_SepiaFilterContainer" mouseEnabled="false" hidden="true"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="1000">
+            <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
+            <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
+            <Controls>
+                <Texture name="CinematicCam_SepiaFilter" mouseEnabled="false"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="1000"
+                         color="FFD89B">
+                    <Anchor point="TOPLEFT" relativeTo="CinematicCam_SepiaFilterContainer" relativePoint="TOPLEFT" />
+                    <Anchor point="BOTTOMRIGHT" relativeTo="CinematicCam_SepiaFilterContainer" relativePoint="BOTTOMRIGHT" />
+                </Texture>
+            </Controls>
+        </TopLevelControl>
 
-       
+        <!-- Vignette Filter  -->
+        <TopLevelControl name="CinematicCam_SepiaFilterTexturedContainer" mouseEnabled="false" hidden="true"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="1000">
+            <Anchor point="TOPLEFT" relativeTo="GuiRoot" relativePoint="TOPLEFT" />
+            <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" />
+            <Controls>
+                <!-- Top Blur -->
+                <Texture name="CinematicCam_SepiaFilterTexturedTop" mouseEnabled="false"
+                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="1000"
+                         color="000000">
+                    <Anchor point="TOP" relativeTo="CinematicCam_SepiaFilterTexturedContainer" relativePoint="TOP" offsetX="0" offsetY="-200" />
+                    <Dimensions x="5000" y="400" />
+                    <TextureCoords left="0" right="2" top="0" bottom="1" />
+                </Texture>
+                
+                <!-- Bottom Blur -->
+                <Texture name="CinematicCam_SepiaFilterTexturedBottom" mouseEnabled="false"
+                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                         layer="DL_OVERLAY" tier="DT_HIGH" level="1000"
+                         color="000000">
+                    <Anchor point="BOTTOM" relativeTo="CinematicCam_SepiaFilterTexturedContainer" relativePoint="BOTTOM" offsetX="0" offsetY="200" />
+                    <Dimensions x="5000" y="400" />
+                    <TextureCoords left="0" right="2" top="1" bottom="0" />
+                </Texture>
+            </Controls>
+        </TopLevelControl>
     </Controls>
 </GuiXml>
