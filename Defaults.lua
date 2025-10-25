@@ -1,6 +1,6 @@
 CinematicCam.defaults = {
     camEnabled = false,
-    npcNamePreset = "default",
+    npcNamePreset = "prepended",
     npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
     npcNameFontSize = 42,
     usePlayerName = false,
@@ -44,7 +44,7 @@ CinematicCam.defaults = {
 
         layoutPreset = "cinematic",
         ui = {
-            hidePanelsESO = false,
+            hidePanelsESO = true,
         },
         auto = {
             autoLetterboxDialogue = false,
@@ -57,7 +57,7 @@ CinematicCam.defaults = {
         },
         subtitles = {
             isHidden = false,
-            useChunkedDialogue = false,
+            useChunkedDialogue = true,
             posY = 0.8,
             posX = 0.5,
             hidePlayerOptionsUntilLastChunk = false,
@@ -68,7 +68,7 @@ CinematicCam.defaults = {
     interface = {
         currentPreset = "none",
         UiElementsVisible = true,
-        hideDialoguePanels = false,
+        hideDialoguePanels = true,
         hideCompass = "always",
         hideReticle = "always",
         hideActionBar = "always",

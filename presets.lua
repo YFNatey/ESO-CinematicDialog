@@ -415,13 +415,11 @@ end
 function CinematicCam:RenamePresetSlot(slotNumber, newName)
     local slotKey = "slot" .. slotNumber
     local slot = self.savedVars.customPresets[slotKey]
-
+    if slotNumber == 1 then newName = "Home" end
+    if slotNumber == 2 then newName = "Overland" end
+    if slotNumber == 3 then newName = "Dungeons/Trials" end
     if not slot then
         return false
-    end
-
-    if not newName or newName == "" then
-        newName = "Custom " .. slotNumber
     end
 
     slot.name = newName

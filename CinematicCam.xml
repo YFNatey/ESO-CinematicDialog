@@ -104,7 +104,7 @@
                  textureFile="/esoui/art/miscellaneous/toast_bg.dds"
                  layer="DL_OVERLAY" tier="DT_HIGH" level="9">
             <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" offsetX="-200" offsetY="-550" />
-            <Dimensions x="300" y="90" />
+            <Dimensions x="300" y="140" />
         </Texture>
         
         <!-- Journal Icon -->

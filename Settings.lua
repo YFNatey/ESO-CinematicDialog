@@ -890,10 +890,10 @@ function CinematicCam:ShowSubtitlePreview(xPosition, yPosition)
 
     -- Set preview text properties
     CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
-    CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematidddcCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
     CinematicCam_PreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    CinematicCam_PreviewText:SetText("Preview")
+    CinematicCam_PreviewText:SetText("")
 
     -- Apply current font settings to preview
     local fontString = self:BuildUserFontString()

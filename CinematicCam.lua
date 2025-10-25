@@ -406,22 +406,24 @@ end
 --=============================================================================
 local function Initialize()
     CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, CinematicCam.defaults)
-    CinematicCam:InitializeChunkedTextControl()
 
-    CinematicCam:MigrateSettings()
-    CinematicCam:InitializeSepiaFilter()
-    CinematicCam:InitializeUI()
-    CinematicCam:ConfigurePlayerOptionsBackground()
-    CinematicCam:InitializePreviewSystem()
-    CinematicCam:InitializeInteractionSettings()
-    CinematicCam:UpdateHorizontal()
 
 
     zo_callLater(function()
-        CinematicCam:CreateSettingsMenu()
+        CinematicCam:InitializeChunkedTextControl()
+
+        CinematicCam:MigrateSettings()
+        CinematicCam:InitializeSepiaFilter()
+        CinematicCam:InitializeUI()
+        CinematicCam:ConfigurePlayerOptionsBackground()
+        CinematicCam:InitializePreviewSystem()
+        CinematicCam:InitializeInteractionSettings()
+        CinematicCam:UpdateHorizontal()
+
         CinematicCam:RegisterSceneCallbacks()
     end, 100)
     zo_callLater(function()
+        CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterUIRefreshEvent()
         CinematicCam:InitializeLetterbox()
         CinematicCam:BuildHomeIdsLookup()
@@ -941,6 +943,31 @@ function CinematicCam:ShowUpdateNotificationUI()
     end, 5000)
 end
 
+function CinematicCam:ShowWelcomeNotificationUI()
+    if self.savedVars.hasSeenWelcomeMessage then
+        return
+    end
+    local notification = _G["CinematicCam_UpdateNotification"]
+    local notificationText = _G["CinematicCam_UpdateNotificationText"]
+    if not notification then
+        return
+    end
+
+    notification:SetHidden(false)
+    notification:SetAlpha(0)
+    notificationText:SetText(
+        "|cFFD700Cinematic Dialog|r \n|cFFFFFFTry it out by talking to an NPC|r\n|cE0E0E0Check the settings menu for more customization options|r")
+
+    -- Start fade in animation
+    self:AnimateUpdateNotification(notification, true)
+
+    -- Auto-hide after 5 seconds
+    zo_callLater(function()
+        self:HideUpdateNotification()
+    end, 10000)
+    self.savedVars.hasSeenWelcomeMessage = true
+end
+
 function CinematicCam:ShowPresetNotificationUI(slotName)
     local notification = _G["CinematicCam_UpdateNotification"]
     local notificationText = _G["CinematicCam_UpdateNotificationText"]
@@ -1017,7 +1044,7 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
         local isFirstInstall = (lastSeenVersion == "0.0.0" and not hasSeenWelcome)
 
         if isFirstInstall then
-            self:ShowUpdateNotificationUI()
+            self:ShowWelcomeNotificationUI()
         else
             self:ShowUpdateNotificationUI()
         end
