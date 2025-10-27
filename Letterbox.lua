@@ -61,13 +61,6 @@ end
 
 -- Hide letterbox bars
 function CinematicCam:HideLetterbox()
-    if not self.savedVars.letterbox.letterboxVisible then
-        return
-    end
-    if CinematicCam_LetterboxTop:IsHidden() then
-        return
-    end
-
     local barHeight = self.savedVars.letterbox.size
 
     local timeline = ANIMATION_MANAGER:CreateTimeline()

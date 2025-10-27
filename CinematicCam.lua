@@ -34,7 +34,7 @@ CinematicCam = {}
 CinematicCam.savedVars = nil
 CinematicCam.globalCount = 0
 local interactionTypeMap = {}
-local CURRENT_VERSION = "3.27"
+local CURRENT_VERSION = "3.26"
 
 -- State tracking
 CinematicCam.isInteractionModified = false -- overriden default cam
@@ -280,12 +280,10 @@ function CinematicCam:OnGameCameraDeactivated()
         -- Move NPC dialogue text off-screen for cinematic mode (instead of hiding) to prevent flashing
         if self.savedVars.interaction.layoutPreset == "cinematic" then
             if ZO_InteractWindowTargetAreaBodyText then
-                ZO_InteractWindowTargetAreaBodyText:ClearAnchors()
-                ZO_InteractWindowTargetAreaBodyText:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, -5000, -5000)
+                ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
             end
             if ZO_InteractWindow_GamepadContainerText then
-                ZO_InteractWindow_GamepadContainerText:ClearAnchors()
-                ZO_InteractWindow_GamepadContainerText:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT, -5000, -5000)
+                ZO_InteractWindow_GamepadContainerText:SetHidden(true)
             end
         end
 
@@ -401,39 +399,37 @@ function CinematicCam:MigrateSettings()
     end
 end
 
+function CinematicCam:InitDefaults()
+    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, CinematicCam.defaults)
+end
+
 ---=============================================================================
 -- Initialize
 --=============================================================================
 local function Initialize()
-    CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, CinematicCam.defaults)
+    CinematicCam:InitDefaults()
+    CinematicCam:InitializeLetterbox()
+    CinematicCam:InitializeSepiaFilter()
+    CinematicCam:ConfigurePlayerOptionsBackground()
 
-
-
+    CinematicCam:InitializeChunkedTextControl()
+    CinematicCam:InitializePreviewSystem()
     zo_callLater(function()
-        CinematicCam:InitializeChunkedTextControl()
-
-        CinematicCam:MigrateSettings()
-        CinematicCam:InitializeSepiaFilter()
         CinematicCam:InitializeUI()
-        CinematicCam:ConfigurePlayerOptionsBackground()
-        CinematicCam:InitializePreviewSystem()
+        CinematicCam:RegisterSceneCallbacks()
+        CinematicCam:MigrateSettings()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:UpdateHorizontal()
-
-        CinematicCam:RegisterSceneCallbacks()
-    end, 100)
-    zo_callLater(function()
         CinematicCam:CreateSettingsMenu()
         CinematicCam:RegisterUIRefreshEvent()
-        CinematicCam:InitializeLetterbox()
+
         CinematicCam:BuildHomeIdsLookup()
+        CinematicCam:checkhid()
+        CinematicCam:InitializeUpdateSystem()
     end, 1000)
     zo_callLater(function()
         CinematicCam:InitializeCustomPresets()
     end, 2000)
-
-    -- Initialize update system
-    CinematicCam:InitializeUpdateSystem()
 
     -- Register slash commands
     SLASH_COMMANDS["/ccui"] = function()
@@ -443,19 +439,18 @@ local function Initialize()
     SLASH_COMMANDS["/ccbars"] = function()
         CinematicCam:ToggleLetterbox()
     end
-    SLASH_COMMANDS["/cc1"] = function()
+    SLASH_COMMANDS["/p1"] = function()
         CinematicCam:LoadFromPresetSlot(1)
         CinematicCam:ShowPresetNotificationUI("Home")
     end
-    SLASH_COMMANDS["/cc2"] = function()
+    SLASH_COMMANDS["/p2"] = function()
         CinematicCam:LoadFromPresetSlot(2)
         CinematicCam:ShowPresetNotificationUI("Overland")
     end
-    SLASH_COMMANDS["/cc3"] = function()
+    SLASH_COMMANDS["/p3"] = function()
         CinematicCam:LoadFromPresetSlot(3)
         CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
     end
-    CinematicCam:checkhid()
 end
 
 
@@ -590,11 +585,7 @@ function CinematicCam:InitializeUI()
 end
 
 local function OnPlayerActivated(eventCode)
-    CinematicCam.savedVars.camEnabled = true
-    zo_callLater(function()
-        CinematicCam.savedVars.camEnabled = false
-        CinematicCam:ShowUI()
-    end, 100)
+
 end
 
 
@@ -669,7 +660,6 @@ function CinematicCam:RegisterUIRefreshEvent()
                     self.presetPending = false
                 end
                 if self.vanillaPending then
-                    ReloadUI()
                     self.vanillaPending = false
                 end
             end, 200)
@@ -679,32 +669,9 @@ end
 
 -- Combat state change for compass, reticle, and action bar
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Combat", EVENT_PLAYER_COMBAT_STATE, function(eventCode, inCombat)
-    -- Handle compass
-    if CinematicCam.savedVars.interface.hideCompass == "combat" then
-        CinematicCam:ToggleCompass(not inCombat) -- Hide when NOT in combat
-    elseif CinematicCam.savedVars.interface.hideCompass == "always" then
-        if inCombat then
-            CinematicCam:ToggleCompass(true) -- Always show in combat for health bar
-        end
-    end
-
-    -- Handle action bar
-    if CinematicCam.savedVars.interface.hideActionBar == "combat" then
-        CinematicCam:ToggleActionBar(not inCombat)
-    elseif CinematicCam.savedVars.interface.hideActionBar == "always" then
-        if inCombat then
-            CinematicCam:ToggleActionBar(true) -- Always show in combat for health bar
-        end
-    end
-
-    -- Handle reticle
-    if CinematicCam.savedVars.interface.hideReticle == "combat" then
-        CinematicCam:ToggleReticle(not inCombat)
-    elseif CinematicCam.savedVars.interface.hideReticle == "always" then
-        if inCombat then
-            CinematicCam:ToggleReticle(true) -- Always show in combat for health bar
-        end
-    end
+    CinematicCam:UpdateCompassVisibility()
+    CinematicCam:UpdateActionBarVisibility()
+    CinematicCam:UpdateReticleVisibility()
 end)
 
 -- Font events
@@ -777,6 +744,7 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVAT
             newZoneType = "dungeon"
             presetToLoad = 3
             CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
+            CinematicCam:LoadFromPresetSlot(3)
             -- Overland
         elseif not IsUnitInDungeon("player") and not CinematicCam.savedVars.isHome then
             newZoneType = "overland"

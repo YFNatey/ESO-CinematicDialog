@@ -37,17 +37,19 @@
             <Controls>
                 <!-- Subtitles Background -->
                 <Texture name="CinematicCam_ChunkedTextBackground" mouseEnabled="false"
+                textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
                 <Texture name="CinematicCam_ChunkedTextBackground_Kingdom" mouseEnabled="false"
-                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                         textureFile="/esoui/art/tribute/tributecardnamebanner.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
                 </Texture>
-               
+                
+              
                 <!-- Player Options Background -->
                 <Texture name="CinematicCam_PlayerOptionsBackground" mouseEnabled="false"
                          textureFile=""
@@ -98,31 +100,37 @@
         </TopLevelControl>
         <TopLevelControl name="CinematicCam_UpdateNotification" mouseEnabled="true"
                  layer="DL_OVERLAY" tier="DT_HIGH" level="10">
-    <Controls>
-         <!-- Background Panel -->
-        <Texture name="CinematicCam_UpdateNotificationBackground" mouseEnabled="false"
-                 textureFile="/esoui/art/miscellaneous/toast_bg.dds"
-                 layer="DL_OVERLAY" tier="DT_HIGH" level="9">
-            <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" offsetX="-200" offsetY="-550" />
-            <Dimensions x="300" y="140" />
-        </Texture>
-        
-        <!-- Journal Icon -->
-        <Texture name="CinematicCam_UpdateNotificationIcon" mouseEnabled="false"
-                 textureFile="/esoui/art/buttons/edit_down.dds"
-                 layer="DL_OVERLAY" tier="DT_HIGH" level="10">
-            <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationBackground" relativePoint="LEFT" offsetX="15" offsetY="0" />
-            <Dimensions x="38" y="38" />
-        </Texture>
-        
-        <!-- Update Text -->
-        <Label name="CinematicCam_UpdateNotificationText" mouseEnabled="false"
-               font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" text="Cinematic Dialog Updated. Check settings to see whats new!"
-               layer="DL_OVERLAY" tier="DT_HIGH" level="10">
-            <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationIcon" relativePoint="RIGHT" offsetX="10" offsetY="0" />
-            <Anchor point="RIGHT" relativeTo="CinematicCam_UpdateNotificationBackground" relativePoint="RIGHT" offsetX="-15" offsetY="0" />
-        </Label>
-    </Controls>
+   <Controls>
+    <!-- Background Panel -->
+    <Texture name="CinematicCam_UpdateNotificationBackground" mouseEnabled="false"
+             textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+             layer="DL_OVERLAY" tier="DT_HIGH" level="9">
+        <Anchor point="BOTTOMRIGHT" relativeTo="GuiRoot" relativePoint="BOTTOMRIGHT" 
+                offsetX="-20" offsetY="-150" />
+        <Dimensions x="300" y="140" />
+    </Texture>
+   
+    <!-- Journal Icon -->
+    <Texture name="CinematicCam_UpdateNotificationIcon" mouseEnabled="false"
+             textureFile="/esoui/art/buttons/edit_down.dds"
+             layer="DL_OVERLAY" tier="DT_HIGH" level="10">
+        <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationBackground" 
+                relativePoint="LEFT" offsetX="15" offsetY="0" />
+        <Dimensions x="38" y="38" />
+    </Texture>
+   
+    <!-- Update Text -->
+    <Label name="CinematicCam_UpdateNotificationText" mouseEnabled="false"
+           font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" 
+           text="Cinematic Dialog Updated. Check settings to see whats new!"
+           layer="DL_OVERLAY" tier="DT_HIGH" level="10" wrapMode="TEXT_WRAP_MODE_ELLIPSIS"
+           verticalAlignment="CENTER" horizontalAlignment="LEFT">
+        <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationIcon" 
+                relativePoint="RIGHT" offsetX="10" offsetY="0" />
+        <Anchor point="RIGHT" relativeTo="CinematicCam_UpdateNotificationBackground" 
+                relativePoint="RIGHT" offsetX="-15" offsetY="0" />
+    </Label>
+</Controls>
 </TopLevelControl>
    <TopLevelControl name="CinematicCam_SepiaFilterContainer" mouseEnabled="false" hidden="true"
                          layer="DL_OVERLAY" tier="DT_HIGH" level="1000">

@@ -350,7 +350,6 @@ function CinematicCam:LoadFromPresetSlot(slotNumber)
     self.savedVars.interaction.forceThirdPersonCrafting = preset.forceThirdPersonCrafting
     self.savedVars.interaction.layoutPreset = preset.layoutPreset
     self.savedVars.interface.defaultBackgroundMode = preset.defaultBackgroundMode
-    self.savedVars.interface.cinematicBackgroundMode = preset.cinematicBackgroundMode
     self.savedVars.interaction.auto.autoLetterboxDialogue = preset.autoLetterboxDialogue
     self.savedVars.letterbox.autoLetterboxMount = preset.autoLetterboxMount
     self.savedVars.letterbox.mountLetterboxDelay = preset.mountLetterboxDelay
@@ -458,30 +457,9 @@ function CinematicCam:GetPresetTooltip(slotNumber)
 
     -- Header
     table.insert(tooltip,
-        "|cFFD700" .. slot.name .. " Settings\n(You can also type /cc" .. slotNumber .. " into chat)|r")
+        "|cFFD700" .. slot.name .. " Settings\n(You can also type /p" .. slotNumber .. " into chat)|r")
     table.insert(tooltip, "")
 
-    -- Apply To settings
-    table.insert(tooltip, "|cFFFFFF• Apply To:|r")
-    if settings.forceThirdPersonDialogue then
-        table.insert(tooltip, "  - Citizens: |c00FF00Enabled|r")
-    else
-        table.insert(tooltip, "  - Citizens: |cFF0000Disabled|r")
-    end
-
-    if settings.forceThirdPersonVendor and settings.forceThirdPersonBank then
-        table.insert(tooltip, "  - Merchants & Bankers: |c00FF00Enabled|r")
-    else
-        table.insert(tooltip, "  - Merchants & Bankers: |cFF0000Disabled|r")
-    end
-
-    if settings.forceThirdPersonCrafting then
-        table.insert(tooltip, "  - Crafting Stations: |c00FF00Enabled|r")
-    else
-        table.insert(tooltip, "  - Crafting Stations: |cFF0000Disabled|r")
-    end
-
-    table.insert(tooltip, "")
 
     -- Style settings
     table.insert(tooltip, "|cFFFFFF• Style:|r")
@@ -493,9 +471,9 @@ function CinematicCam:GetPresetTooltip(slotNumber)
     -- Subtitle settings
     table.insert(tooltip, "|cFFFFFF• Subtitles:|r")
     if settings.subtitlesHidden then
-        table.insert(tooltip, "  - |cFF0000Hidden|r")
+        table.insert(tooltip, "  - |cF5F5F5Hidden|r")
     else
-        table.insert(tooltip, "  - |c00FF00Visible|r")
+        table.insert(tooltip, "  - |c5A7D5AVisible|r")
         if settings.hidePlayerOptionsUntilLastChunk then
             table.insert(tooltip, "  - Hide choices until finished")
         end
@@ -503,18 +481,56 @@ function CinematicCam:GetPresetTooltip(slotNumber)
 
     table.insert(tooltip, "")
 
+    local readableName = ""
+    if settings.selectedFont == "ESO_Standard" then
+        readableName = "Standard"
+    elseif settings.selectedFont == "ESO_Bold" then
+        readableName = "Bold"
+    else
+        readableName = "Handwritten"
+    end
     -- Font settings
     table.insert(tooltip, "|cFFFFFF• Font:|r")
-    table.insert(tooltip, "  - " .. settings.selectedFont .. " (" .. settings.customFontSize .. ")")
+    table.insert(tooltip, "  - " .. readableName .. " (" .. settings.customFontSize .. ")")
 
     table.insert(tooltip, "")
+
+    -- Cinematic UI settings
+    table.insert(tooltip, "|cFFFFFF• UI Visibility:|r")
+
+    local compassText = settings.hideCompass
+    if compassText == "never" then
+        table.insert(tooltip, "  - Compass: |cF5F5F5Never|r")
+    elseif compassText == "combat" then
+        table.insert(tooltip, "  - Compass: Combat Only")
+    else
+        table.insert(tooltip, "  - Compass: |c5A7D5AAlways|r")
+    end
+
+    local actionBarText = settings.hideActionBar
+    if actionBarText == "never" then
+        table.insert(tooltip, "  - Skill Bar: |cF5F5F5Never|r")
+    elseif actionBarText == "combat" then
+        table.insert(tooltip, "  - Skill Bar: Combat Only")
+    else
+        table.insert(tooltip, "  - Skill Bar: |c5A7D5AAlways|r")
+    end
+
+    local reticleText = settings.hideReticle
+    if reticleText == "never" then
+        table.insert(tooltip, "  - Reticle: |cF5F5F5Never|r")
+    elseif reticleText == "combat" then
+        table.insert(tooltip, "  - Reticle: Combat Only")
+    else
+        table.insert(tooltip, "  - Reticle: |c5A7D5AAlways|r")
+    end
 
     -- Letterbox settings
     table.insert(tooltip, "|cFFFFFF• Black Bars:|r")
     if settings.letterboxVisible then
-        table.insert(tooltip, "  - |c00FF00ON|r (Size: " .. settings.letterboxSize .. ")")
+        table.insert(tooltip, "  - |c5A7D5AEnabled|r ")
     else
-        table.insert(tooltip, "  - |cFF0000OFF|r")
+        table.insert(tooltip, "  - |cF5F5F5Disabled|r")
     end
 
     if settings.autoLetterboxDialogue then
@@ -527,41 +543,29 @@ function CinematicCam:GetPresetTooltip(slotNumber)
 
     table.insert(tooltip, "")
 
-    -- Cinematic UI settings
-    table.insert(tooltip, "|cFFFFFF• UI Visibility:|r")
 
-    local compassText = settings.hideCompass
-    if compassText == "never" then
-        table.insert(tooltip, "  - Compass: |cFF0000Never|r")
-    elseif compassText == "combat" then
-        table.insert(tooltip, "  - Compass: Combat Only")
+
+    -- Apply To settings
+    table.insert(tooltip, "|cFFFFFF• Apply To:|r")
+    if settings.forceThirdPersonDialogue then
+        table.insert(tooltip, "  - Citizens: |c5A7D5AEnabled|r")
     else
-        table.insert(tooltip, "  - Compass: |c00FF00Always|r")
+        table.insert(tooltip, "  - Citizens: |cF5F5F5Disabled|r")
     end
 
-    local actionBarText = settings.hideActionBar
-    if actionBarText == "never" then
-        table.insert(tooltip, "  - Skill Bar: |cFF0000Never|r")
-    elseif actionBarText == "combat" then
-        table.insert(tooltip, "  - Skill Bar: Combat Only")
+    if settings.forceThirdPersonVendor and settings.forceThirdPersonBank then
+        table.insert(tooltip, "  - Merchants & Bankers: |c5A7D5AEnabled|r")
     else
-        table.insert(tooltip, "  - Skill Bar: |c00FF00Always|r")
+        table.insert(tooltip, "  - Merchants & Bankers: |cF5F5F5Disabled|r")
     end
 
-    local reticleText = settings.hideReticle
-    if reticleText == "never" then
-        table.insert(tooltip, "  - Reticle: |cFF0000Never|r")
-    elseif reticleText == "combat" then
-        table.insert(tooltip, "  - Reticle: Combat Only")
+    if settings.forceThirdPersonCrafting then
+        table.insert(tooltip, "  - Crafting Stations: |c5A7D5AEnabled|r")
     else
-        table.insert(tooltip, "  - Reticle: |c00FF00Always|r")
+        table.insert(tooltip, "  - Crafting Stations: |cF5F5F5Disabled|r")
     end
 
-    if settings.hidePanelsESO then
-        table.insert(tooltip, "  - ESO Panels: |cFF0000Hidden|r")
-    else
-        table.insert(tooltip, "  - ESO Panels: |c00FF00Visible|r")
-    end
+    table.insert(tooltip, "")
 
     return table.concat(tooltip, "\n")
 end

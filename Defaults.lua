@@ -1,8 +1,8 @@
 CinematicCam.defaults = {
     camEnabled = false,
     npcNamePreset = "prepended",
-    npcNameColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
-    npcNameFontSize = 42,
+    npcNameColor = { r = 0.9, g = 0.9, b = 0.8, a = 1.0 },
+    npcNameFontSize = 48,
     usePlayerName = false,
     playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
     dialogueElementsHidden = false,
@@ -61,7 +61,7 @@ CinematicCam.defaults = {
             posY = 0.8,
             posX = 0.5,
             hidePlayerOptionsUntilLastChunk = false,
-            textColor = { r = 0.9, g = 0.9, b = 0.8, a = 1.0 },
+            textColor = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 },
 
         },
     },
@@ -74,13 +74,13 @@ CinematicCam.defaults = {
         hideActionBar = "always",
 
         selectedFont = "ESO_Standard",
-        customFontSize = 42,
+        customFontSize = 48,
         fontScale = 1.0,
         dialogueHorizontalOffset = 0.34,
         dialogueVerticalOffset = 0.34,
 
         defaultBackgroundMode = "none",   -- "esoDefault", "none"
-        cinematicBackgroundMode = "none", -- "all", "subtitles", "playerOptions", "none"
+        cinematicBackgroundMode = "none", -- "kingdom", "redemption_banner", "none"
 
         useSubtitleBackground = false,
         usePlayerOptionsBackground = false,

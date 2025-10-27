@@ -519,10 +519,15 @@ function CinematicCam:UpdateChunkBackground(control, background)
     if background and self:ShouldShowSubtitleBackground() then
         -- Apply color based on current mode EVERY TIME the background is shown
         local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
-        if backgroundMode == "redemption_banner" then
-            background:SetColor(0.0, 0.0, 0.0, 0.6) -- Dark overlay
+        if backgroundMode == "dark" then
+            background:SetTexture("/esoui/art/subtitles/subtitle_background_centerblur.dds")
+            background:SetAlpha(0.3)          -- Dark overlay
         elseif backgroundMode == "kingdom" then
-            background:SetColor(1, 1, 1, 1.0)       -- Normal appearance
+            background:SetColor(1, 1, 1, 1.0) -- Normal appearance
+            background:SetTexture("/esoui/art/tribute/tributecardnamebanner.dds")
+        elseif backgroundMode == "redemption_banner" then
+            background:SetTexture("/esoui/art/subtitles/subtitle_background_centerblur.dds")
+            background:SetColor(0, 0, 0, .3)
         end
 
         -- Calculate dynamic dimensions
@@ -530,11 +535,11 @@ function CinematicCam:UpdateChunkBackground(control, background)
         local textHeight = control:GetTextHeight()
 
         local padding = 16
-        local backgroundWidth = textWidth + (padding * 6)
-        local backgroundHeight = textHeight + (padding * 6)
+        local backgroundWidth = textWidth + (padding)
+        local backgroundHeight = textHeight + (padding)
 
         -- Apply size constraints
-        local minWidth, maxWidth = 200, 5500 -- Increased max width from 2800 to 3500
+        local minWidth, maxWidth = 100, 2000 -- Increased max width from 2800 to 3500
         local minHeight, maxHeight = 60, 550
 
         backgroundWidth = math.max(minWidth, math.min(maxWidth, backgroundWidth))
@@ -542,11 +547,16 @@ function CinematicCam:UpdateChunkBackground(control, background)
 
         -- Special handling for kingdom background - it's a banner so adjust dimensions
         local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
-        if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
+        if backgroundMode == "kingdom" then
             backgroundHeight = math.max(100, backgroundHeight) -- Minimum height for banner
-            backgroundWidth = math.max(600, backgroundWidth)   -- Minimum width for banner to display properly
+            backgroundWidth = math.max(100, backgroundWidth)   -- Minimum width for banner to display properly
             backgroundWidth = backgroundWidth + 280
-            backgroundHeight = backgroundHeight + 10
+            backgroundHeight = backgroundHeight + 40
+        elseif backgroundMode == "redemption_banner" then
+            backgroundHeight = math.max(100, backgroundHeight) -- Minimum height for banner
+            backgroundWidth = math.max(100, backgroundWidth)   -- Minimum width for banner to display properly
+            backgroundWidth = backgroundWidth + 70
+            backgroundHeight = backgroundHeight + 1
         end
 
         -- Position and show background
@@ -558,8 +568,10 @@ function CinematicCam:UpdateChunkBackground(control, background)
         )
 
         -- Move kingdom banner down a few pixels
-        if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
+        if backgroundMode == "kingdom" then
             targetY = targetY + 38 -- Move banner 5 pixels down
+        elseif backgroundMode == "redemption_banner" then
+            targetY = targetY + 5  -- Move banner 5 pixels down
         end
 
         background:ClearAnchors()
@@ -767,7 +779,7 @@ end
 function CinematicCam:AdvanceToNextChunk()
     -- Advance to next DISPLAY chunk
     CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = CinematicCam.chunkedDialogueData
-    .currentDisplayChunkIndex + 1
+        .currentDisplayChunkIndex + 1
 
     -- Also update timing chunk index to the END of this display chunk
     self:UpdateTimingChunkIndex()
@@ -1155,6 +1167,7 @@ function CinematicCam:InitializeChunkedDisplay()
 
     -- Setup display
     self:ApplyChunkedTextPositioning()
+
     CinematicCam.chunkedDialogueData.currentChunkIndex = 1
     CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = 1 -- Initialize display index
     CinematicCam.chunkedDialogueData.isActive = true
@@ -1174,21 +1187,15 @@ function CinematicCam:ConfigureChunkedTextBackground()
     local backgroundNormal = _G["CinematicCam_ChunkedTextBackground"]
     local backgroundKingdom = _G["CinematicCam_ChunkedTextBackground_Kingdom"]
 
-    -- Configure normal background
-    if backgroundNormal then
-        backgroundNormal:SetColor(0, 0, 0, 0.6)
 
-        backgroundNormal:SetHidden(true)
-        backgroundNormal:ClearAnchors()
-        backgroundNormal:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
-        backgroundNormal:SetDimensions(1, 1)
-    end
 
     -- Configure kingdom background (color will be set dynamically)
     if backgroundKingdom then
         backgroundKingdom:SetHidden(true)
         backgroundKingdom:ClearAnchors()
+        backgroundKingdom:SetTexture("/esoui/art/tribute/tributecardnamebanner.dds")
         backgroundKingdom:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+
         backgroundKingdom:SetDimensions(1, 1)
     end
 

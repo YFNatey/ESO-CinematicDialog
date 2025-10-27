@@ -13,8 +13,8 @@ function CinematicCam:CreateSettingsMenu()
 
     local panelData = {
         type = "panel",
-        name = "Cinematic Dialog",
-        displayName = "Cinemtaic Dialog",
+        name = "Cinematic Dialogue",
+        displayName = "Cinemtaic Dialogue",
         author = "YFNatey",
         version = "1.0",
         slashCommand = "/cinematicsettings",
@@ -43,7 +43,7 @@ function CinematicCam:CreateSettingsMenu()
                 function() return self:GetPresetTooltip(3) end
             },
             getFunc = function()
-                return self.selectedPresetSlot or 1
+                return self.selectedPresetSlot
             end,
             setFunc = function(value)
                 self.selectedPresetSlot = value
@@ -105,10 +105,10 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Style",
+            name = "Subtitle Style",
             tooltip =
             "Default: Original style\n Cinematic: Centered captions with additional customization\n",
-            choices = { "Default(ReloadUI)", "Cinematic" },
+            choices = { "Default", "Cinematic" },
             choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
@@ -185,7 +185,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = "Size",
+            name = " Text Size",
             min = 10,
             max = 64,
             step = 1,
@@ -219,12 +219,11 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Background",
+            name = "Text Background",
             choices = { "Default", "Light", "None" },
             choicesValues = { "default", "light", "none" },
             getFunc = function()
                 local currentLayout = self.savedVars.interaction.layoutPreset
-
                 if currentLayout == "default" then
                     local bgMode = self.savedVars.interface.defaultBackgroundMode or "esoDefault"
                     if bgMode == "esoDefault" then
@@ -232,24 +231,21 @@ function CinematicCam:CreateSettingsMenu()
                     elseif bgMode == "none" then
                         return "none"
                     else
-                        return "default" -- Fallback to default for any unexpected values
+                        return "light"
                     end
-                else                     -- cinematic
-                    local bgMode = self.savedVars.interface.cinematicBackgroundMode or "none"
+                else -- cinematic layout
+                    local bgMode = self.savedVars.interface.cinematicBackgroundMode or "redemption_banner"
                     if bgMode == "redemption_banner" then
-                        return "none"
+                        return "default"
                     elseif bgMode == "kingdom" then
-                        return "none"
-                    elseif bgMode == "none" then
-                        return "none"
+                        return "light"
                     else
-                        return "default" -- Fallback
+                        return "none"
                     end
                 end
             end,
             setFunc = function(value)
                 local currentLayout = self.savedVars.interaction.layoutPreset
-
                 if currentLayout == "default" then
                     -- Map unified values to default layout values
                     local defaultValue
@@ -260,10 +256,8 @@ function CinematicCam:CreateSettingsMenu()
                     else                            -- "none"
                         defaultValue = "none"
                     end
-
                     self.savedVars.interface.defaultBackgroundMode = defaultValue
                     self:ApplyDefaultBackgroundSettings(defaultValue)
-
                     local interactionType = GetInteractionType()
                     if interactionType ~= INTERACTION_NONE then
                         zo_callLater(function()
@@ -280,10 +274,8 @@ function CinematicCam:CreateSettingsMenu()
                     else -- "none"
                         cinematicValue = "none"
                     end
-
                     self.savedVars.interface.cinematicBackgroundMode = cinematicValue
                     self:ApplyCinematicBackgroundSettings(cinematicValue)
-
                     local interactionType = GetInteractionType()
                     if interactionType ~= INTERACTION_NONE then
                         zo_callLater(function()
@@ -496,18 +488,7 @@ function CinematicCam:CreateSettingsMenu()
 
             type = "divider"
         },
-        {
-            type = "checkbox",
-            name = "Vignette",
 
-            getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
-            setFunc = function(value)
-                self.savedVars.interface.sepiaFilter.enabled = value
-                self.savedVars.interface.sepiaFilter.useTextured = value
-                self:UpdateSepiaFilter()
-            end,
-            width = "full",
-        },
         {
             type = "button",
             name = "Toggle Black Bars",
@@ -566,10 +547,22 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
+            type = "checkbox",
+            name = "Vignette",
+
+            getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
+            setFunc = function(value)
+                self.savedVars.interface.sepiaFilter.enabled = value
+                self.savedVars.interface.sepiaFilter.useTextured = value
+                self:UpdateSepiaFilter()
+            end,
+            width = "full",
+        },
+        {
 
             type = "dropdown",
             name = "Quick Presets",
-            choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla(ReloadUI)" },
+            choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla" },
             choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
             getFunc = function() return self.savedVars.interface.currentPreset end,
             setFunc = function(value)
@@ -606,9 +599,7 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 self.savedVars.interaction.forceThirdPersonDialogue = value
                 self:InitializeInteractionSettings()
-                if not value then
-                    ReloadUI()
-                end
+
                 self.presetPending = true
             end,
             width = "full",
@@ -627,9 +618,7 @@ function CinematicCam:CreateSettingsMenu()
                 self.savedVars.interaction.forceThirdPersonVendor = value
                 self.savedVars.interaction.forceThirdPersonBank = value
                 self:InitializeInteractionSettings()
-                if not value then
-                    ReloadUI()
-                end
+
                 self.presetPending = true
             end,
             width = "full",
@@ -657,10 +646,8 @@ function CinematicCam:CreateSettingsMenu()
             text = "Update Notes",
             tooltip =
             [[
-4.01
-• Bug Fixes
-• Settings menu improvements
-• Auto-swap presets]],
+4.02 - Bug Fixes
+• Fix Auto-swap issues]],
             width = "full",
         },
 
@@ -782,7 +769,7 @@ function CinematicCam:ShowPlayerOptionsPreview(xPosition)
     CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
 
     -- Set preview text properties
-    CinematicCam_PlayerOptionsPreviewText:SetText("")
+    CinematicCam_PlayerOptionsPreviewText:SetText("Preview")
     CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1)
     CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
@@ -890,10 +877,10 @@ function CinematicCam:ShowSubtitlePreview(xPosition, yPosition)
 
     -- Set preview text properties
     CinematicCam_PreviewText:SetColor(1, 1, 1, 1) -- White text
-    CinematidddcCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    CinematicCam_PreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
     CinematicCam_PreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
     CinematicCam_PreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-    CinematicCam_PreviewText:SetText("")
+    CinematicCam_PreviewText:SetText("Preview")
 
     -- Apply current font settings to preview
     local fontString = self:BuildUserFontString()
@@ -1138,7 +1125,7 @@ function CinematicCam:SetActiveBackgroundControl()
     if backgroundKingdom then backgroundKingdom:SetHidden(true) end
 
     -- Set the active background control
-    if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
+    if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" or backgroundMode == "dark" then
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundKingdom
     else
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundNormal
