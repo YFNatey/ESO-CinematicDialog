@@ -130,17 +130,17 @@ function CinematicCam:ToggleUI()
 end
 
 function CinematicCam:StartUIMonitoring()
-    -- Stop any existing monitoring
+    -- Stop monitoring
     self:StopUIMonitoring()
 
-    -- Start the monitoring loop
+    -- Start monitoring
     local function monitorUIElements()
         if self.savedVars.interface.UiElementsVisible then
             self:StopUIMonitoring()
             return
         end
 
-        -- Hide elements from the predefined list if they've become visible
+        -- Hide elements from the predefined list if visible
         for _, elementName in ipairs(CinematicCam.uiElements) do
             local element = _G[elementName]
             if element and not element:IsHidden() then
@@ -148,7 +148,7 @@ function CinematicCam:StartUIMonitoring()
             end
         end
 
-        -- Hide custom UI elements if they've become visible
+        -- Hide custom UI elements if visible
         for elementName, shouldHide in pairs(self.savedVars.hideUiElements) do
             if shouldHide then
                 local element = _G[elementName]
@@ -327,19 +327,22 @@ end
 ---=============================================================================
 -- Hide Questing Dialoge Panels
 --=============================================================================
+-- Hides each element of the default UI panels during dialogue interactions
 function CinematicCam:HideDialoguePanels()
     -- Main dialogue window elements
     if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(true) end
 
+    -- Gold divider line between subtitles and player options
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(true) end
 
+    -- Top and bottom background
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(true) end
 
-    -- Text elements - handle title and body text separately
+    -- NPC Name
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(true) end
 
-    -- Options and highlights
+    -- Options
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(true) end
     if ZO_InteractWindowPlayerAreaHighlight then ZO_InteractWindowPlayerAreaHighlight:SetHidden(true) end
     if ZO_InteractWindowCollapseContainerRewardArea then ZO_InteractWindowCollapseContainerRewardArea:SetHidden(true) end
@@ -356,17 +359,21 @@ function CinematicCam:ShowDialoguePanels()
     if ZO_InteractWindow_GamepadContainerDivider then ZO_InteractWindow_GamepadContainerDivider:SetHidden(false) end
 
     if ZO_InteractWindowDivider then ZO_InteractWindowDivider:SetHidden(false) end
+
+    -- Gold divider line between subtitles and player options
     if ZO_InteractWindowVerticalSeparator then ZO_InteractWindowVerticalSeparator:SetHidden(false) end
+
+    -- Top and bottom background
     if ZO_InteractWindowTopBG then ZO_InteractWindowTopBG:SetHidden(false) end
     if ZO_InteractWindowBottomBG then ZO_InteractWindowBottomBG:SetHidden(false) end
 
-    -- Text elements
+    -- NPC Name
     if ZO_InteractWindowTargetAreaTitle then ZO_InteractWindowTargetAreaTitle:SetHidden(false) end
 
     -- Only show NPC text if the hideNPCText setting is enabled
     if ZO_InteractWindowTargetAreaBodyText then ZO_InteractWindowTargetAreaBodyText:SetHidden(true) end
 
-    -- Options and highlights
+    -- Options
     if ZO_InteractWindowPlayerAreaOptions then ZO_InteractWindowPlayerAreaOptions:SetHidden(false) end
     if ZO_InteractWindowPlayerAreaHighlight then ZO_InteractWindowPlayerAreaHighlight:SetHidden(false) end
     if ZO_InteractWindowCollapseContainerRewardArea then ZO_InteractWindowCollapseContainerRewardArea:SetHidden(false) end

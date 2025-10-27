@@ -37,7 +37,7 @@ local interactionTypeMap = {}
 local CURRENT_VERSION = "3.26"
 
 -- State tracking
-CinematicCam.isInteractionModified = false -- overriden default cam
+CinematicCam.isInteractionModified = false -- override default cam
 
 local SERVERS = {
     ["NA Megaserver"] = "NA",
@@ -57,36 +57,8 @@ end
 
 CinematicCam.debugEventLog = {}
 CinematicCam.debugSessionId = 0
+CinematicCam.currentZoneType = nil
 
-function CinematicCam:LogDebugEvent(eventName, details)
-    --[[ local timestamp = GetTimeStamp()
-    local logEntry = {
-        session = self.debugSessionId,
-        time = timestamp,
-        event = eventName,
-        details = details or {},
-        playerOptionsState = self:GetCurrentPlayerOptionsState(),
-        settingValue = self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk,
-        chunkData = {
-            isActive = CinematicCam.chunkedDialogueData.isActive,
-            currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex,
-            totalChunks = CinematicCam.chunkedDialogueData.chunks and #CinematicCam.chunkedDialogueData.chunks or 0,
-            playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-        }
-    }
-
-    table.insert(self.debugEventLog, logEntry)
-
-    -- Print immediate debug info
-    d(string.format("[DEBUG %d] %s | Setting=%s | State=%s | Chunk=%d/%d",
-        self.debugSessionId,
-        eventName,
-        tostring(logEntry.settingValue),
-        logEntry.playerOptionsState,
-        logEntry.chunkData.currentChunk,
-        logEntry.chunkData.totalChunks
-   -- ))]]
-end
 
 function CinematicCam:GetCurrentPlayerOptionsState()
     local elements = {
@@ -135,9 +107,7 @@ function CinematicCam:OnGameCameraDeactivated()
     local interactionType = GetInteractionType()
     if self:ShouldBlockInteraction(interactionType) then
         self:LogDebugEvent("INTERACTION_BLOCKED", { interactionType = interactionType })
-        if self:AutoShowLetterbox(interactionType) or self.savedVars.letterbox.letterboxVisible then
 
-        end
         CinematicCam:RegisterFontEvents()
         SetInteractionUsingInteractCamera(false)
         CinematicCam.isInteractionModified = true
@@ -524,7 +494,7 @@ function CinematicCam:InitializePlayerOptionsBackground()
     -- Position it initially
     self:PositionPlayerOptionsBackground()
 
-    -- Start monitoring for player options changes
+    -- Start monitor
     self:StartPlayerOptionsMonitoring()
 end
 
@@ -635,7 +605,7 @@ end)
 function CinematicCam:RegisterUIRefreshEvent()
     EVENT_MANAGER:RegisterForEvent("CinematicCam", EVENT_RETICLE_HIDDEN_UPDATE, function(eventCode, hidden)
         if not hidden then
-            -- Reticle is now visible - player has exited menus/settings
+            -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
                 CinematicCam:UpdateCompassVisibility()
@@ -716,8 +686,7 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_HousingState", EVENT_HOUSING_EDIT
             CinematicCam:UpdateReticleVisibility()
         end
     end)
--- Add this at the top of your file with other state tracking variables
-CinematicCam.currentZoneType = nil -- Track current zone type: "home", "dungeon", or "overland"
+
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVATED, function()
     zo_callLater(function()
@@ -769,6 +738,36 @@ function CinematicCam:DebugPrint()
     if self.savedVars and self.savedVars.showNotifications then
         d(message)
     end
+end
+
+function CinematicCam:LogDebugEvent(eventName, details)
+    --[[ local timestamp = GetTimeStamp()
+    local logEntry = {
+        session = self.debugSessionId,
+        time = timestamp,
+        event = eventName,
+        details = details or {},
+        playerOptionsState = self:GetCurrentPlayerOptionsState(),
+        settingValue = self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk,
+        chunkData = {
+            isActive = CinematicCam.chunkedDialogueData.isActive,
+            currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex,
+            totalChunks = CinematicCam.chunkedDialogueData.chunks and #CinematicCam.chunkedDialogueData.chunks or 0,
+            playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
+        }
+    }
+
+    table.insert(self.debugEventLog, logEntry)
+
+    -- Print immediate debug info
+    d(string.format("[DEBUG %d] %s | Setting=%s | State=%s | Chunk=%d/%d",
+        self.debugSessionId,
+        eventName,
+        tostring(logEntry.settingValue),
+        logEntry.playerOptionsState,
+        logEntry.chunkData.currentChunk,
+        logEntry.chunkData.totalChunks
+   -- ))]]
 end
 
 ---=============================================================================
@@ -976,7 +975,7 @@ function CinematicCam:HideUpdateNotification()
     end, 400)
 end
 
--- Fixed animation function:
+-- Animate notification
 function CinematicCam:AnimateUpdateNotification(control, fadeIn)
     if not control then
         return
@@ -1029,13 +1028,12 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
 end
 
 function CinematicCam:InitializeUpdateSystem()
-    -- Extra safety check
     if not self.savedVars then
         zo_callLater(function()
             self:InitializeUpdateSystem()
         end, 1000)
         return
     end
-    -- Check for updates after everything is loaded
+    -- Check for updates
     self:CheckForUpdates()
 end

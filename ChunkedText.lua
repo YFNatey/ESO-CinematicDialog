@@ -539,13 +539,12 @@ function CinematicCam:UpdateChunkBackground(control, background)
         local backgroundHeight = textHeight + (padding)
 
         -- Apply size constraints
-        local minWidth, maxWidth = 100, 2000 -- Increased max width from 2800 to 3500
+        local minWidth, maxWidth = 100, 2000
         local minHeight, maxHeight = 60, 550
 
         backgroundWidth = math.max(minWidth, math.min(maxWidth, backgroundWidth))
         backgroundHeight = math.max(minHeight, math.min(maxHeight, backgroundHeight))
 
-        -- Special handling for kingdom background - it's a banner so adjust dimensions
         local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
         if backgroundMode == "kingdom" then
             backgroundHeight = math.max(100, backgroundHeight) -- Minimum height for banner
@@ -567,11 +566,11 @@ function CinematicCam:UpdateChunkBackground(control, background)
             self.savedVars.interaction.subtitles.posY or 0.7
         )
 
-        -- Move kingdom banner down a few pixels
+        -- Move backgrounds down a few pixels
         if backgroundMode == "kingdom" then
-            targetY = targetY + 38 -- Move banner 5 pixels down
+            targetY = targetY + 38
         elseif backgroundMode == "redemption_banner" then
-            targetY = targetY + 5  -- Move banner 5 pixels down
+            targetY = targetY + 5
         end
 
         background:ClearAnchors()
@@ -582,11 +581,6 @@ function CinematicCam:UpdateChunkBackground(control, background)
     end
 end
 
-function CinematicCam:UpdateSubtitleTextColor()
-    -- This function can be called when settings change to update any cached color values
-    -- Currently just ensures the color is saved properly
-end
-
 function CinematicCam:ApplySubtitleTextColor()
     local control = CinematicCam.chunkedDialogueData.customControl
     if control then
@@ -595,16 +589,14 @@ function CinematicCam:ApplySubtitleTextColor()
     end
 end
 
--- Update the CreateChunkedTextControl function to apply the color:
-
 ---=============================================================================
 -- HIDE PLAYER OPTIONS
 --=============================================================================
 function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
-    -- If we're currently in dialogue and chunked dialogue is active
     if isVendor then
         return
     end
+    -- "hide until dialogue finishes" setting is ON
     if CinematicCam.chunkedDialogueData.isActive then
         if newValue then
             local currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex
@@ -614,7 +606,7 @@ function CinematicCam:OnPlayerOptionsSettingChanged(newValue, isVendor)
                 self:HidePlayerOptionsUntilLastChunk()
             end
         else
-            -- Setting was turned OFF - show player options immediately
+            -- show player options
             if CinematicCam.chunkedDialogueData.playerOptionsHidden then
                 self:ShowPlayerOptionsOnLastChunk()
             end
@@ -638,29 +630,28 @@ function CinematicCam:HidePlayerOptionsUntilLastChunk()
     for _, elementName in ipairs(playerOptionElements) do
         local element = _G[elementName]
         if element then
-            -- Store original visibility state in chunkedDialogueData, NOT savedVars
+            -- Store original visibility state in chunkedDialogueData table
             CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility[elementName] = not element:IsHidden()
             element:SetHidden(true)
         end
     end
 
-    CinematicCam.chunkedDialogueData.playerOptionsHidden = true -- Use chunkedDialogueData
+    CinematicCam.chunkedDialogueData.playerOptionsHidden = true
 end
 
 function CinematicCam:ShowPlayerOptionsOnLastChunk()
     if not CinematicCam.chunkedDialogueData.playerOptionsHidden then
-        return -- Not hidden, nothing to show
+        return
     end
 
-    -- Restore original visibility for all stored elements with fade-in animation
+    -- Show player options
     for elementName, wasVisible in pairs(CinematicCam.chunkedDialogueData.originalPlayerOptionsVisibility) do
         local element = _G[elementName]
         if element and wasVisible then
-            -- Start with alpha at 0
             element:SetAlpha(0)
             element:SetHidden(false)
 
-            -- Create fade-in animation
+            -- fade-in animation
             local timeline = ANIMATION_MANAGER:CreateTimelineFromVirtual("ShowOnMouseOverLabelAnimation", element)
             local animation = timeline:GetFirstAnimation()
 
@@ -710,9 +701,6 @@ function CinematicCam:PositionForCinematicPreset(control)
 
     control:ClearAnchors()
     control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
-
-    -- Use safe screen width instead of fixed 2700
-    -- Limit height to prevent vertical overflow
     control:SetDimensions(safeWidth, math.min(safeHeight * 0.3, 200))
 end
 
@@ -725,7 +713,7 @@ function CinematicCam:ScheduleNextChunk()
         zo_removeCallLater(CinematicCam.chunkedDialogueData.displayTimer)
     end
 
-    -- Calculate timing for current DISPLAY chunk (all timing chunks within it)
+    -- Calculate timing for current DISPLAY chunk
     local displayTime = self:CalculateDisplayChunkTiming()
 
     -- Convert to milliseconds and schedule
@@ -750,7 +738,7 @@ function CinematicCam:CalculateDisplayChunkTiming()
         return self.savedVars.chunkedDialog.baseDisplayTime or 3.0
     end
 
-    -- Calculate timing based on the FULL display chunk
+    -- Calculate timing
     local cleanText = self:CleanTextForTiming(displayChunk)
     local textLength = string.len(cleanText)
 
@@ -777,17 +765,17 @@ function CinematicCam:CalculateDisplayChunkTiming()
 end
 
 function CinematicCam:AdvanceToNextChunk()
-    -- Advance to next DISPLAY chunk
+    -- Advance to next chunk
     CinematicCam.chunkedDialogueData.currentDisplayChunkIndex = CinematicCam.chunkedDialogueData
         .currentDisplayChunkIndex + 1
 
-    -- Also update timing chunk index to the END of this display chunk
+    -- Update timing chunk index to the END of this display chunk
     self:UpdateTimingChunkIndex()
 
     local displayChunks = CinematicCam.chunkedDialogueData.displayChunks
     local timingChunks = CinematicCam.chunkedDialogueData.chunks
 
-    -- Check if we've reached the end of ALL timing chunks (not just display chunks)
+    -- Check if finished
     local allTimingChunksComplete = CinematicCam.chunkedDialogueData.currentChunkIndex >= #timingChunks
 
     -- Show player options when ALL timing chunks are done
@@ -799,7 +787,7 @@ function CinematicCam:AdvanceToNextChunk()
         -- Display the current display chunk
         self:DisplayCurrentChunk()
 
-        -- Continue scheduling if we have more display chunks
+        -- Schedule next chunk if applicable
         local hasMoreDisplayChunks = CinematicCam.chunkedDialogueData.currentDisplayChunkIndex < #displayChunks
 
         if self.savedVars.interaction.subtitles.useChunkedDialogue and
@@ -939,10 +927,8 @@ function CinematicCam:StartDialogueChangeMonitoring()
             return
         end
 
-        -- Check VO status and show options if VO finished
+        -- Check Voice Over status and show options if VO finished
         local voStatus = self:CheckVoiceOverStatus()
-
-
 
         if voStatus.canReplay and not voStatus.isPlaying and CinematicCam.chunkedDialogueData.playerOptionsHidden then
             self:ShowPlayerOptionsOnLastChunk()
@@ -964,7 +950,7 @@ function CinematicCam:StartDialogueChangeMonitoring()
 
 
 
-        -- Always schedule next check to maintain polling
+        -- Polling function to check for dialogue changes
         dialogueChangeCheckTimer = zo_callLater(function()
             checkForDialogueChange()
         end, 2000)
