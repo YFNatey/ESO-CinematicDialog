@@ -266,11 +266,7 @@ function CinematicCam:UpdateCompassVisibility()
     if setting == "never" then
         self:HideCompass()
     elseif setting == "always" then
-        if inCombat then
-            self:ShowCompass()
-        else
-            self:ShowCompass()
-        end
+        self:ShowCompass()
     elseif setting == "combat" then
         if inCombat then
             self:ShowCompass()
@@ -288,11 +284,7 @@ function CinematicCam:UpdateActionBarVisibility()
     if setting == "never" then
         self:HideActionBar()
     elseif setting == "always" then
-        if inCombat then
-            self:ShowActionBar()
-        else
-            self:ShowActionBar()
-        end
+        self:ShowActionBar()
     elseif setting == "combat" then
         if inCombat then
             self:ShowActionBar()
@@ -310,11 +302,7 @@ function CinematicCam:UpdateReticleVisibility()
     if setting == "never" then
         self:HideReticle()
     elseif setting == "always" then
-        if inCombat then
-            self:ShowReticle()
-        else
-            self:ShowReticle()
-        end
+        self:ShowReticle()
     elseif setting == "combat" then
         if inCombat then
             self:ShowReticle()
@@ -433,7 +421,6 @@ function CinematicCam:ApplyChunkedTextPositioning()
     local safeWidth, safeHeight, screenWidth, screenHeight = self:GetSafeScreenDimensions()
 
     if preset == "cinematic" then
-        -- Use the same positioning logic as native subtitles
         local targetX, targetY = self:ConvertToScreenCoordinates(
             self.savedVars.interaction.subtitles.posX or 0.5,
             self.savedVars.interaction.subtitles.posY or 0.7
@@ -441,19 +428,17 @@ function CinematicCam:ApplyChunkedTextPositioning()
 
         control:ClearAnchors()
         control:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
-        -- Use safe width instead of fixed 2700
         control:SetDimensions(safeWidth, math.min(safeHeight * 0.3, 200))
 
         -- Position background to match with dynamic sizing
         if background then
             background:ClearAnchors()
             background:SetAnchor(CENTER, GuiRoot, CENTER, targetX, targetY)
-            -- Make background responsive too
             background:SetDimensions(math.min(safeWidth * 1.1, 900), 150)
         end
     else
         -- Default positioning for non-cinematic presets
-        -- Use percentage of screen width instead of fixed 683
+        -- The width of efault eso subtitles is 683
         local defaultWidth = math.min(screenWidth * 0.35, 683)
         local defaultHeight = math.min(safeHeight * 0.7, 550)
 
@@ -535,7 +520,7 @@ function CinematicCam:FadeInElement(element, duration)
     element:SetAlpha(0)
     element:SetHidden(false)
 
-    -- Create fade-in animation
+    -- Fade-in animation
     local timeline = ANIMATION_MANAGER:CreateTimelineFromVirtual("ShowOnMouseOverLabelAnimation", element)
     local animation = timeline:GetFirstAnimation()
 

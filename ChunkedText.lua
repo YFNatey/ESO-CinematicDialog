@@ -5,10 +5,10 @@ local dialogueChangeCheckTimer = nil
 
 CinematicCam.chunkedDialogueData = {
     originalText = "",
-    chunks = {},                  -- Short chunks for timing
-    displayChunks = {},           -- Long chunks for display
-    currentChunkIndex = 0,        -- Index for timing chunks
-    currentDisplayChunkIndex = 0, -- NEW: Separate index for display chunks
+    chunks = {},           -- Short chunks for timing
+    displayChunks = {},    -- Long chunks for display
+    currentChunkIndex = 0, -- Index for timing chunks
+    currentDisplayChunkIndex = 0,
     isActive = false,
     customControl = nil,
     displayTimer = nil,
@@ -37,8 +37,10 @@ function CinematicCam:GetDialogueText()
     return nil, nil
 end
 
+---=============================================================================
+-- Player Response Options
+--=============================================================================
 function CinematicCam:FindPlayerOptionTextElement(option)
-    -- Try direct properties first
     if option.text and option.text.GetText then
         return option.text
     elseif option.label and option.label.GetText then
@@ -1064,7 +1066,7 @@ function CinematicCam:ResetChunkedDialogueState()
         chunks = {},
         displayChunks = {},
         currentChunkIndex = 0,
-        currentDisplayChunkIndex = 0, -- Reset display index
+        currentDisplayChunkIndex = 0,
         isActive = false,
         customControl = customControl,
         backgroundControl = backgroundControl,

@@ -381,9 +381,10 @@ local function Initialize()
     CinematicCam:InitializeLetterbox()
     CinematicCam:InitializeSepiaFilter()
     CinematicCam:ConfigurePlayerOptionsBackground()
-
     CinematicCam:InitializeChunkedTextControl()
     CinematicCam:InitializePreviewSystem()
+
+
     zo_callLater(function()
         CinematicCam:InitializeUI()
         CinematicCam:RegisterSceneCallbacks()
@@ -678,12 +679,12 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_HousingState", EVENT_HOUSING_EDIT
 
         if newMode ~= HOUSING_EDITOR_MODE_DISABLED then
             -- Entering housing editor - force show reticle
-            CinematicCam:ToggleReticle(false)
+            --CinematicCam:ToggleReticle(false)
             CinematicCam.inHousingEditor = true
         else
             -- Exiting housing editor - restore reticle setting
             CinematicCam.inHousingEditor = false
-            CinematicCam:UpdateReticleVisibility()
+            --CinematicCam:UpdateReticleVisibility()
         end
     end)
 

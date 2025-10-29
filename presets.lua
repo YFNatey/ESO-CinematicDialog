@@ -377,7 +377,6 @@ function CinematicCam:LoadFromPresetSlot(slotNumber)
         self:HideLetterbox()
     end
 
-    -- Use the new update functions instead of direct toggle
     CinematicCam:UpdateCompassVisibility()
     CinematicCam:UpdateActionBarVisibility()
     CinematicCam:UpdateReticleVisibility()
