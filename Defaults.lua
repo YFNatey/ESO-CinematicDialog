@@ -41,7 +41,7 @@ CinematicCam.defaults = {
         forceThirdPersonDye = false,
         hidePlayerOptions = false,
         forceThirdPersonInteractiveNotes = false,
-
+        allowCameraMovementDuringDialogue = true,
         layoutPreset = "cinematic",
         ui = {
             hidePanelsESO = true,
@@ -72,6 +72,8 @@ CinematicCam.defaults = {
         hideCompass = "always",
         hideReticle = "always",
         hideActionBar = "always",
+
+
 
         selectedFont = "ESO_Standard",
         customFontSize = 48,

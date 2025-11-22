@@ -1,5 +1,17 @@
 CinematicCam.uiElementsMap = {} -- table for hiding ui elements, used in HideUI()
 -- UI elements to hide
+CinematicCam.interactionTypes = {
+    INTERACTION_CONVERSATION,
+    INTERACTION_QUEST,
+    INTERACTION_VENDOR,
+    INTERACTION_STORE,
+    INTERACTION_BANK,
+    INTERACTION_GUILDBANK,
+    INTERACTION_TRADINGHOUSE,
+    INTERACTION_STABLE,
+    INTERACTION_CRAFT,
+    INTERACTION_DYE_STATION,
+}
 CinematicCam.uiElements = {
     -- Compass
     "ZO_CompassFrame",
@@ -47,6 +59,21 @@ CinematicCam.uiElements = {
     "ZO_TutorialOverlay",
 
 }
+function CinematicCam:IsInAnyInteraction()
+    local currentInteractionType = GetInteractionType()
+
+    if currentInteractionType == INTERACTION_NONE then
+        return false
+    end
+
+    for _, interactionType in ipairs(self.interactionTypes) do
+        if currentInteractionType == interactionType then
+            return true
+        end
+    end
+
+    return false
+end
 
 ---=============================================================================
 -- Manage ESO UI Elements
@@ -63,12 +90,6 @@ function CinematicCam:ReapplyUIState()
         CinematicCam_Container:SetHidden(false)
         CinematicCam_LetterboxTop:SetHidden(false)
         CinematicCam_LetterboxBottom:SetHidden(false)
-    end
-end
-
-function CinematicCam:HideNPCText()
-    if ZO_InteractWindowTargetAreaBodyText then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
     end
 end
 
@@ -185,7 +206,6 @@ CinematicCam.actionbar = {
     "ZO_PlayerAttributeHealth",
     "ZO_PlayerAttributeMagicka",
     "ZO_PlayerAttributeStamina",
-    "ZO_PlayerAttributeMountStamina",
     "ZO_ActionBar1",
     "ZO_ActionBar2",
     "ZO_TargetUnitFrame",
@@ -229,6 +249,12 @@ function CinematicCam:ShowActionBar()
             self:FadeInElement(element, 200)
         end
     end
+
+    --  mount stamina handled separately
+    local mountStamina = _G["ZO_PlayerAttributeMountStamina"]
+    if mountStamina and IsMounted() then
+        self:FadeInElement(mountStamina, 200)
+    end
 end
 
 function CinematicCam:HideActionBar()
@@ -237,6 +263,12 @@ function CinematicCam:HideActionBar()
         if element then
             self:FadeOutElement(element, 200)
         end
+    end
+
+    -- mount stamina
+    local mountStamina = _G["ZO_PlayerAttributeMountStamina"]
+    if mountStamina then
+        self:FadeOutElement(mountStamina, 200)
     end
 end
 
@@ -258,10 +290,18 @@ function CinematicCam:HideReticle()
     end
 end
 
--- Update Compass Visibility
 function CinematicCam:UpdateCompassVisibility()
     local setting = self.savedVars.interface.hideCompass
+    local interactionType = GetInteractionType()
     local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideCompassWhenWeaponsSheathed
+
+    -- Check for weapon-unsheathed override
+    if showWhenWeaponsUnsheathed and not weaponsSheathed then
+        self:ShowCompass()
+        return
+    end
 
     if setting == "never" then
         self:HideCompass()
@@ -273,13 +313,25 @@ function CinematicCam:UpdateCompassVisibility()
         else
             self:HideCompass()
         end
+    elseif setting == "weapons" then
+        self:PollWeapons()
+        return
     end
+    self:StopPollingWeapons()
 end
 
 -- Update action bar visibility
 function CinematicCam:UpdateActionBarVisibility()
     local setting = self.savedVars.interface.hideActionBar
     local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideActionBarWhenWeaponsSheathed
+
+    -- Check for weapon-unsheathed override
+    if showWhenWeaponsUnsheathed and not weaponsSheathed then
+        self:ShowActionBar()
+        return
+    end
 
     if setting == "never" then
         self:HideActionBar()
@@ -291,13 +343,20 @@ function CinematicCam:UpdateActionBarVisibility()
         else
             self:HideActionBar()
         end
+    elseif setting == "weapons" then
+        self:PollWeapons()
+        return
     end
+    self:StopPollingWeapons()
 end
 
 -- Update reticle visibility
 function CinematicCam:UpdateReticleVisibility()
     local setting = self.savedVars.interface.hideReticle
     local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+
+
 
     if setting == "never" then
         self:HideReticle()
@@ -309,7 +368,11 @@ function CinematicCam:UpdateReticleVisibility()
         else
             self:HideReticle()
         end
+    elseif setting == "weapons" then
+        self:PollWeapons()
+        return
     end
+    self:StopPollingWeapons()
 end
 
 ---=============================================================================
@@ -373,18 +436,30 @@ function CinematicCam:ShowDialoguePanels()
     end
 end
 
+-- Called Immediately when entering an NPC interaction
+function CinematicCam:HideNPCText()
+    if ZO_InteractWindowTargetAreaBodyText then
+        ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    end
+    if ZO_InteractWindow_GamepadContainerText then
+        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    end
+end
+
 ---=============================================================================
 -- Reposition UI
 --=============================================================================
 local npcTextContainer = ZO_InteractWindow_GamepadContainerText
-if npcTextContainer then
-    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
-    local addedWidth = originalWidth + 10
-    local addedHeight = originalHeight + 100
+
+function CinematicCam:ApplyDialogueRepositioning()
+    local preset = self.savedVars.interaction.layoutPreset
+    if preset and preset.applyFunction then
+        preset.applyFunction(self)
+    end
 end
 
 function CinematicCam:ApplyCinematicPreset()
-    ZO_InteractWindow_GamepadContainerText:SetHidden(true)
+    npcTextContainer:SetHidden(true)
     if npcTextContainer then
         local originalWidth, originalHeight = npcTextContainer:GetDimensions()
         npcTextContainer:SetWidth(originalWidth)
@@ -456,7 +531,7 @@ function CinematicCam:ApplyChunkedTextPositioning()
 end
 
 function CinematicCam:ApplyDefaultPosition()
-    ZO_InteractWindow_GamepadContainerText:SetHidden(false)
+    npcTextContainer:SetHidden(false)
     zo_callLater(function()
         local rootWindow = _G["ZO_InteractWindow_Gamepad"]
         if rootWindow then
@@ -500,16 +575,10 @@ function CinematicCam:ApplyDefaultPosition()
     end)
 end
 
-function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
-    if CinematicCam.chunkedDialogueData.isActive and CinematicCam.chunkedDialogueData.customControl then
-        self:ApplyChunkedTextPositioning()
-    end
-end
-
 ---=============================================================================
 -- Animations
 --=============================================================================
---  fade-in for any UI element
+-- fade-in for any UI element
 function CinematicCam:FadeInElement(element, duration)
     if not element then return end
 
@@ -556,4 +625,59 @@ function CinematicCam:FadeOutElement(element, duration)
     end)
 
     timeline:PlayFromStart()
+end
+
+---=============================================================================
+-- Weapons Polling
+--=============================================================================
+-- When "weapons Drawn" mode is enabled, check if weapons are drawn or sheathed
+function CinematicCam:PollWeapons()
+    local ReticleSetting = self.savedVars.interface.hideReticle
+    local CompassSetting = self.savedVars.interface.hideCompass
+    local ActionbarSetting = self.savedVars.interface.hideActionBar
+
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+
+    if CinematicCam.lastWeaponsState == weaponsSheathed then
+        self.weaponsPollTimer = zo_callLater(function()
+            self:PollWeapons()
+        end, 1000)
+        return
+    end
+
+    CinematicCam.lastWeaponsState = weaponsSheathed
+
+    if not weaponsSheathed then
+        if ReticleSetting == "weapons" then
+            self:ShowReticle()
+        end
+        if CompassSetting == "weapons" then
+            self:ShowCompass()
+        end
+        if ActionbarSetting == "weapons" and not IsMounted() then
+            self:ShowActionBar()
+        end
+    else
+        if ReticleSetting == "weapons" then
+            self:HideReticle()
+        end
+        if CompassSetting == "weapons" then
+            self:HideCompass()
+        end
+        if ActionbarSetting == "weapons" then
+            self:HideActionBar()
+        end
+    end
+
+    -- Poll every 1 second
+    self.weaponsPollTimer = zo_callLater(function()
+        self:PollWeapons()
+    end, 1000)
+end
+
+function CinematicCam:StopPollingWeapons()
+    if self.weaponsPollTimer then
+        zo_removeCallLater(self.weaponsPollTimer)
+        self.weaponsPollTimer = nil
+    end
 end

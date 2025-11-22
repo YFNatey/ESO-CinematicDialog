@@ -96,6 +96,7 @@ function CinematicCam:CheckPlayerOptionsForVendorText()
                 local optionText = textElement:GetText() or ""
                 if optionText ~= "" then
                     -- Check if first option is "Goodbye."
+                    -- Show immediately so player can exit whenever they want
                     if i == 1 and optionText == "Goodbye." then
                         return true
                     end

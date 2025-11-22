@@ -56,7 +56,6 @@ function CinematicCam:ApplyTarantinoriPreset()
     self.savedVars.letterbox.size = 100
     self.savedVars.letterbox.opacity = 1.0
     self.savedVars.interface.hideCompass = true
-    CinematicCam:ToggleCompass(true)
     self.pendingUIRefresh = true
     -- Font settings
     self.savedVars.interface.selectedFont = "ESO_Bold"
@@ -223,10 +222,6 @@ function CinematicCam:ApplyVanillaPreset()
     -- Show ESO panels
     self:ShowDialoguePanels()
 
-    -- Restore UI elements
-    CinematicCam:ToggleCompass(false)
-    CinematicCam:ToggleActionBar(false)
-    CinematicCam:ToggleReticle(false)
 
     if CinematicCam.chunkedDialogueData.customControl then
         local control = CinematicCam.chunkedDialogueData.customControl
@@ -249,7 +244,6 @@ function CinematicCam:ApplyVanillaPreset()
     end
 
     zo_callLater(function()
-        self:RefreshDialogueBackgrounds()
         self:ApplyDialogueRepositioning()
         -- Force apply fonts to all dialogue elements
         self:ApplyFontsToUI()
@@ -287,7 +281,23 @@ function CinematicCam:InitializeCustomPresets()
 end
 
 function CinematicCam:SaveToPresetSlot(slotNumber)
-    d("CinematicDialog: Saved")
+    local notification = _G["CinematicCam_UpdateNotification"]
+    local notificationText = _G["CinematicCam_UpdateNotificationText"]
+    if not notification then
+        return
+    end
+
+    notification:SetHidden(false)
+    notification:SetAlpha(0)
+    notificationText:SetText("Cinematic Dialogue: Saved")
+
+    -- Start fade in animation
+    self:AnimateUpdateNotification(notification, true)
+
+    -- Auto-hide wafter 5 seconds
+    zo_callLater(function()
+        self:HideUpdateNotification()
+    end, 4000)
     local slotKey = "slot" .. slotNumber
     local slot = self.savedVars.customPresets[slotKey]
 
@@ -324,6 +334,9 @@ function CinematicCam:SaveToPresetSlot(slotNumber)
         hideCompass = self.savedVars.interface.hideCompass,
         hideActionBar = self.savedVars.interface.hideActionBar,
         hideReticle = self.savedVars.interface.hideReticle,
+        hideCompassWhenWeaponsSheathed = self.savedVars.interface.hideCompassWhenWeaponsSheathed,
+        hideActionBarWhenWeaponsSheathed = self.savedVars.interface.hideActionBarWhenWeaponsSheathed,
+        hideReticleWhenWeaponsSheathed = self.savedVars.interface.hideReticleWhenWeaponsSheathed,
     }
 
 
@@ -366,6 +379,17 @@ function CinematicCam:LoadFromPresetSlot(slotNumber)
     self.savedVars.interface.hideCompass = preset.hideCompass
     self.savedVars.interface.hideActionBar = preset.hideActionBar
     self.savedVars.interface.hideReticle = preset.hideReticle
+
+    -- Load weapon sheathing settings (with fallbacks for older presets)
+    if preset.hideCompassWhenWeaponsSheathed ~= nil then
+        self.savedVars.interface.hideCompassWhenWeaponsSheathed = preset.hideCompassWhenWeaponsSheathed
+    end
+    if preset.hideActionBarWhenWeaponsSheathed ~= nil then
+        self.savedVars.interface.hideActionBarWhenWeaponsSheathed = preset.hideActionBarWhenWeaponsSheathed
+    end
+    if preset.hideReticleWhenWeaponsSheathed ~= nil then
+        self.savedVars.interface.hideReticleWhenWeaponsSheathed = preset.hideReticleWhenWeaponsSheathed
+    end
 
     -- Apply the preset
     self.savedVars.interface.currentPreset = "custom:slot" .. slotNumber
@@ -522,6 +546,21 @@ function CinematicCam:GetPresetTooltip(slotNumber)
         table.insert(tooltip, "  - Reticle: Combat Only")
     else
         table.insert(tooltip, "  - Reticle: |c5A7D5AAlways|r")
+    end
+
+    -- Weapon unsheathed overrides
+    if settings.hideCompassWhenWeaponsSheathed or settings.hideActionBarWhenWeaponsSheathed or settings.hideReticleWhenWeaponsSheathed then
+        table.insert(tooltip, "")
+        table.insert(tooltip, "|cFFFFFF• Show When Weapons Unsheathed:|r")
+        if settings.hideCompassWhenWeaponsSheathed then
+            table.insert(tooltip, "  - Compass: |c5A7D5AEnabled|r")
+        end
+        if settings.hideActionBarWhenWeaponsSheathed then
+            table.insert(tooltip, "  - Skill Bar: |c5A7D5AEnabled|r")
+        end
+        if settings.hideReticleWhenWeaponsSheathed then
+            table.insert(tooltip, "  - Reticle: |c5A7D5AEnabled|r")
+        end
     end
 
     -- Letterbox settings
