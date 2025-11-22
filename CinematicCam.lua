@@ -148,9 +148,10 @@ end
 -- Called when Leaving an interaction (conversation, quest, vendor, etc)
 function CinematicCam:OnInteractionEnd()
     CinematicCam.lastWeaponsState = nil
+    CinematicCam.exitedDialogue = true
     -- Stop watching gamepad sticks
     self:StopGamepadStickPoll()
-
+    CinematicCam:UpdateUIVisibility()
     -- Stop watching for conversation events
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
@@ -171,6 +172,9 @@ function CinematicCam:OnInteractionEnd()
             self:HideLetterbox()
         end
     end
+    zo_callLater(function()
+        CinematicCam.exitedDialogue = false
+    end, 2000)
 end
 
 function CinematicCam:ForceShowAllPlayerOptions()
@@ -213,9 +217,7 @@ local function Initialize()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:UpdateHorizontal()
         CinematicCam:RegisterUIRefreshEvent()
-        CinematicCam:UpdateActionBarVisibility()
-        CinematicCam:UpdateCompassVisibility()
-        CinematicCam:UpdateReticleVisibility()
+        CinematicCam:UpdateUIVisibility()
         CinematicCam:BuildHomeIdsLookup()
         CinematicCam:InitializeUpdateSystem()
     end, 1000)
@@ -436,13 +438,7 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                CinematicCam:UpdateCompassVisibility()
-
-                -- Check action bar setting
-                CinematicCam:UpdateActionBarVisibility()
-
-                -- Check reticle setting
-                CinematicCam:UpdateReticleVisibility()
+                CinematicCam:UpdateUIVisibility()
                 if self.presetPending then
                     CinematicCam:InitializeChunkedTextControl()
 
@@ -467,32 +463,35 @@ end
 
 -- Combat state change for compass, reticle, and action bar
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Combat", EVENT_PLAYER_COMBAT_STATE, function(eventCode, inCombat)
-    CinematicCam:UpdateCompassVisibility()
-    CinematicCam:UpdateActionBarVisibility()
-    CinematicCam:UpdateReticleVisibility()
+    CinematicCam:UpdateUIVisibility()
 end)
 
 -- Font events
 function CinematicCam:RegisterFontEvents()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
         self:ApplyFontsToUI()
+        CinematicCam:UpdateUIVisibility()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CONVERSATION_UPDATED, function()
         self:ApplyFontsToUI()
+        CinematicCam:UpdateUIVisibility()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_QUEST_COMPLETE_DIALOG, function()
         self:ApplyFontsToUI()
+        CinematicCam:UpdateUIVisibility()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_INTERACTION_UPDATED, function()
         self:ApplyFontsToUI()
+        CinematicCam:UpdateUIVisibility()
     end)
 
     -- Add more specific events
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_SHOW_BOOK, function()
         self:ApplyFontsToUI()
+        CinematicCam:UpdateUIVisibility()
     end)
 end
 
@@ -506,12 +505,11 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_HousingState", EVENT_HOUSING_EDIT
 
         if newMode ~= HOUSING_EDITOR_MODE_DISABLED then
             -- Entering housing editor - force show reticle
-            --CinematicCam:ToggleReticle(false)
             CinematicCam.inHousingEditor = true
         else
             -- Exiting housing editor - restore reticle setting
             CinematicCam.inHousingEditor = false
-            --CinematicCam:UpdateReticleVisibility()
+            CinematicCam:UpdateUIVisibility()
         end
     end)
 

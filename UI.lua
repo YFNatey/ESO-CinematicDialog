@@ -233,15 +233,6 @@ function CinematicCam:ShowCompass()
     end
 end
 
-function CinematicCam:HideCompass()
-    for _, elementName in ipairs(CinematicCam.compassElements) do
-        local element = _G[elementName]
-        if element then
-            self:FadeOutElement(element, 200)
-        end
-    end
-end
-
 function CinematicCam:ShowActionBar()
     for _, elementName in ipairs(CinematicCam.actionbar) do
         local element = _G[elementName]
@@ -257,11 +248,33 @@ function CinematicCam:ShowActionBar()
     end
 end
 
-function CinematicCam:HideActionBar()
+function CinematicCam:ShowReticle()
+    for _, elementName in ipairs(CinematicCam.reticle) do
+        local element = _G[elementName]
+        if element then
+            self:FadeInElement(element, 200)
+        end
+    end
+end
+
+function CinematicCam:HideCompass(isAnimated)
+    for _, elementName in ipairs(CinematicCam.compassElements) do
+        local element = _G[elementName]
+        if element then
+            self:FadeOutElement(element, 200)
+        elseif element and not isAnimated then
+            element:SetHidden(true)
+        end
+    end
+end
+
+function CinematicCam:HideActionBar(isAnimated)
     for _, elementName in ipairs(CinematicCam.actionbar) do
         local element = _G[elementName]
         if element then
             self:FadeOutElement(element, 200)
+        elseif element and not isAnimated then
+            element:SetHidden(true)
         end
     end
 
@@ -272,20 +285,13 @@ function CinematicCam:HideActionBar()
     end
 end
 
-function CinematicCam:ShowReticle()
+function CinematicCam:HideReticle(isAnimated)
     for _, elementName in ipairs(CinematicCam.reticle) do
         local element = _G[elementName]
-        if element then
-            self:FadeInElement(element, 200)
-        end
-    end
-end
-
-function CinematicCam:HideReticle()
-    for _, elementName in ipairs(CinematicCam.reticle) do
-        local element = _G[elementName]
-        if element then
+        if element and isAnimated then
             self:FadeOutElement(element, 200)
+        elseif element and not isAnimated then
+            element:SetHidden(true)
         end
     end
 end
@@ -304,14 +310,14 @@ function CinematicCam:UpdateCompassVisibility()
     end
 
     if setting == "never" then
-        self:HideCompass()
+        self:HideCompass(true)
     elseif setting == "always" then
         self:ShowCompass()
     elseif setting == "combat" then
         if inCombat then
             self:ShowCompass()
         else
-            self:HideCompass()
+            self:HideCompass(true)
         end
     elseif setting == "weapons" then
         self:PollWeapons()
@@ -334,14 +340,14 @@ function CinematicCam:UpdateActionBarVisibility()
     end
 
     if setting == "never" then
-        self:HideActionBar()
+        self:HideActionBar(true)
     elseif setting == "always" then
         self:ShowActionBar()
     elseif setting == "combat" then
         if inCombat then
             self:ShowActionBar()
         else
-            self:HideActionBar()
+            self:HideActionBar(true)
         end
     elseif setting == "weapons" then
         self:PollWeapons()
@@ -359,20 +365,92 @@ function CinematicCam:UpdateReticleVisibility()
 
 
     if setting == "never" then
-        self:HideReticle()
+        self:HideReticle(true)
     elseif setting == "always" then
         self:ShowReticle()
     elseif setting == "combat" then
         if inCombat then
             self:ShowReticle()
         else
-            self:HideReticle()
+            self:HideReticle(true)
         end
     elseif setting == "weapons" then
         self:PollWeapons()
         return
     end
     self:StopPollingWeapons()
+end
+
+function CinematicCam:UpdateUIVisibility()
+    CinematicCam:UpdateCompassVisibility()
+    CinematicCam:UpdateActionBarVisibility()
+    CinematicCam:UpdateReticleVisibility()
+end
+
+---=============================================================================
+-- Weapons Polling
+--=============================================================================
+-- When "weapons Drawn" mode is enabled, check if weapons are drawn or sheathed
+function CinematicCam:PollWeapons()
+    local ReticleSetting = self.savedVars.interface.hideReticle
+    local CompassSetting = self.savedVars.interface.hideCompass
+    local ActionbarSetting = self.savedVars.interface.hideActionBar
+
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+
+    if CinematicCam.lastWeaponsState == weaponsSheathed then
+        self.weaponsPollTimer = zo_callLater(function()
+            self:PollWeapons()
+        end, 1000)
+        return
+    end
+
+    CinematicCam.lastWeaponsState = weaponsSheathed
+
+    if not weaponsSheathed then
+        if ReticleSetting == "weapons" then
+            self:ShowReticle()
+        end
+        if CompassSetting == "weapons" then
+            self:ShowCompass()
+        end
+        if ActionbarSetting == "weapons" and not IsMounted() then
+            self:ShowActionBar()
+        end
+        -- Hide UI when weapons are sheathed or in an NPC interaction
+    elseif weaponsSheathed then
+        if ReticleSetting == "weapons" then
+            self:HideReticle(true)
+        end
+        if CompassSetting == "weapons" then
+            self:HideCompass(true)
+        end
+        if ActionbarSetting == "weapons" then
+            self:HideActionBar(true)
+        end
+    elseif CinematicCam.exitedDialogue then
+        if ReticleSetting == "weapons" then
+            self:HideReticle(false)
+        end
+        if CompassSetting == "weapons" then
+            self:HideCompass(false)
+        end
+        if ActionbarSetting == "weapons" then
+            self:HideActionBar(false)
+        end
+    end
+
+    -- Poll every 1 second
+    self.weaponsPollTimer = zo_callLater(function()
+        self:PollWeapons()
+    end, 1000)
+end
+
+function CinematicCam:StopPollingWeapons()
+    if self.weaponsPollTimer then
+        zo_removeCallLater(self.weaponsPollTimer)
+        self.weaponsPollTimer = nil
+    end
 end
 
 ---=============================================================================
@@ -625,59 +703,4 @@ function CinematicCam:FadeOutElement(element, duration)
     end)
 
     timeline:PlayFromStart()
-end
-
----=============================================================================
--- Weapons Polling
---=============================================================================
--- When "weapons Drawn" mode is enabled, check if weapons are drawn or sheathed
-function CinematicCam:PollWeapons()
-    local ReticleSetting = self.savedVars.interface.hideReticle
-    local CompassSetting = self.savedVars.interface.hideCompass
-    local ActionbarSetting = self.savedVars.interface.hideActionBar
-
-    local weaponsSheathed = ArePlayerWeaponsSheathed()
-
-    if CinematicCam.lastWeaponsState == weaponsSheathed then
-        self.weaponsPollTimer = zo_callLater(function()
-            self:PollWeapons()
-        end, 1000)
-        return
-    end
-
-    CinematicCam.lastWeaponsState = weaponsSheathed
-
-    if not weaponsSheathed then
-        if ReticleSetting == "weapons" then
-            self:ShowReticle()
-        end
-        if CompassSetting == "weapons" then
-            self:ShowCompass()
-        end
-        if ActionbarSetting == "weapons" and not IsMounted() then
-            self:ShowActionBar()
-        end
-    else
-        if ReticleSetting == "weapons" then
-            self:HideReticle()
-        end
-        if CompassSetting == "weapons" then
-            self:HideCompass()
-        end
-        if ActionbarSetting == "weapons" then
-            self:HideActionBar()
-        end
-    end
-
-    -- Poll every 1 second
-    self.weaponsPollTimer = zo_callLater(function()
-        self:PollWeapons()
-    end, 1000)
-end
-
-function CinematicCam:StopPollingWeapons()
-    if self.weaponsPollTimer then
-        zo_removeCallLater(self.weaponsPollTimer)
-        self.weaponsPollTimer = nil
-    end
 end
