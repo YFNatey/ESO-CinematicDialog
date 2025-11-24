@@ -93,6 +93,12 @@ function CinematicCam:ReapplyUIState()
     end
 end
 
+function CinematicCam:HideNPCText()
+    if ZO_InteractWindowTargetAreaBodyText then
+        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
+    end
+end
+
 -- Show regular npc text using eso's ui
 function CinematicCam:ShowNPCText()
     if ZO_InteractWindowTargetAreaBodyText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
@@ -233,6 +239,15 @@ function CinematicCam:ShowCompass()
     end
 end
 
+function CinematicCam:HideCompass()
+    for _, elementName in ipairs(CinematicCam.compassElements) do
+        local element = _G[elementName]
+        if element then
+            self:FadeOutElement(element, 200)
+        end
+    end
+end
+
 function CinematicCam:ShowActionBar()
     for _, elementName in ipairs(CinematicCam.actionbar) do
         local element = _G[elementName]
@@ -248,33 +263,11 @@ function CinematicCam:ShowActionBar()
     end
 end
 
-function CinematicCam:ShowReticle()
-    for _, elementName in ipairs(CinematicCam.reticle) do
-        local element = _G[elementName]
-        if element then
-            self:FadeInElement(element, 200)
-        end
-    end
-end
-
-function CinematicCam:HideCompass(isAnimated)
-    for _, elementName in ipairs(CinematicCam.compassElements) do
-        local element = _G[elementName]
-        if element then
-            self:FadeOutElement(element, 200)
-        elseif element and not isAnimated then
-            element:SetHidden(true)
-        end
-    end
-end
-
-function CinematicCam:HideActionBar(isAnimated)
+function CinematicCam:HideActionBar()
     for _, elementName in ipairs(CinematicCam.actionbar) do
         local element = _G[elementName]
         if element then
             self:FadeOutElement(element, 200)
-        elseif element and not isAnimated then
-            element:SetHidden(true)
         end
     end
 
@@ -285,13 +278,20 @@ function CinematicCam:HideActionBar(isAnimated)
     end
 end
 
-function CinematicCam:HideReticle(isAnimated)
+function CinematicCam:ShowReticle()
     for _, elementName in ipairs(CinematicCam.reticle) do
         local element = _G[elementName]
-        if element and isAnimated then
+        if element then
+            self:FadeInElement(element, 200)
+        end
+    end
+end
+
+function CinematicCam:HideReticle()
+    for _, elementName in ipairs(CinematicCam.reticle) do
+        local element = _G[elementName]
+        if element then
             self:FadeOutElement(element, 200)
-        elseif element and not isAnimated then
-            element:SetHidden(true)
         end
     end
 end
@@ -310,14 +310,14 @@ function CinematicCam:UpdateCompassVisibility()
     end
 
     if setting == "never" then
-        self:HideCompass(true)
+        self:HideCompass()
     elseif setting == "always" then
         self:ShowCompass()
     elseif setting == "combat" then
         if inCombat then
             self:ShowCompass()
         else
-            self:HideCompass(true)
+            self:HideCompass()
         end
     elseif setting == "weapons" then
         self:PollWeapons()
@@ -340,14 +340,14 @@ function CinematicCam:UpdateActionBarVisibility()
     end
 
     if setting == "never" then
-        self:HideActionBar(true)
+        self:HideActionBar()
     elseif setting == "always" then
         self:ShowActionBar()
     elseif setting == "combat" then
         if inCombat then
             self:ShowActionBar()
         else
-            self:HideActionBar(true)
+            self:HideActionBar()
         end
     elseif setting == "weapons" then
         self:PollWeapons()
@@ -356,41 +356,6 @@ function CinematicCam:UpdateActionBarVisibility()
     self:StopPollingWeapons()
 end
 
--- Update reticle visibility
-function CinematicCam:UpdateReticleVisibility()
-    local setting = self.savedVars.interface.hideReticle
-    local inCombat = IsUnitInCombat("player")
-    local weaponsSheathed = ArePlayerWeaponsSheathed()
-
-
-
-    if setting == "never" then
-        self:HideReticle(true)
-    elseif setting == "always" then
-        self:ShowReticle()
-    elseif setting == "combat" then
-        if inCombat then
-            self:ShowReticle()
-        else
-            self:HideReticle(true)
-        end
-    elseif setting == "weapons" then
-        self:PollWeapons()
-        return
-    end
-    self:StopPollingWeapons()
-end
-
-function CinematicCam:UpdateUIVisibility()
-    CinematicCam:UpdateCompassVisibility()
-    CinematicCam:UpdateActionBarVisibility()
-    CinematicCam:UpdateReticleVisibility()
-end
-
----=============================================================================
--- Weapons Polling
---=============================================================================
--- When "weapons Drawn" mode is enabled, check if weapons are drawn or sheathed
 function CinematicCam:PollWeapons()
     local ReticleSetting = self.savedVars.interface.hideReticle
     local CompassSetting = self.savedVars.interface.hideCompass
@@ -409,38 +374,26 @@ function CinematicCam:PollWeapons()
 
     if not weaponsSheathed then
         if ReticleSetting == "weapons" then
-            self:ShowReticle()
+            self:ShowReticle() -- Skip animation
         end
         if CompassSetting == "weapons" then
-            self:ShowCompass()
-        end
-        if ActionbarSetting == "weapons" and not IsMounted() then
-            self:ShowActionBar()
-        end
-        -- Hide UI when weapons are sheathed or in an NPC interaction
-    elseif weaponsSheathed then
-        if ReticleSetting == "weapons" then
-            self:HideReticle(true)
-        end
-        if CompassSetting == "weapons" then
-            self:HideCompass(true)
+            self:ShowCompass() -- Skip animation
         end
         if ActionbarSetting == "weapons" then
-            self:HideActionBar(true)
+            self:ShowActionBar() -- Skip animation
         end
-    elseif CinematicCam.exitedDialogue then
+    else
         if ReticleSetting == "weapons" then
-            self:HideReticle(false)
+            self:HideReticle() -- Skip animation
         end
         if CompassSetting == "weapons" then
-            self:HideCompass(false)
+            self:HideCompass() -- Skip animation
         end
         if ActionbarSetting == "weapons" then
-            self:HideActionBar(false)
+            self:HideActionBar() -- Skip animation
         end
     end
 
-    -- Poll every 1 second
     self.weaponsPollTimer = zo_callLater(function()
         self:PollWeapons()
     end, 1000)
@@ -451,6 +404,31 @@ function CinematicCam:StopPollingWeapons()
         zo_removeCallLater(self.weaponsPollTimer)
         self.weaponsPollTimer = nil
     end
+end
+
+-- Update reticle visibility
+function CinematicCam:UpdateReticleVisibility()
+    local setting = self.savedVars.interface.hideReticle
+    local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+
+
+
+    if setting == "never" then
+        self:HideReticle()
+    elseif setting == "always" then
+        self:ShowReticle()
+    elseif setting == "combat" then
+        if inCombat then
+            self:ShowReticle()
+        else
+            self:HideReticle()
+        end
+    elseif setting == "weapons" then
+        self:PollWeapons()
+        return
+    end
+    self:StopPollingWeapons()
 end
 
 ---=============================================================================
@@ -514,30 +492,18 @@ function CinematicCam:ShowDialoguePanels()
     end
 end
 
--- Called Immediately when entering an NPC interaction
-function CinematicCam:HideNPCText()
-    if ZO_InteractWindowTargetAreaBodyText then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-    end
-    if ZO_InteractWindow_GamepadContainerText then
-        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-    end
-end
-
 ---=============================================================================
 -- Reposition UI
 --=============================================================================
 local npcTextContainer = ZO_InteractWindow_GamepadContainerText
-
-function CinematicCam:ApplyDialogueRepositioning()
-    local preset = self.savedVars.interaction.layoutPreset
-    if preset and preset.applyFunction then
-        preset.applyFunction(self)
-    end
+if npcTextContainer then
+    local originalWidth, originalHeight = npcTextContainer:GetDimensions()
+    local addedWidth = originalWidth + 10
+    local addedHeight = originalHeight + 100
 end
 
 function CinematicCam:ApplyCinematicPreset()
-    npcTextContainer:SetHidden(true)
+    ZO_InteractWindow_GamepadContainerText:SetHidden(true)
     if npcTextContainer then
         local originalWidth, originalHeight = npcTextContainer:GetDimensions()
         npcTextContainer:SetWidth(originalWidth)
@@ -609,7 +575,7 @@ function CinematicCam:ApplyChunkedTextPositioning()
 end
 
 function CinematicCam:ApplyDefaultPosition()
-    npcTextContainer:SetHidden(false)
+    ZO_InteractWindow_GamepadContainerText:SetHidden(false)
     zo_callLater(function()
         local rootWindow = _G["ZO_InteractWindow_Gamepad"]
         if rootWindow then
@@ -653,9 +619,17 @@ function CinematicCam:ApplyDefaultPosition()
     end)
 end
 
+function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
+    if CinematicCam.chunkedDialogueData.isActive and CinematicCam.chunkedDialogueData.customControl then
+        self:ApplyChunkedTextPositioning()
+    end
+end
+
 ---=============================================================================
 -- Animations
 --=============================================================================
+
+
 -- fade-in for any UI element
 function CinematicCam:FadeInElement(element, duration)
     if not element then return end

@@ -1,20 +1,6 @@
 <GuiXml>
     <Controls>
-
-       <!-- Scroll Background 
-         <TopLevelControl name="ScrollBackground" mouseEnabled="false"
-                         layer="DL_OVERLAY" tier="DT_HIGH" level="20">
-            <Controls>
-                <Texture name="ScrollTexture" mouseEnabled="false"
-                textureFile="/esoui/art/lorelibrary/lorelibrary_scroll.dds"
-                         layer="DL_CONTROLS" tier="DT_HIGH" level="590">
-                    <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
-                    <Dimensions x="820" y="120" />
-                </Texture>
-            </Controls>
-        </TopLevelControl> 
-        -->
-
+        
         <!-- Separate Letterbox Controls - NOT inside container -->
         <!-- Letterbox Top -->
         <TopLevelControl name="CinematicCam_LetterboxTopContainer" mouseEnabled="false"
