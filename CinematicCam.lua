@@ -34,34 +34,6 @@ function CinematicCam:ApplyDialogueRepositioning()
     end
 end
 
-function CinematicCam:GetCurrentPlayerOptionsState()
-    local elements = {
-        "ZO_InteractWindowPlayerAreaOptions",
-        "ZO_InteractWindow_GamepadContainerInteractList",
-        "ZO_InteractWindow_GamepadContainerInteract",
-        "ZO_InteractWindowPlayerAreaHighlight"
-    }
-
-    local visibilityStates = {}
-    for _, elementName in ipairs(elements) do
-        local element = _G[elementName]
-        if element then
-            visibilityStates[elementName] = not element:IsHidden()
-        end
-    end
-
-    -- Return summary state
-    local anyVisible = false
-    for _, visible in pairs(visibilityStates) do
-        if visible then
-            anyVisible = true
-            break
-        end
-    end
-
-    return anyVisible and "VISIBLE" or "HIDDEN"
-end
-
 function CinematicCam:GamepadStickPoll()
     if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
         return
@@ -149,8 +121,6 @@ end
 -- Handles the logic when the default interaction camera is deactivated.
 -- Applies UI changes, letterbox, and font updates based on user settings and interaction type.
 function CinematicCam:OnGameCameraDeactivated()
-    self.debugSessionId = self.debugSessionId + 1
-    self:LogDebugEvent("CAMERA_DEACTIVATED_START")
     if not CinematicCam.isInteractionModified then
         self:ResetChunkedDialogueState()
     end
@@ -188,9 +158,7 @@ function CinematicCam:OnGameCameraDeactivated()
                 self:GamepadStickPoll()
             end)
         end
-        self:LogDebugEvent("INTERACTION_BLOCKED", { interactionType = interactionType })
 
-        CinematicCam:RegisterFontEvents()
         CinematicCam.isInteractionModified = true
 
         self:ApplyDialogueRepositioning()
@@ -199,31 +167,19 @@ function CinematicCam:OnGameCameraDeactivated()
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_ChatterBegin",
             EVENT_CHATTER_BEGIN,
-            function(eventCode, conversationBodyText, conversationOptionCount)
-                self:LogDebugEvent("CHATTER_BEGIN_FIRED", {
-                    textLength = string.len(conversationBodyText or ""),
-                    optionCount = conversationOptionCount
-                })
-
+            function()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    self:LogDebugEvent("CHATTER_BEGIN_FORCE_SHOW")
                     CinematicCam:ForceShowAllPlayerOptions()
-                else
-                    self:LogDebugEvent("CHATTER_BEGIN_NO_ACTION")
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    self:LogDebugEvent("CINEMATIC_MODE_HIDING_ORIGINAL")
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
                     end
                     if ZO_InteractWindow_GamepadContainerText then
                         ZO_InteractWindow_GamepadContainerText:SetHidden(true)
                     end
-                    self:LogDebugEvent("BEFORE_INTERCEPT", {
-                        isActive = CinematicCam.chunkedDialogueData.isActive,
-                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-                    })
+
                     self:InterceptDialogueForChunking()
                 end
             end
@@ -232,31 +188,19 @@ function CinematicCam:OnGameCameraDeactivated()
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_ConversationUpdate",
             EVENT_CONVERSATION_UPDATED,
-            function(eventCode, conversationBodyText, conversationOptionCount)
-                self:LogDebugEvent("CONVERSATION_UPDATED_FIRED", {
-                    textLength = string.len(conversationBodyText or ""),
-                    optionCount = conversationOptionCount
-                })
-
+            function()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    self:LogDebugEvent("CONVERSATION_UPDATE_FORCE_SHOW")
                     CinematicCam:ForceShowAllPlayerOptions()
-                else
-                    self:LogDebugEvent("CONVERSATION_UPDATE_NO_ACTION")
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    self:LogDebugEvent("CONVERSATION_UPDATE_CINEMATIC")
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
                     end
                     if ZO_InteractWindow_GamepadContainerText then
                         ZO_InteractWindow_GamepadContainerText:SetHidden(true)
                     end
-                    self:LogDebugEvent("BEFORE_INTERCEPT", {
-                        isActive = CinematicCam.chunkedDialogueData.isActive,
-                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-                    })
+
                     self:InterceptDialogueForChunking()
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                 end
@@ -265,31 +209,19 @@ function CinematicCam:OnGameCameraDeactivated()
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_QuestOffered",
             EVENT_QUEST_OFFERED,
-            function(eventCode, conversationBodyText, conversationOptionCount)
-                self:LogDebugEvent("CONVERSATION_UPDATED_FIRED", {
-                    textLength = string.len(conversationBodyText or ""),
-                    optionCount = conversationOptionCount
-                })
-
+            function()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    self:LogDebugEvent("CONVERSATION_UPDATE_FORCE_SHOW")
                     CinematicCam:ForceShowAllPlayerOptions()
-                else
-                    self:LogDebugEvent("CONVERSATION_UPDATE_NO_ACTION")
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    self:LogDebugEvent("CONVERSATION_UPDATE_CINEMATIC")
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
                     end
                     if ZO_InteractWindow_GamepadContainerText then
                         ZO_InteractWindow_GamepadContainerText:SetHidden(true)
                     end
-                    self:LogDebugEvent("BEFORE_INTERCEPT", {
-                        isActive = CinematicCam.chunkedDialogueData.isActive,
-                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-                    })
+
                     self:InterceptDialogueForChunking()
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
@@ -299,28 +231,19 @@ function CinematicCam:OnGameCameraDeactivated()
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_QuestCompleteDialog",
             EVENT_QUEST_COMPLETE_DIALOG,
-            function(eventCode)
-                self:LogDebugEvent("QUEST_COMPLETE_DIALOG_FIRED")
-
+            function()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    self:LogDebugEvent("QUEST_COMPLETE_FORCE_SHOW")
                     CinematicCam:ForceShowAllPlayerOptions()
-                else
-                    self:LogDebugEvent("QUEST_COMPLETE_NO_ACTION")
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    self:LogDebugEvent("QUEST_COMPLETE_CINEMATIC")
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
                     end
                     if ZO_InteractWindow_GamepadContainerText then
                         ZO_InteractWindow_GamepadContainerText:SetHidden(true)
                     end
-                    self:LogDebugEvent("BEFORE_INTERCEPT", {
-                        isActive = CinematicCam.chunkedDialogueData.isActive,
-                        playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-                    })
+
                     self:InterceptDialogueForChunking()
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
@@ -469,7 +392,7 @@ local function Initialize()
     CinematicCam:InitializeChunkedTextControl()
     CinematicCam:InitializePreviewSystem()
     CinematicCam:InitializeEmoteWheel()
-
+    CinematicCam:RegisterFontEvents()
     zo_callLater(function()
         CinematicCam:InitializeUI()
         CinematicCam:RegisterSceneCallbacks()
@@ -815,44 +738,7 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVAT
         end
     end, 1000)
 end)
----=============================================================================
--- Debug
---=============================================================================
-function CinematicCam:DebugPrint()
-    if self.savedVars and self.savedVars.showNotifications then
-        d(message)
-    end
-end
 
-function CinematicCam:LogDebugEvent(eventName, details)
-    --[[ local timestamp = GetTimeStamp()
-    local logEntry = {
-        session = self.debugSessionId,
-        time = timestamp,
-        event = eventName,
-        details = details or {},
-        playerOptionsState = self:GetCurrentPlayerOptionsState(),
-        settingValue = self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk,
-        chunkData = {
-            isActive = CinematicCam.chunkedDialogueData.isActive,
-            currentChunk = CinematicCam.chunkedDialogueData.currentChunkIndex,
-            totalChunks = CinematicCam.chunkedDialogueData.chunks and #CinematicCam.chunkedDialogueData.chunks or 0,
-            playerOptionsHidden = CinematicCam.chunkedDialogueData.playerOptionsHidden
-        }
-    }
-
-    table.insert(self.debugEventLog, logEntry)
-
-    -- Print immediate debug info
-    d(string.format("[DEBUG %d] %s | Setting=%s | State=%s | Chunk=%d/%d",
-        self.debugSessionId,
-        eventName,
-        tostring(logEntry.settingValue),
-        logEntry.playerOptionsState,
-        logEntry.chunkData.currentChunk,
-        logEntry.chunkData.totalChunks
-   -- ))]]
-end
 
 ---=============================================================================
 -- Utility Functions
