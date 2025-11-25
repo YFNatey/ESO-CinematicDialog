@@ -137,7 +137,7 @@ function CinematicCam:OnGameCameraDeactivated()
     if self:ShouldBlockInteraction(interactionType) then
         SetInteractionUsingInteractCamera(false)
 
-        if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue and interactionType == INTERACTION_CONVERSATION or interactionType == INTERACTION_QUEST then
+        if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue then
             if not self.gamepadStickPoll then
                 self.gamepadStickPoll = {
                     isActive = true,
@@ -158,7 +158,9 @@ function CinematicCam:OnGameCameraDeactivated()
                 self:GamepadStickPoll()
             end)
         end
-
+        if interactionType == INTERACTION_FURNITURE or interactionType == INTERACTION_STORE then
+            self:StopGamepadStickPoll()
+        end
         CinematicCam.isInteractionModified = true
 
         self:ApplyDialogueRepositioning()
@@ -334,22 +336,6 @@ function CinematicCam:ForceShowAllPlayerOptions()
         local element = _G[elementName]
         if element then
             element:SetHidden(false)
-        end
-    end
-end
-
-function CinematicCam:ForceHideAllPlayerOptions()
-    local playerOptionElements = {
-        "ZO_InteractWindowPlayerAreaOptions",
-        "ZO_InteractWindow_GamepadContainerInteractList",
-        "ZO_InteractWindow_GamepadContainerInteract",
-        "ZO_InteractWindowPlayerAreaHighlight"
-    }
-
-    for _, elementName in ipairs(playerOptionElements) do
-        local element = _G[elementName]
-        if element then
-            element:SetHidden(true)
         end
     end
 end
