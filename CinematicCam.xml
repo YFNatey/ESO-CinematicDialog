@@ -98,6 +98,8 @@
                 </Label>
             </Controls>
         </TopLevelControl>
+
+        <!-- Update Notification -->
         <TopLevelControl name="CinematicCam_UpdateNotification" mouseEnabled="true"
                  layer="DL_OVERLAY" tier="DT_HIGH" level="10">
    <Controls>
@@ -173,5 +175,145 @@
                 </Texture>
             </Controls>
         </TopLevelControl>
+
+         <TopLevelControl name="CinematicCam_EmoteWheel" mouseEnabled="true"
+                 layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
+    <Controls>
+        <!-- Background Container -->
+        <Texture name="CinematicCam_EmoteWheel_BG" mouseEnabled="false"
+                textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="9">
+            <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" 
+                    offsetX="20" offsetY="-150" />
+            <Dimensions x="300" y="140" />
+        </Texture>
+    
+        <!-- Platform Left trigger Icons -->
+        <!-- Xbox -->
+        <Texture name="CinematicCam_XboxLT" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/nav_xbone_left_trigger_hold.dds"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="10">
+            <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_BG" relativePoint="LEFT" 
+                    offsetX="15" offsetY="0" />
+            <Dimensions x="48" y="48" />
+        </Texture>
+        
+        <!-- PlayStation -->
+        <Texture name="CinematicCam_PS4LT" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/nav_ps5_left_trigger_hold.dds"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
+            <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_BG" relativePoint="LEFT" 
+                    offsetX="15" offsetY="0" />
+            <Dimensions x="48" y="48" />
+        </Texture>
+        
+        <!-- Label Text -->
+        <Label name="CinematicCam_TriggerText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" 
+            text="Emote Wheel"
+            layer="DL_OVERLAY" tier="DT_HIGH" level="10" wrapMode="TEXT_WRAP_MODE_ELLIPSIS"
+            verticalAlignment="CENTER" horizontalAlignment="LEFT">
+            <Anchor point="LEFT" relativeTo="CinematicCam_XboxLT" 
+                    relativePoint="RIGHT" offsetX="15" offsetY="0" />
+            <Anchor point="RIGHT" relativeTo="CinematicCam_EmoteWheel_BG" 
+                    relativePoint="RIGHT" offsetX="-15" offsetY="0" />
+        </Label>
+    </Controls>
+</TopLevelControl>
+
+<!-- Emote Directional Pad (appears when LT is pressed, positioned near the emote wheel) -->
+<TopLevelControl name="CinematicCam_EmotePad" mouseEnabled="false"
+                 layer="DL_OVERLAY" tier="DT_HIGH" level="11" hidden="true">
+    <Controls>
+        <!-- Center Point Reference - positioned relative to emote wheel -->
+        <Control name="CinematicCam_EmotePad_Center" mouseEnabled="false">
+            <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" 
+                    offsetX="170" offsetY="-450" />
+            <Dimensions x="1" y="1" />
+        </Control>
+        
+        <!-- Top Emote Button -->
+        <Texture name="CinematicCam_EmotePad_Top" mouseEnabled="false"
+                textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+                color="000000" alpha="0.85"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="11">
+            <Anchor point="BOTTOM" relativeTo="CinematicCam_EmotePad_Center" 
+                    relativePoint="TOP" offsetX="0" offsetY="-20" />
+            <Dimensions x="120" y="80" />
+        </Texture>
+        <Label name="CinematicCam_EmotePad_TopText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
+            text="Dance"
+            layer="DL_OVERLAY" tier="DT_HIGH" level="12"
+            verticalAlignment="CENTER" horizontalAlignment="CENTER">
+            <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Top" 
+                    relativePoint="CENTER" />
+        </Label>
+        
+        <!-- Right Emote Button -->
+        <Texture name="CinematicCam_EmotePad_Right" mouseEnabled="false"
+                textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+                color="000000" alpha="0.85"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="11">
+            <Anchor point="LEFT" relativeTo="CinematicCam_EmotePad_Center" 
+                    relativePoint="RIGHT" offsetX="20" offsetY="0" />
+            <Dimensions x="120" y="80" />
+        </Texture>
+        <Label name="CinematicCam_EmotePad_RightText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
+            text="Wave"
+            layer="DL_OVERLAY" tier="DT_HIGH" level="12"
+            verticalAlignment="CENTER" horizontalAlignment="CENTER">
+            <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Right" 
+                    relativePoint="CENTER" />
+        </Label>
+        
+        <!-- Bottom Emote Button -->
+        <Texture name="CinematicCam_EmotePad_Bottom" mouseEnabled="false"
+                textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+                color="000000" alpha="0.85"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="11">
+            <Anchor point="TOP" relativeTo="CinematicCam_EmotePad_Center" 
+                    relativePoint="BOTTOM" offsetX="0" offsetY="20" />
+            <Dimensions x="120" y="80" />
+        </Texture>
+        <Label name="CinematicCam_EmotePad_BottomText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
+            text="Lute"
+            layer="DL_OVERLAY" tier="DT_HIGH" level="12"
+            verticalAlignment="CENTER" horizontalAlignment="CENTER">
+            <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Bottom" 
+                    relativePoint="CENTER" />
+        </Label>
+        
+        <!-- Left Emote Button -->
+        <Texture name="CinematicCam_EmotePad_Left" mouseEnabled="false"
+                textureFile="/esoui/art/miscellaneous/toast_bg.dds"
+                color="000000" alpha="0.85"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="11">
+            <Anchor point="RIGHT" relativeTo="CinematicCam_EmotePad_Center" 
+                    relativePoint="LEFT" offsetX="-20" offsetY="0" />
+            <Dimensions x="120" y="80" />
+        </Texture>
+        <Label name="CinematicCam_EmotePad_LeftText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
+            text="Arms Crossed"
+            layer="DL_OVERLAY" tier="DT_HIGH" level="12"
+            verticalAlignment="CENTER" horizontalAlignment="CENTER" wrapMode="TEXT_WRAP_MODE_ELLIPSIS">
+            <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Left" 
+                    relativePoint="CENTER" />
+            <Dimensions x="110" y="70" />
+        </Label>
+        
+        <!-- Center Icon/Indicator (optional - shows the trigger icon in center) -->
+        <Texture name="CinematicCam_EmotePad_CenterIcon" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/nav_xbone_right_stick.dds"
+                layer="DL_OVERLAY" tier="DT_HIGH" level="12" alpha="0.6">
+            <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Center" 
+                    relativePoint="CENTER" offsetX="0" offsetY="0" />
+            <Dimensions x="64" y="64" />
+        </Texture>
+    </Controls>
+</TopLevelControl>
     </Controls>
 </GuiXml>

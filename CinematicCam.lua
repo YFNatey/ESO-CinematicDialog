@@ -9,10 +9,11 @@ local ADDON_NAME = "CinematicCam"
 
 CinematicCam = {}
 CinematicCam.savedVars = nil
-CinematicCam.globalCount = 0
 local interactionTypeMap = {}
 local CURRENT_VERSION = "3.33"
 CinematicCam.lastWeaponsState = nil
+
+CinematicCam.currentZoneType = nil
 
 -- State tracking
 CinematicCam.isInteractionModified = false -- override default cam
@@ -32,11 +33,6 @@ function CinematicCam:ApplyDialogueRepositioning()
         preset.applyFunction(self)
     end
 end
-
-CinematicCam.debugEventLog = {}
-CinematicCam.debugSessionId = 0
-CinematicCam.currentZoneType = nil
-
 
 function CinematicCam:GetCurrentPlayerOptionsState()
     local elements = {
@@ -66,60 +62,76 @@ function CinematicCam:GetCurrentPlayerOptionsState()
     return anyVisible and "VISIBLE" or "HIDDEN"
 end
 
---TODO Pressing Right Trigger turns off free cam momenariely so the sitcks can be used to navigate emotes
 function CinematicCam:GamepadStickPoll()
     if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
         return
     end
 
-    --Read Left Trigger input for emote wheel, use left stick to control the emote wheel
     local leftTrigger = GetGamepadLeftTriggerMagnitude()
-    -- Read left stick input for interaction camera toggle
-    local leftX = ZO_Gamepad_GetLeftStickEasedX()
-    local leftY = ZO_Gamepad_GetLeftStickEasedY()
-
-    -- Read right stick input for frame local player
+    local rightTrigger = GetGamepadRightTriggerMagnitude()
     local rightX = ZO_Gamepad_GetRightStickEasedX()
     local rightY = ZO_Gamepad_GetRightStickEasedY()
 
-
-    -- Calculate stick magnitudes
-    local leftMagnitude = zo_sqrt(leftX * leftX + leftY * leftY)
     local rightMagnitude = zo_sqrt(rightX * rightX + rightY * rightY)
 
-    -- Left stick: Do nothing - just consume it to block character movement
-    -- (No SetInteractionUsingInteractCamera calls here)
-    --TODO check if trigger is pressed first
+    -- Left trigger to activate emote pad
     if leftTrigger > 0.3 then
-        d("right trigger is pressed")
         SetGameCameraUIMode(true)
+
+        -- Show emote pad if not visible
+        if not self.emotePadVisible then
+            self:ShowEmotePad()
+        end
+
         if rightMagnitude > self.gamepadStickPoll.deadzone then
             if math.abs(rightX) > math.abs(rightY) then
                 if rightX > 0 then
+                    self:HighlightEmoteDirection("Right")
                     DoCommand("/wave")
-                elseif rightY > 0 then
-                    DoCommand("/dance")
-                elseif rightY < 0 then
-                    DoCommand("/lute")
                 elseif rightX < 0 then
+                    self:HighlightEmoteDirection("Left")
                     DoCommand("/armscrossed")
                 end
-            end
-        end
-    else
-        -- Right stick: Frame local player in game camera
-        if rightMagnitude >= self.gamepadStickPoll.deadzone then
-            if math.abs(rightX) > math.abs(rightY) then
-                if rightX > 0 then     -- Right
-                    SetGameCameraUIMode(false)
-                elseif rightY > 0 then -- Left
-                    SetGameCameraUIMode(false)
-                elseif rightY < 0 then -- Down
-                    SetGameCameraUIMode(false)
-                elseif rightX < 0 then -- Up
-                    SetGameCameraUIMode(false)
+            else
+                if rightY > 0 then
+                    self:HighlightEmoteDirection("Top")
+                    DoCommand("/dance")
+                elseif rightY < 0 then
+                    self:HighlightEmoteDirection("Bottom")
+                    DoCommand("/lute")
                 end
             end
+        else
+            self:ResetEmoteHighlights()
+        end
+    else
+        -- Hide emote pad when trigger released
+        if self.emotePadVisible then
+            self:HideEmotePad()
+            self:ResetEmoteHighlights()
+        end
+
+        -- Right stick camera controls when trigger not pressed
+        if rightMagnitude >= self.gamepadStickPoll.deadzone then
+            CinematicCam:HideInteractionReticle()
+            SetGameCameraUIMode(false)
+            CinematicCam:HideInteractionReticle()
+        end
+    end
+    if rightTrigger > 0.3 then
+        SetGameCameraUIMode(true)
+        if rightMagnitude > self.gamepadStickPoll.deadzone then
+            if math.abs(rightX) > math.abs(rightY) then
+
+            else
+                if rightY > 0 then
+                    CameraZoomIn()
+                elseif rightY < 0 then
+                    CameraZoomOut()
+                end
+            end
+        else
+            self:ResetEmoteHighlights()
         end
     end
 end
@@ -127,7 +139,11 @@ end
 function CinematicCam:StopGamepadStickPoll()
     if not self.gamepadStickPoll then return end
     self.gamepadStickPoll.isActive = false
+
+
     EVENT_MANAGER:UnregisterForUpdate("CinematicCam_GamepadStickPoll")
+    self:HideEmoteWheel()
+    self:HideEmotePad()
 end
 
 -- Handles the logic when the default interaction camera is deactivated.
@@ -162,6 +178,12 @@ function CinematicCam:OnGameCameraDeactivated()
             end
 
             self.gamepadStickPoll.isActive = true
+            -- Initialize and show emote wheel
+            if not self.emoteWheelInitialized then
+                self:InitializeEmoteWheel()
+                self.emoteWheelInitialized = true
+            end
+            self:ShowEmoteWheel()
             EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
                 self:GamepadStickPoll()
             end)
@@ -446,7 +468,7 @@ local function Initialize()
     CinematicCam:ConfigurePlayerOptionsBackground()
     CinematicCam:InitializeChunkedTextControl()
     CinematicCam:InitializePreviewSystem()
-
+    CinematicCam:InitializeEmoteWheel()
 
     zo_callLater(function()
         CinematicCam:InitializeUI()
@@ -668,13 +690,15 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                CinematicCam:UpdateCompassVisibility()
+                if not CinematicCam.isInteractionModified then
+                    CinematicCam:UpdateCompassVisibility()
 
-                -- Check action bar setting
-                CinematicCam:UpdateActionBarVisibility()
+                    -- Check action bar setting
+                    CinematicCam:UpdateActionBarVisibility()
 
-                -- Check reticle setting
-                CinematicCam:UpdateReticleVisibility()
+                    -- Check reticle setting
+                    CinematicCam:UpdateReticleVisibility()
+                end
                 if self.presetPending then
                     CinematicCam:InitializeChunkedTextControl()
 
@@ -1099,4 +1123,147 @@ function CinematicCam:InitializeUpdateSystem()
     end
     -- Check for updates
     self:CheckForUpdates()
+end
+
+-- Initialize the emote wheel system
+function CinematicCam:InitializeEmoteWheel()
+    self.emoteWheelVisible = false
+    self.emotePadVisible = false
+
+    -- Set platform-specific trigger icon
+    self:SetPlatformTriggerIcon()
+
+    -- Start hidden
+    self:HideEmoteWheel()
+    self:HideEmotePad()
+end
+
+-- Set the correct trigger icon based on platform
+function CinematicCam:SetPlatformTriggerIcon()
+    local isGamepad = IsInGamepadPreferredMode()
+    if not isGamepad then
+        return
+    end
+
+    local xboxIcon = _G["CinematicCam_XboxLT"]
+    local ps4Icon = _G["CinematicCam_PS4LT"]
+
+    if not xboxIcon or not ps4Icon then
+        return
+    end
+
+    -- Check platform (you can also use GetPlatformServiceType())
+    local platformType = GetPlatformServiceType()
+
+    ps4Icon:SetHidden(false)
+
+    xboxIcon:SetHidden(false)
+end
+
+-- Show the emote wheel indicator
+function CinematicCam:ShowEmoteWheel()
+    local control = _G["CinematicCam_EmoteWheel"]
+    if not control then return end
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.emoteWheelVisible = true
+end
+
+-- Hide the emote wheel indicator
+function CinematicCam:HideEmoteWheel()
+    local control = _G["CinematicCam_EmoteWheel"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.emoteWheelVisible = false
+end
+
+-- Show the emote directional pad
+function CinematicCam:ShowEmotePad()
+    local control = _G["CinematicCam_EmotePad"]
+    if not control then return end
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.emotePadVisible = true
+end
+
+-- Hide the emote directional pad
+function CinematicCam:HideEmotePad()
+    local control = _G["CinematicCam_EmotePad"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.emotePadVisible = false
+end
+
+-- Highlight active direction
+function CinematicCam:HighlightEmoteDirection(direction)
+    local directions = { "Top", "Right", "Bottom", "Left" }
+
+    for _, dir in ipairs(directions) do
+        local texture = _G["CinematicCam_EmotePad_" .. dir]
+        if texture then
+            if dir == direction then
+                texture:SetColor(0.3, 0.3, 0.3, 0.95) -- Lighter gray for selected
+            else
+                texture:SetColor(0, 0, 0, 0.85)       -- Dark for unselected
+            end
+        end
+    end
+end
+
+-- Reset all direction highlights
+function CinematicCam:ResetEmoteHighlights()
+    local directions = { "Top", "Right", "Bottom", "Left" }
+
+    for _, dir in ipairs(directions) do
+        local texture = _G["CinematicCam_EmotePad_" .. dir]
+        if texture then
+            texture:SetColor(0, 0, 0, 0.85)
+        end
+    end
 end

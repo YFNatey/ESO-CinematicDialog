@@ -225,7 +225,13 @@ CinematicCam.reticle = {
     "ZO_ReticleContainerReticle",
     "ZO_ReticleContainerStealthIcon",
 }
+CinematicCam.InteractionReticle = {
+    "ZO_ReticleContainerReticle",
+    "ZO_ReticleContainer",
+    "ZO_ReticleContainerStealthIcon",
+    "ZO_ReticleContainerNoneInteract",
 
+}
 
 ---=============================================================================
 -- UI Element Show/Hide Functions
@@ -292,6 +298,15 @@ function CinematicCam:HideReticle()
         local element = _G[elementName]
         if element then
             self:FadeOutElement(element, 200)
+        end
+    end
+end
+
+function CinematicCam:HideInteractionReticle()
+    for _, elementName in ipairs(CinematicCam.InteractionReticle) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(true)
         end
     end
 end
