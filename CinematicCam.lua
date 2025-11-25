@@ -127,9 +127,11 @@ function CinematicCam:GamepadStickPoll()
                 if rightY > 0 then
                     self:HighlightCameraDirection("Top")
                     CameraZoomIn()
+                    SetGameCameraUIMode(true)
                 elseif rightY < 0 then
                     self:HighlightCameraDirection("Bottom")
                     CameraZoomOut()
+                    SetGameCameraUIMode(true)
                 end
             end
         else
@@ -438,6 +440,7 @@ local function Initialize()
     zo_callLater(function()
         CinematicCam:InitializeUI()
         CinematicCam:RegisterSceneCallbacks()
+        CinematicCam:RegisterSceneHiddenCallbacks()
         CinematicCam:MigrateSettings()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:UpdateHorizontal()
@@ -1391,4 +1394,57 @@ function CinematicCam:ResetCameraHighlights()
 
     texture = _G["CinematicCam_CameraPad_Right"]
     if texture then texture:SetColor(0, 0, 0, 0.4) end
+end
+
+function CinematicCam:RegisterSceneHiddenCallbacks()
+    local scenesToWatch = {
+        "gamepad_store",
+        "gamepad_housing_furniture_scene",
+        "housingEditorHud"
+    }
+
+    for _, sceneName in ipairs(scenesToWatch) do
+        local scene = SCENE_MANAGER:GetScene(sceneName)
+        if scene then
+            scene:RegisterCallback("StateChange", function(oldState, newState)
+                if newState == SCENE_SHOWN then
+                    self:OnTargetSceneShown(sceneName)
+                end
+            end)
+        end
+    end
+end
+
+-- Called when one of the target scenes is hidden
+function CinematicCam:OnTargetSceneShown(sceneName)
+    -- Execute different functions based on which scene was hidden
+    if sceneName == "gamepad_store" then
+        self:OnStoreSceneShown()
+    elseif sceneName == "gamepad_housing_furniture_scene" then
+        self:OnHousingFurnitureSceneShown()
+    elseif sceneName == "housingEditorHud" then
+        self:OnHousingEditorHudShown()
+    end
+
+    -- Or call a common function for all scenes
+    self:OnAnyTargetSceneHidden(sceneName)
+end
+
+-- Individual scene handlers
+function CinematicCam:OnStoreSceneShown()
+    -- stop freecam
+    self:StopGamepadStickPoll()
+end
+
+function CinematicCam:OnHousingFurnitureSceneShown()
+    self:StopGamepadStickPoll()
+end
+
+function CinematicCam:OnHousingEditorHudShown()
+    self:StopGamepadStickPoll()
+end
+
+-- Common handler for all scenes
+function CinematicCam:OnAnyTargetSceneHidden(sceneName)
+
 end
