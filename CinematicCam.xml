@@ -176,7 +176,7 @@
             </Controls>
         </TopLevelControl>
 
-         <TopLevelControl name="CinematicCam_EmoteWheel" mouseEnabled="true"
+       <TopLevelControl name="CinematicCam_EmoteWheel" mouseEnabled="true"
                  layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
     <Controls>
         <!-- Background Container -->
@@ -185,35 +185,88 @@
                 layer="DL_OVERLAY" tier="DT_HIGH" level="9">
             <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" 
                     offsetX="20" offsetY="-150" />
-            <Dimensions x="300" y="140" />
+            <Dimensions x="340" y="80" />
         </Texture>
     
-        <!-- Platform Left trigger Icons -->
-        <!-- Xbox -->
-        <Texture name="CinematicCam_XboxLT" mouseEnabled="false"
-                textureFile="/esoui/art/buttons/gamepad/nav_xbone_left_trigger_hold.dds"
-                layer="DL_OVERLAY" tier="DT_HIGH" level="10">
+        <!-- Icon Container (LT + LS combination) -->
+        <Control name="CinematicCam_EmoteWheel_IconContainer" mouseEnabled="false">
             <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_BG" relativePoint="LEFT" 
                     offsetX="15" offsetY="0" />
-            <Dimensions x="48" y="48" />
-        </Texture>
-        
-        <!-- PlayStation -->
-        <Texture name="CinematicCam_PS4LT" mouseEnabled="false"
-                textureFile="/esoui/art/buttons/gamepad/nav_ps5_left_trigger_hold.dds"
-                layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
-            <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_BG" relativePoint="LEFT" 
-                    offsetX="15" offsetY="0" />
-            <Dimensions x="48" y="48" />
-        </Texture>
+            <Dimensions x="150" y="60" />
+            
+            <Controls>
+                <!-- Left Trigger Icon (Xbox) -->
+                <Texture name="CinematicCam_XboxLT" mouseEnabled="false"
+                        textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_lt.dds"
+                        layer="DL_OVERLAY" tier="DT_HIGH" level="10">
+                    <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_IconContainer" 
+                            relativePoint="LEFT" offsetX="0" offsetY="0" />
+                    <Dimensions x="42" y="42" />
+                </Texture>
+                
+                <!-- Left Trigger Icon (PlayStation) -->
+                <Texture name="CinematicCam_PS4LT" mouseEnabled="false"
+                        textureFile="/esoui/art/buttons/gamepad/playstation/nav_ps5_l2.dds"
+                        layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
+                    <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_IconContainer" 
+                            relativePoint="LEFT" offsetX="0" offsetY="0" />
+                    <Dimensions x="42" y="42" />
+                </Texture>
+                
+                <!-- Plus Symbol -->
+                <Texture name="CinematicCam_EmoteWheel_Plus" mouseEnabled="false"
+                        textureFile="/esoui/art/chatwindow/chat_addtab_down.dds"
+                        layer="DL_OVERLAY" tier="DT_HIGH" level="10" alpha="0.8">
+                    <Anchor point="LEFT" relativeTo="CinematicCam_XboxLT" 
+                            relativePoint="RIGHT" offsetX="8" offsetY="0" />
+                    <Dimensions x="24" y="24" />
+                </Texture>
+                
+                <!-- Left Stick Container (layered icons) -->
+                <Control name="CinematicCam_EmoteWheel_LeftStickContainer" mouseEnabled="false">
+                    <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_Plus" 
+                            relativePoint="RIGHT" offsetX="8" offsetY="0" />
+                    <Dimensions x="48" y="48" />
+                    
+                    <Controls>
+                        <!-- Left Stick - Slide (Left/Right) - Bottom Layer -->
+                        <Texture name="CinematicCam_XboxLS_Slide" mouseEnabled="false"
+                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_ls_slide.dds"
+                                layer="DL_OVERLAY" tier="DT_HIGH" level="10">
+                            <Anchor point="CENTER" relativeTo="CinematicCam_EmoteWheel_LeftStickContainer" 
+                                    relativePoint="CENTER" offsetX="0" offsetY="0" />
+                            <Dimensions x="48" y="48" />
+                        </Texture>
+                        
+                        <!-- Left Stick - Scroll (Up/Down) - Top Layer -->
+                        <Texture name="CinematicCam_XboxLS_Scroll" mouseEnabled="false"
+                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_ls_scroll.dds"
+                                layer="DL_OVERLAY" tier="DT_HIGH" level="11">
+                            <Anchor point="CENTER" relativeTo="CinematicCam_EmoteWheel_LeftStickContainer" 
+                                    relativePoint="CENTER" offsetX="0" offsetY="0" />
+                            <Dimensions x="48" y="48" />
+                        </Texture>
+                        
+                        <!-- PlayStation Left Stick (if needed) -->
+                        <Texture name="CinematicCam_PS4LS" mouseEnabled="false"
+                                textureFile="/esoui/art/buttons/gamepad/playstation/nav_ps5_l3.dds"
+                                layer="DL_OVERLAY" tier="DT_HIGH" level="10" hidden="true">
+                            <Anchor point="CENTER" relativeTo="CinematicCam_EmoteWheel_LeftStickContainer" 
+                                    relativePoint="CENTER" offsetX="0" offsetY="0" />
+                            <Dimensions x="48" y="48" />
+                        </Texture>
+                    </Controls>
+                </Control>
+            </Controls>
+        </Control>
         
         <!-- Label Text -->
         <Label name="CinematicCam_TriggerText" mouseEnabled="false"
-            font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" 
+            font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
             text="Emote Wheel"
             layer="DL_OVERLAY" tier="DT_HIGH" level="10" wrapMode="TEXT_WRAP_MODE_ELLIPSIS"
             verticalAlignment="CENTER" horizontalAlignment="LEFT">
-            <Anchor point="LEFT" relativeTo="CinematicCam_XboxLT" 
+            <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_IconContainer" 
                     relativePoint="RIGHT" offsetX="15" offsetY="0" />
             <Anchor point="RIGHT" relativeTo="CinematicCam_EmoteWheel_BG" 
                     relativePoint="RIGHT" offsetX="-15" offsetY="0" />
@@ -305,9 +358,9 @@
             <Dimensions x="110" y="70" />
         </Label>
         
-        <!-- Center Icon/Indicator (optional - shows the trigger icon in center) -->
+        <!-- Center Icon/Indicator (Right Stick for emote selection) -->
         <Texture name="CinematicCam_EmotePad_CenterIcon" mouseEnabled="false"
-                textureFile="/esoui/art/buttons/gamepad/nav_xbone_right_stick.dds"
+                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_right_stick.dds"
                 layer="DL_OVERLAY" tier="DT_HIGH" level="12" alpha="0.6">
             <Anchor point="CENTER" relativeTo="CinematicCam_EmotePad_Center" 
                     relativePoint="CENTER" offsetX="0" offsetY="0" />

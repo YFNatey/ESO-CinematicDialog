@@ -1011,31 +1011,47 @@ function CinematicCam:InitializeEmoteWheel()
 end
 
 -- Set the correct trigger icon based on platform
+-- Set the correct trigger icon based on platform
 function CinematicCam:SetPlatformTriggerIcon()
-    local isGamepad = IsInGamepadPreferredMode()
-    if not isGamepad then
+    local xboxLT = _G["CinematicCam_XboxLT"]
+    local ps4LT = _G["CinematicCam_PS4LT"]
+    local xboxLS_Slide = _G["CinematicCam_XboxLS_Slide"]
+    local xboxLS_Scroll = _G["CinematicCam_XboxLS_Scroll"]
+    local ps4LS = _G["CinematicCam_PS4LS"]
+
+    if not xboxLT or not ps4LT then
         return
     end
 
-    local xboxIcon = _G["CinematicCam_XboxLT"]
-    local ps4Icon = _G["CinematicCam_PS4LT"]
+    local worldName = GetWorldName()
 
-    if not xboxIcon or not ps4Icon then
-        return
+    -- Default to Xbox, switch to PS if on PlayStation
+    if worldName == "PS4live" or worldName == "PS4live-eu" then
+        -- Show PlayStation icons
+        xboxLT:SetHidden(true)
+        ps4LT:SetHidden(false)
+
+        if xboxLS_Slide then xboxLS_Slide:SetHidden(true) end
+        if xboxLS_Scroll then xboxLS_Scroll:SetHidden(true) end
+        if ps4LS then ps4LS:SetHidden(false) end
+    else
+        -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
+        xboxLT:SetHidden(false)
+        ps4LT:SetHidden(true)
+
+        if xboxLS_Slide then xboxLS_Slide:SetHidden(false) end
+        if xboxLS_Scroll then xboxLS_Scroll:SetHidden(false) end
+        if ps4LS then ps4LS:SetHidden(true) end
     end
-
-    -- Check platform (you can also use GetPlatformServiceType())
-    local platformType = GetPlatformServiceType()
-
-    ps4Icon:SetHidden(false)
-
-    xboxIcon:SetHidden(false)
 end
 
 -- Show the emote wheel indicator
 function CinematicCam:ShowEmoteWheel()
     local control = _G["CinematicCam_EmoteWheel"]
     if not control then return end
+
+    -- Set platform-specific icon BEFORE showing
+    self:SetPlatformTriggerIcon()
 
     control:SetHidden(false)
     control:SetAlpha(0)
