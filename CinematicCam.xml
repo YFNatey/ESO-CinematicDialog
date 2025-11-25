@@ -378,7 +378,7 @@
                 textureFile="/esoui/art/miscellaneous/toast_bg.dds"
                 layer="DL_OVERLAY" tier="DT_HIGH" level="9">
             <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" 
-                    offsetX="20" offsetY="-100" />
+                    offsetX="20" offsetY="-110" />
             <Dimensions x="360" y="80" />
         </Texture>
     

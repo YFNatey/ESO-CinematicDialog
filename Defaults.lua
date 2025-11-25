@@ -93,6 +93,12 @@ CinematicCam.defaults = {
             useTextured = false,
         },
     },
+    emoteWheel = {
+        slot1 = "entertainment", -- Top
+        slot2 = "friendly",      -- Right
+        slot3 = "greeting",      -- Bottom
+        slot4 = "respectful",    -- Left
+    },
     hideUiElements = {},
     chunkedDialog = {
         chunkDisplayInterval = 3.0,

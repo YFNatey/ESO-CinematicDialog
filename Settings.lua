@@ -687,9 +687,13 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Apply to",
+            name = "Apply Cinematic Camera to",
         },
-
+        {
+            type = "description",
+            text =
+            "Enables custom camera controls, and seamless transitions from gameplay to NPC interactions. Turning OFF uses the default NPC camera angle.",
+        },
         {
             type = "checkbox",
             name = "Citizens",
@@ -731,6 +735,203 @@ function CinematicCam:CreateSettingsMenu()
                 self.savedVars.interaction.forceThirdPersonDye = false
                 self:InitializeInteractionSettings()
             end,
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Emote Wheel Configuration",
+        },
+        {
+            type = "description",
+            text =
+            "Assign emote packs to each direction of the emote wheel. A random emote from the selected pack will be performed when you hold Left Trigger and move the Right Stick.",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 1 (Top - Right Stick Up)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Scared
+- Confused
+- Celebratory
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Sitting/Resting
+- Pointing/Directing
+- Physical Actions
+- Exercise
+- Working/Tools
+- Tired/Sick
+- Agreement
+- Disagreement
+- Playful
+- Get Attention ]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful", "Get Attention", "Miscellaneous"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "sad", "scared", "confused", "celebratory", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
+                "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot1 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot1 = value
+            end,
+            default = "entertainment",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 2 (Right - Right Stick Right)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Scared
+- Confused
+- Celebratory
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Sitting/Resting
+- Pointing/Directing
+- Physical Actions
+- Exercise
+- Working/Tools
+- Tired/Sick
+- Agreement
+- Disagreement
+- Playful
+- Get Attention ]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful", "Get Attention", "Miscellaneous"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "sad", "scared", "confused", "celebratory", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
+                "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot2 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot2 = value
+            end,
+            default = "friendly",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 3 (Bottom - Right Stick Down)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Scared
+- Confused
+- Celebratory
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Sitting/Resting
+- Pointing/Directing
+- Physical Actions
+- Exercise
+- Working/Tools
+- Tired/Sick
+- Agreement
+- Disagreement
+- Playful
+- Get Attention ]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful", "Get Attention", "Miscellaneous"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "sad", "scared", "confused", "celebratory", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
+                "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot3 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot3 = value
+            end,
+            default = "greeting",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 4 (Left - Right Stick Left)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Scared
+- Confused
+- Celebratory
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Sitting/Resting
+- Pointing/Directing
+- Physical Actions
+- Exercise
+- Working/Tools
+- Tired/Sick
+- Agreement
+- Disagreement
+- Playful
+- Get Attention ]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful", "Get Attention", "Miscellaneous"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "sad", "scared", "confused", "celebratory", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
+                "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot4 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot4 = value
+            end,
+            default = "respectful",
             width = "full",
         },
         {

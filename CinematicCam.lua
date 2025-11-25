@@ -10,7 +10,7 @@ local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
 CinematicCam.savedVars = nil
 local interactionTypeMap = {}
-local CURRENT_VERSION = "3.33"
+local CURRENT_VERSION = "3.34"
 CinematicCam.lastWeaponsState = nil
 
 CinematicCam.currentZoneType = nil
@@ -18,14 +18,7 @@ CinematicCam.currentZoneType = nil
 -- State tracking
 CinematicCam.isInteractionModified = false -- override default cam
 CinematicCam.settingsUpdatedThisSession = false
-local SERVERS = {
-    ["NA Megaserver"] = "NA",
-    ["EU Megaserver"] = "EU",
-    ["XB1live"] = "NA",
-    ["XB1live-eu"] = "EU",
-    ["PS4live"] = "NA",
-    ["PS4live-eu"] = "EU",
-}
+
 
 function CinematicCam:ApplyDialogueRepositioning()
     local preset = self.savedVars.interaction.layoutPreset
@@ -63,21 +56,46 @@ function CinematicCam:GamepadStickPoll()
         end
 
         if rightMagnitude > self.gamepadStickPoll.deadzone then
-            if math.abs(rightX) > math.abs(rightY) then
-                if rightX > 0 then
-                    self:HighlightEmoteDirection("Right")
-                    DoCommand("/wave")
-                elseif rightX < 0 then
-                    self:HighlightEmoteDirection("Left")
-                    DoCommand("/armscrossed")
-                end
-            else
-                if rightY > 0 then
-                    self:HighlightEmoteDirection("Top")
-                    DoCommand("/dance")
-                elseif rightY < 0 then
-                    self:HighlightEmoteDirection("Bottom")
-                    DoCommand("/lute")
+            -- Check emote cooldown
+            local timeSinceLastEmote = currentTime - self.gamepadStickPoll.lastEmoteTime
+
+            if timeSinceLastEmote >= self.gamepadStickPoll.emoteCooldown then
+                if math.abs(rightX) > math.abs(rightY) then
+                    if rightX > 0 then
+                        -- Slot 2 (Right)
+                        self:HighlightEmoteDirection("Right")
+                        local emote = self:GetEmoteForSlot(2)
+                        if emote then
+                            DoCommand(emote)
+                            self.gamepadStickPoll.lastEmoteTime = currentTime
+                        end
+                    elseif rightX < 0 then
+                        -- Slot 4 (Left)
+                        self:HighlightEmoteDirection("Left")
+                        local emote = self:GetEmoteForSlot(4)
+                        if emote then
+                            DoCommand(emote)
+                            self.gamepadStickPoll.lastEmoteTime = currentTime
+                        end
+                    end
+                else
+                    if rightY > 0 then
+                        -- Slot 1 (Top)
+                        self:HighlightEmoteDirection("Top")
+                        local emote = self:GetEmoteForSlot(1)
+                        if emote then
+                            DoCommand(emote)
+                            self.gamepadStickPoll.lastEmoteTime = currentTime
+                        end
+                    elseif rightY < 0 then
+                        -- Slot 3 (Bottom)
+                        self:HighlightEmoteDirection("Bottom")
+                        local emote = self:GetEmoteForSlot(3)
+                        if emote then
+                            DoCommand(emote)
+                            self.gamepadStickPoll.lastEmoteTime = currentTime
+                        end
+                    end
                 end
             end
         else
@@ -103,35 +121,30 @@ function CinematicCam:GamepadStickPoll()
             if math.abs(rightX) > math.abs(rightY) then
                 -- Left/Right for camera mode switching (TOGGLE with cooldown)
                 if timeSinceLastSwitch >= self.gamepadStickPoll.cameraSwitchCooldown then
-                    --[[ if rightX > 0 then
-                        -- Right: Use free game camera (Cinematic Cam)
+                    if rightX > 0 and self.gamepadStickPoll.currentCameraMode ~= "free" then
+                        -- Right: Switch to free game camera (Cinematic Cam)
                         self:HighlightCameraDirection("Right")
                         SetGameCameraUIMode(false)
                         SetInteractionUsingInteractCamera(false)
-                        self.gamepadStickPoll.gamestickMoved = false
+                        self.gamepadStickPoll.currentCameraMode = "free"
                         self.gamepadStickPoll.lastCameraSwitch = currentTime
-                        d("Switched to Free Camera")
-                    elseif rightX < 0 then
-                        -- Left: Use ESO interact camera
+                    elseif rightX < 0 and self.gamepadStickPoll.currentCameraMode ~= "eso" then
+                        -- Left: Switch to ESO interact camera
                         self:HighlightCameraDirection("Left")
                         SetGameCameraUIMode(true)
                         SetInteractionUsingInteractCamera(true)
+                        self.gamepadStickPoll.currentCameraMode = "eso"
                         self.gamepadStickPoll.lastCameraSwitch = currentTime
-                        self.gamepadStickPoll.gamestickMoved = true
-                        d("Switched to ESO Camera")
                     end
-                    ]]
                 end
             else
-                -- Up/Down for zoom
+                -- Up/Down for zoom (no cooldown needed)
                 if rightY > 0 then
                     self:HighlightCameraDirection("Top")
                     CameraZoomIn()
-                    SetGameCameraUIMode(true)
                 elseif rightY < 0 then
                     self:HighlightCameraDirection("Bottom")
                     CameraZoomOut()
-                    SetGameCameraUIMode(true)
                 end
             end
         else
@@ -150,9 +163,11 @@ function CinematicCam:GamepadStickPoll()
         end
 
         -- Right stick camera controls when no trigger pressed
-        -- ONLY allow free camera movement if stick is being moved
+        -- Only apply free camera if we're in free mode
         if rightMagnitude >= self.gamepadStickPoll.deadzone then
-            SetGameCameraUIMode(false)
+            if self.gamepadStickPoll.currentCameraMode == "free" then
+                SetGameCameraUIMode(false)
+            end
         end
     end
 end
@@ -196,7 +211,9 @@ function CinematicCam:OnGameCameraDeactivated()
                     moveThreshold = 0.5,
                     lastMove = GetGameTimeMilliseconds(),
                     lastCameraSwitch = 0,       -- Add this
-                    cameraSwitchCooldown = 500, -- 500ms cooldown, Add this
+                    cameraSwitchCooldown = 500, -- 500ms cooldown
+                    lastEmoteTime = 0,          -- Add this
+                    emoteCooldown = 2000,       -- 2000ms cooldown for emotes
                 }
             end
 
@@ -1085,13 +1102,13 @@ function CinematicCam:SetPlatformTriggerIcon()
     local worldName = GetWorldName()
 
     -- Default to Xbox, switch to PS if on PlayStation
-    if worldName == "PS4live" or worldName == "PS4live-eu" then
+    if worldName == "PS4live" or worldName == "PS4live-eu" or worldName == "NA Megaserver" then
         -- Show PlayStation icons
-        xboxLT:SetHidden(true)
-        ps4LT:SetHidden(false)
+        xboxLT:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_l2.dds")
 
-        if xboxLS_Slide then xboxLS_Slide:SetHidden(true) end
-        if xboxLS_Scroll then xboxLS_Scroll:SetHidden(true) end
+
+        if xboxLS_Slide then xboxLS_Slide:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_ls_scroll.dds") end
+        if xboxLS_Scroll then xboxLS_Scroll:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_ls_slide.dds") end
         if ps4LS then ps4LS:SetHidden(false) end
     else
         -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
@@ -1151,6 +1168,9 @@ end
 function CinematicCam:ShowEmotePad()
     local control = _G["CinematicCam_EmotePad"]
     if not control then return end
+
+    -- Update labels before showing
+    self:UpdateEmotePadLabels()
 
     control:SetHidden(false)
     control:SetAlpha(0)
@@ -1242,13 +1262,12 @@ function CinematicCam:SetPlatformCameraTriggerIcon()
     local worldName = GetWorldName()
 
     -- Default to Xbox, switch to PS if on PlayStation
-    if worldName == "PS4live" or worldName == "PS4live-eu" then
+    if worldName == "PS4live" or worldName == "PS4live-eu" or worldName == "NA Megaserver" then
         -- Show PlayStation icons
-        xboxRT:SetHidden(true)
-        ps4RT:SetHidden(false)
+        xboxRT:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_r2.dds")
 
-        if xboxRS_Slide then xboxRS_Slide:SetHidden(true) end
-        if xboxRS_Scroll then xboxRS_Scroll:SetHidden(true) end
+        if xboxRS_Slide then xboxRS_Slide:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_slide.dds") end
+        if xboxRS_Scroll then xboxRS_Scroll:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_scroll.dds") end
         if ps4RS then ps4RS:SetHidden(false) end
     else
         -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
@@ -1437,4 +1456,69 @@ end
 -- Common handler for all scenes
 function CinematicCam:OnAnyTargetSceneHidden(sceneName)
 
+end
+
+function CinematicCam:GetEmoteForSlot(slotNumber)
+    local slotKey = "slot" .. slotNumber
+    local packName = self.savedVars.emoteWheel[slotKey]
+
+    if not packName or not CinematicCam.categorizedEmotes[packName] then
+        d("CinematicCam: Invalid emote pack for slot " .. slotNumber)
+        return nil
+    end
+
+    local emotePack = CinematicCam.categorizedEmotes[packName]
+    local randomIndex = math.random(1, #emotePack)
+    return emotePack[randomIndex]
+end
+
+function CinematicCam:GetEmotePackDisplayName(packKey)
+    local displayNames = {
+        respectful = "Respectful",
+        friendly = "Friendly",
+        greeting = "Greeting",
+        flirty = "Flirty",
+        hostile = "Hostile",
+        frustrated = "Frustrated",
+        sad = "Sad",
+        scared = "Scared",
+        confused = "Confused",
+        celebratory = "Celebratory",
+        disgusted = "Disgusted",
+        eating = "Eating/Drinking",
+        entertainment = "Entertainment/Dance",
+        idle = "Idle Poses",
+        sitting = "Sitting/Resting",
+        pointing = "Pointing/Directing",
+        physical = "Physical Actions",
+        exercise = "Exercise",
+        working = "Working/Tools",
+        tired = "Tired/Sick",
+        agreement = "Agreement",
+        disagreement = "Disagreement",
+        playful = "Playful",
+        attention = "Get Attention",
+        misc = "Miscellaneous"
+    }
+    return displayNames[packKey] or packKey
+end
+
+-- Function to update emote pad labels when pack changes
+function CinematicCam:UpdateEmotePadLabels()
+    local slotMap = {
+        [1] = "Top",
+        [2] = "Right",
+        [3] = "Bottom",
+        [4] = "Left"
+    }
+
+    for slotNum, direction in pairs(slotMap) do
+        local slotKey = "slot" .. slotNum
+        local packName = self.savedVars.emoteWheel[slotKey]
+        local label = _G["CinematicCam_EmotePad_" .. direction .. "Text"]
+
+        if label and packName then
+            label:SetText(self:GetEmotePackDisplayName(packName))
+        end
+    end
 end

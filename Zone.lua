@@ -114,3 +114,123 @@ function CinematicCam:CheckAndApplyHomePreset()
         self:LoadFromPresetSlot(1)
     end
 end
+
+CinematicCam.categorizedEmotes = {
+    respectful = {
+        "/attention", "/bestowblessing", "/bless", "/blessing", "/bow", "/bow2",
+        "/handtoheart", "/honor", "/kneel", "/kneelpray", "/kowtow", "/pray",
+        "/ritual", "/salute", "/saluteloop", "/salute2", "/saluteloop2",
+        "/salute3", "/saluteloop3"
+    },
+
+    friendly = {
+        "/approve", "/cheer", "/clap", "/grats", "/thanks", "/thank", "/thankyou",
+        "/thumbsup", "/applaud", "/celebrate", "/beckon",
+        "/followme", "/congrats", "/congratulate", "/wave", "/welcome"
+    },
+
+    greeting = {
+        "/greet", "/hail", "/hello", "/wave", "/welcome", "/bow", "/bow2", "/curtsey"
+    },
+
+    hostile = {
+        "/boo", "/disapprove", "/dishonor", "/dismiss", "/goaway", "/leaveme",
+        "/rude", "/shakefist", "/shout", "/spit", "/taunt", "/threaten",
+        "/thumbsdown", "/wagfinger", "/angry", "/annoyed", "/brushoff"
+    },
+
+    frustrated = {
+        "/doom", "/exasperated", "/facepalm", "/impatient", "/armscrossed",
+        "/bored", "/sigh", "/huh"
+    },
+
+    sad = {
+        "/heartbroken", "/cry", "/downcast", "/sad", "/crying", "/humble",
+        "/beg", "/beggar", "/plead"
+    },
+
+    scared = {
+        "/scared", "/surrender", "/cower", "/faint"
+    },
+
+    confused = {
+        "/confused", "/cuckoo", "/headscratch", "/shrug", "/tilt", "/huh"
+    },
+
+    celebratory = {
+        "/cheer", "/fistpump", "/celebrate", "/laugh", "/lol", "/horn"
+    },
+
+    disgusted = {
+        "/disgust", "/spit", "/brushoff", "/dismiss", "/goaway"
+    },
+
+    eating = {
+        "/drink3", "/drink2", "/drink", "/potion", "/meal", "/eat3", "/eatbread",
+        "/eat2", "/eat4", "/pie", "/smallbread", "/soupbowl", "/eat", "/pour",
+        "/prov", "/bdcake"
+    },
+
+    entertainment = {
+        "/dance", "/dancedrunk", "/danceargonian", "/dancebreton", "/dancedarkelf",
+        "/dancedunmer", "/dancehighelf", "/dancealtmer", "/danceimperial",
+        "/dancekhajiit", "/dancenord", "/danceorc", "/danceredguard", "/dancewoodelf",
+        "/dancebosmer", "/juggleflame", "/drum", "/flute", "/lute", "/whistle"
+    },
+
+    idle = {
+        "/idle", "/idle2", "/idle3", "/idle4", "/idle5", "/armscrossed",
+        "/handsonhips", "/leanback", "/leanbackcoin", "/crouch"
+    },
+
+    sitting = {
+        "/sit", "/sit2", "/sit3", "/sit4", "/sit5", "/sit6", "/sitchair",
+    },
+
+    pointing = {
+        "/point", "/pointb", "/pointd", "/pointl", "/pointr", "/pointu",
+        "/self", "/you", "/rally", "/search", "/stop"
+    },
+
+    physical = {
+        "/smash", "/kick", "/knock", "/lookup", "/poke", "/push", "/take",
+        "/tap", "/touch", "/stomp"
+    },
+
+    exercise = {
+        "/jumpingjacks", "/pushups", "/pushup", "/situps", "/stretch"
+    },
+
+    working = {
+        "/controlrod", "/hammer", "/hammerlow", "/hammerwall", "/rake", "/shovel",
+        "/sweep", "/bucketsplash", "/write", "/read", "/letter", "/letterlookup",
+        "/torch", "/wand", "/wand2"
+    },
+
+    tired = {
+        "/breathless", "/knuckles", "/dustoff", "/headache", "/scratch",
+        "/knockeddown", "/playdead", "/preen", "/rubhands", "/sick", "/stagger",
+        "/drunk", "/cold", "/colder", "/phew", "/yawn"
+    },
+
+    agreement = {
+        "/yes", "/nod", "/thumbsup", "/approve"
+    },
+
+    disagreement = {
+        "/no", "/disapprove", "/thumbsdown", "/shakefist"
+    },
+
+    playful = {
+        "/laugh", "/lol", "/drunk", "/dancedrunk", "/cuckoo", "/whistle"
+    },
+
+    attention = {
+        "/shout", "/whistle", "/overhere", "/comehere", "/rally", "/beckon", "/payme"
+    },
+
+    misc = {
+        "/crownstore", "/twiddle", "/give", "/whisper", "/shh", "/payme",
+        "/shieldeyes"
+    }
+}
