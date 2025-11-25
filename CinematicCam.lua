@@ -66,11 +66,14 @@ function CinematicCam:GetCurrentPlayerOptionsState()
     return anyVisible and "VISIBLE" or "HIDDEN"
 end
 
+--TODO Pressing Right Trigger turns off free cam momenariely so the sitcks can be used to navigate emotes
 function CinematicCam:GamepadStickPoll()
     if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
         return
     end
 
+    --Read Left Trigger input for emote wheel, use left stick to control the emote wheel
+    local leftTrigger = GetGamepadLeftTriggerMagnitude()
     -- Read left stick input for interaction camera toggle
     local leftX = ZO_Gamepad_GetLeftStickEasedX()
     local leftY = ZO_Gamepad_GetLeftStickEasedY()
@@ -79,7 +82,6 @@ function CinematicCam:GamepadStickPoll()
     local rightX = ZO_Gamepad_GetRightStickEasedX()
     local rightY = ZO_Gamepad_GetRightStickEasedY()
 
-    -- Consume BOTH sticks to prevent character movement during interactions
 
     -- Calculate stick magnitudes
     local leftMagnitude = zo_sqrt(leftX * leftX + leftY * leftY)
@@ -87,18 +89,36 @@ function CinematicCam:GamepadStickPoll()
 
     -- Left stick: Do nothing - just consume it to block character movement
     -- (No SetInteractionUsingInteractCamera calls here)
-
-    -- Right stick: Frame local player in game camera
-    if rightMagnitude >= self.gamepadStickPoll.deadzone then
-        if math.abs(rightX) > math.abs(rightY) then
-            if rightX > 0 then     -- Right
-                SetGameCameraUIMode(false)
-            elseif rightY > 0 then -- Left
-                SetGameCameraUIMode(false)
-            elseif rightY < 0 then -- Down
-                SetGameCameraUIMode(false)
-            elseif rightX < 0 then -- Up
-                SetGameCameraUIMode(false)
+    --TODO check if trigger is pressed first
+    if leftTrigger > 0.3 then
+        d("right trigger is pressed")
+        SetGameCameraUIMode(true)
+        if rightMagnitude > self.gamepadStickPoll.deadzone then
+            if math.abs(rightX) > math.abs(rightY) then
+                if rightX > 0 then
+                    DoCommand("/wave")
+                elseif rightY > 0 then
+                    DoCommand("/dance")
+                elseif rightY < 0 then
+                    DoCommand("/lute")
+                elseif rightX < 0 then
+                    DoCommand("/armscrossed")
+                end
+            end
+        end
+    else
+        -- Right stick: Frame local player in game camera
+        if rightMagnitude >= self.gamepadStickPoll.deadzone then
+            if math.abs(rightX) > math.abs(rightY) then
+                if rightX > 0 then     -- Right
+                    SetGameCameraUIMode(false)
+                elseif rightY > 0 then -- Left
+                    SetGameCameraUIMode(false)
+                elseif rightY < 0 then -- Down
+                    SetGameCameraUIMode(false)
+                elseif rightX < 0 then -- Up
+                    SetGameCameraUIMode(false)
+                end
             end
         end
     end
