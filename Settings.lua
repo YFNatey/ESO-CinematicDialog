@@ -295,7 +295,6 @@ function CinematicCam:CreateSettingsMenu()
         {
             type = "dropdown",
             name = "Text Background",
-            choices = { "Default", "Light(cinematic only)", "None" },
             tooltip =
             "Backgrounds for easier viewing of subtitles. Light background is only available in Cinematic layout",
             choices = { "Default", "Light", "None" },
@@ -527,6 +526,17 @@ function CinematicCam:CreateSettingsMenu()
 
         --]]
         {
+            type = "checkbox",
+            name = "Enable UI settings",
+            tooltip =
+            "Turn ON to use this addons custom hiding behavior.\n - Hide compass, group tracker and more.\nTurn OFF to use ESOs default hiding behavior.",
+            getFunc = function()
+                return CinematicCam.savedVars.interface.usingModTweaks
+            end,
+            setFunc = function(value) CinematicCam.savedVars.interface.usingModTweaks = value end,
+            width = "full",
+        },
+        {
             type = "dropdown",
             name = "Show Compass",
             tooltip =
@@ -539,6 +549,7 @@ function CinematicCam:CreateSettingsMenu()
                 CinematicCam:UpdateCompassVisibility()
                 self.pendingUIRefresh = true
             end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
         },
         {
             type = "dropdown",
@@ -554,6 +565,7 @@ function CinematicCam:CreateSettingsMenu()
                 CinematicCam:UpdateActionBarVisibility()
                 self.pendingUIRefresh = true
             end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
         },
         {
             type = "dropdown",
@@ -569,6 +581,7 @@ function CinematicCam:CreateSettingsMenu()
                 CinematicCam:UpdateReticleVisibility()
                 self.pendingUIRefresh = true
             end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
         },
         {
 

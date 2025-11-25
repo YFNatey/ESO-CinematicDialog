@@ -668,15 +668,7 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                if not CinematicCam.isInteractionModified then
-                    CinematicCam:UpdateCompassVisibility()
 
-                    -- Check action bar setting
-                    CinematicCam:UpdateActionBarVisibility()
-
-                    -- Check reticle setting
-                    CinematicCam:UpdateReticleVisibility()
-                end
                 if self.presetPending then
                     CinematicCam:InitializeChunkedTextControl()
 
@@ -701,9 +693,7 @@ end
 
 -- Combat state change for compass, reticle, and action bar
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Combat", EVENT_PLAYER_COMBAT_STATE, function(eventCode, inCombat)
-    CinematicCam:UpdateCompassVisibility()
-    CinematicCam:UpdateActionBarVisibility()
-    CinematicCam:UpdateReticleVisibility()
+    CinematicCam:InitializeUITweaks()
 end)
 
 -- Font events
