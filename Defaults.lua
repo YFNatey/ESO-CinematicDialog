@@ -4,6 +4,7 @@ CinematicCam.defaults = {
     npcNameColor = { r = 0.9, g = 0.9, b = 0.8, a = 1.0 },
     npcNameFontSize = 48,
     usePlayerName = false,
+
     playerNameColor = { r = 0.8, g = 0.8, b = 1.0, a = 1.0 },
     dialogueElementsHidden = false,
     homePresets = {},
@@ -72,7 +73,7 @@ CinematicCam.defaults = {
         hideCompass = "always",
         hideReticle = "always",
         hideActionBar = "always",
-
+        usingModTweaks = true,
 
 
         selectedFont = "ESO_Standard",

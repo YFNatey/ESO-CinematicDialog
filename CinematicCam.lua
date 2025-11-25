@@ -45,6 +45,7 @@ function CinematicCam:GamepadStickPoll()
     local rightY = ZO_Gamepad_GetRightStickEasedY()
 
     local rightMagnitude = zo_sqrt(rightX * rightX + rightY * rightY)
+    local currentTime = GetGameTimeMilliseconds()
 
     -- Left trigger to activate emote pad
     if leftTrigger > 0.3 then
@@ -53,6 +54,12 @@ function CinematicCam:GamepadStickPoll()
         -- Show emote pad if not visible
         if not self.emotePadVisible then
             self:ShowEmotePad()
+        end
+
+        -- Hide camera pad if visible
+        if self.cameraPadVisible then
+            self:HideCameraPad()
+            self:ResetCameraHighlights()
         end
 
         if rightMagnitude > self.gamepadStickPoll.deadzone then
@@ -76,34 +83,74 @@ function CinematicCam:GamepadStickPoll()
         else
             self:ResetEmoteHighlights()
         end
-    else
-        -- Hide emote pad when trigger released
+        -- Right trigger to activate camera pad
+    elseif rightTrigger > 0.3 then
+        -- Show camera pad if not visible
+        if not self.cameraPadVisible then
+            self:ShowCameraPad()
+        end
+
+        -- Hide emote pad if visible
         if self.emotePadVisible then
             self:HideEmotePad()
             self:ResetEmoteHighlights()
         end
 
-        -- Right stick camera controls when trigger not pressed
-        if rightMagnitude >= self.gamepadStickPoll.deadzone then
-            CinematicCam:HideInteractionReticle()
-            SetGameCameraUIMode(false)
-            CinematicCam:HideInteractionReticle()
-        end
-    end
-    if rightTrigger > 0.3 then
-        SetGameCameraUIMode(true)
         if rightMagnitude > self.gamepadStickPoll.deadzone then
-            if math.abs(rightX) > math.abs(rightY) then
+            -- Check cooldown before allowing camera switch
+            local timeSinceLastSwitch = currentTime - self.gamepadStickPoll.lastCameraSwitch
 
+            if math.abs(rightX) > math.abs(rightY) then
+                -- Left/Right for camera mode switching (TOGGLE with cooldown)
+                if timeSinceLastSwitch >= self.gamepadStickPoll.cameraSwitchCooldown then
+                    --[[ if rightX > 0 then
+                        -- Right: Use free game camera (Cinematic Cam)
+                        self:HighlightCameraDirection("Right")
+                        SetGameCameraUIMode(false)
+                        SetInteractionUsingInteractCamera(false)
+                        self.gamepadStickPoll.gamestickMoved = false
+                        self.gamepadStickPoll.lastCameraSwitch = currentTime
+                        d("Switched to Free Camera")
+                    elseif rightX < 0 then
+                        -- Left: Use ESO interact camera
+                        self:HighlightCameraDirection("Left")
+                        SetGameCameraUIMode(true)
+                        SetInteractionUsingInteractCamera(true)
+                        self.gamepadStickPoll.lastCameraSwitch = currentTime
+                        self.gamepadStickPoll.gamestickMoved = true
+                        d("Switched to ESO Camera")
+                    end
+                    ]]
+                end
             else
+                -- Up/Down for zoom
                 if rightY > 0 then
+                    self:HighlightCameraDirection("Top")
                     CameraZoomIn()
                 elseif rightY < 0 then
+                    self:HighlightCameraDirection("Bottom")
                     CameraZoomOut()
                 end
             end
         else
+            self:ResetCameraHighlights()
+        end
+    else
+        -- Hide both pads when no trigger is pressed
+        if self.emotePadVisible then
+            self:HideEmotePad()
             self:ResetEmoteHighlights()
+        end
+
+        if self.cameraPadVisible then
+            self:HideCameraPad()
+            self:ResetCameraHighlights()
+        end
+
+        -- Right stick camera controls when no trigger pressed
+        -- ONLY allow free camera movement if stick is being moved
+        if rightMagnitude >= self.gamepadStickPoll.deadzone then
+            SetGameCameraUIMode(false)
         end
     end
 end
@@ -116,6 +163,8 @@ function CinematicCam:StopGamepadStickPoll()
     EVENT_MANAGER:UnregisterForUpdate("CinematicCam_GamepadStickPoll")
     self:HideEmoteWheel()
     self:HideEmotePad()
+    self:HideCameraWheel()
+    self:HideCameraPad()
 end
 
 -- Handles the logic when the default interaction camera is deactivated.
@@ -144,16 +193,22 @@ function CinematicCam:OnGameCameraDeactivated()
                     deadzone = 0.2,
                     moveThreshold = 0.5,
                     lastMove = GetGameTimeMilliseconds(),
+                    lastCameraSwitch = 0,       -- Add this
+                    cameraSwitchCooldown = 500, -- 500ms cooldown, Add this
                 }
             end
 
             self.gamepadStickPoll.isActive = true
             -- Initialize and show emote wheel
             if not self.emoteWheelInitialized then
-                self:InitializeEmoteWheel()
                 self.emoteWheelInitialized = true
             end
+            if not self.cameraWheelInitialized then
+                self.cameraWheelInitialized = true
+            end
             self:ShowEmoteWheel()
+            self:ShowCameraWheel()
+
             EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
                 self:GamepadStickPoll()
             end)
@@ -379,6 +434,7 @@ local function Initialize()
     CinematicCam:InitializePreviewSystem()
     CinematicCam:InitializeEmoteWheel()
     CinematicCam:RegisterFontEvents()
+    CinematicCam:InitializeCameraWheel()
     zo_callLater(function()
         CinematicCam:InitializeUI()
         CinematicCam:RegisterSceneCallbacks()
@@ -386,9 +442,12 @@ local function Initialize()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:UpdateHorizontal()
         CinematicCam:RegisterUIRefreshEvent()
-        CinematicCam:UpdateActionBarVisibility()
-        CinematicCam:UpdateCompassVisibility()
-        CinematicCam:UpdateReticleVisibility()
+
+        --CinematicCam:UpdateActionBarVisibility()
+        --CinematicCam:UpdateCompassVisibility()
+        --CinematicCam:UpdateReticleVisibility()
+        CinematicCam:InitializeUITweaks()
+
         CinematicCam:BuildHomeIdsLookup()
         CinematicCam:checkhid()
         CinematicCam:InitializeUpdateSystem()
@@ -419,6 +478,13 @@ local function Initialize()
     end
 end
 
+function CinematicCam:InitializeUITweaks()
+    if self.savedVars.interface.usingModTweaks then
+        CinematicCam:UpdateCompassVisibility()
+        CinematicCam:UpdateActionBarVisibility()
+        CinematicCam:UpdateReticleVisibility()
+    end
+end
 
 function CinematicCam:InitializeInteractionSettings()
     interactionTypeMap = {
@@ -1154,4 +1220,175 @@ function CinematicCam:ResetEmoteHighlights()
             texture:SetColor(0, 0, 0, 0.85)
         end
     end
+end
+
+function CinematicCam:InitializeCameraWheel()
+    self.cameraWheelVisible = false
+    self.cameraPadVisible = false
+
+    -- Set platform-specific trigger icon
+    self:SetPlatformCameraTriggerIcon()
+
+    -- Start hidden
+    self:HideCameraWheel()
+    self:HideCameraPad()
+end
+
+-- Set the correct trigger icon based on platform for camera wheel
+function CinematicCam:SetPlatformCameraTriggerIcon()
+    local xboxRT = _G["CinematicCam_XboxRT"]
+    local ps4RT = _G["CinematicCam_PS4RT"]
+    local xboxRS_Slide = _G["CinematicCam_XboxRS_Slide"]
+    local xboxRS_Scroll = _G["CinematicCam_XboxRS_Scroll"]
+    local ps4RS = _G["CinematicCam_PS4RS"]
+
+    if not xboxRT or not ps4RT then
+        return
+    end
+
+    local worldName = GetWorldName()
+
+    -- Default to Xbox, switch to PS if on PlayStation
+    if worldName == "PS4live" or worldName == "PS4live-eu" then
+        -- Show PlayStation icons
+        xboxRT:SetHidden(true)
+        ps4RT:SetHidden(false)
+
+        if xboxRS_Slide then xboxRS_Slide:SetHidden(true) end
+        if xboxRS_Scroll then xboxRS_Scroll:SetHidden(true) end
+        if ps4RS then ps4RS:SetHidden(false) end
+    else
+        -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
+        xboxRT:SetHidden(false)
+        ps4RT:SetHidden(true)
+
+        if xboxRS_Slide then xboxRS_Slide:SetHidden(false) end
+        if xboxRS_Scroll then xboxRS_Scroll:SetHidden(false) end
+        if ps4RS then ps4RS:SetHidden(true) end
+    end
+end
+
+-- Show the camera wheel indicator
+function CinematicCam:ShowCameraWheel()
+    local control = _G["CinematicCam_CameraWheel"]
+    if not control then return end
+
+    -- Set platform-specific icon BEFORE showing
+    self:SetPlatformCameraTriggerIcon()
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.cameraWheelVisible = true
+end
+
+-- Hide the camera wheel indicator
+function CinematicCam:HideCameraWheel()
+    local control = _G["CinematicCam_CameraWheel"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.cameraWheelVisible = false
+end
+
+-- Show the camera directional pad
+function CinematicCam:ShowCameraPad()
+    local control = _G["CinematicCam_CameraPad"]
+    if not control then return end
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.cameraPadVisible = true
+end
+
+-- Hide the camera directional pad
+function CinematicCam:HideCameraPad()
+    local control = _G["CinematicCam_CameraPad"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.cameraPadVisible = false
+end
+
+-- Highlight active camera direction
+function CinematicCam:HighlightCameraDirection(direction)
+    local directions = { "Top", "Right", "Bottom", "Left" }
+
+    for _, dir in ipairs(directions) do
+        local texture = _G["CinematicCam_CameraPad_" .. dir]
+        if texture then
+            if dir == direction then
+                -- Only highlight Top and Bottom (zoom controls are active)
+                if dir == "Top" or dir == "Bottom" then
+                    texture:SetColor(0.3, 0.3, 0.3, 0.95) -- Lighter gray for selected
+                else
+                    texture:SetColor(0, 0, 0, 0.4)        -- Keep disabled look
+                end
+            else
+                -- Reset to default state
+                if dir == "Top" or dir == "Bottom" then
+                    texture:SetColor(0, 0, 0, 0.85) -- Dark for unselected active buttons
+                else
+                    texture:SetColor(0, 0, 0, 0.4)  -- Keep disabled look
+                end
+            end
+        end
+    end
+end
+
+-- Reset all camera direction highlights
+function CinematicCam:ResetCameraHighlights()
+    local texture = _G["CinematicCam_CameraPad_Top"]
+    if texture then texture:SetColor(0, 0, 0, 0.85) end
+
+    texture = _G["CinematicCam_CameraPad_Bottom"]
+    if texture then texture:SetColor(0, 0, 0, 0.85) end
+
+    -- Left and Right stay disabled
+    texture = _G["CinematicCam_CameraPad_Left"]
+    if texture then texture:SetColor(0, 0, 0, 0.4) end
+
+    texture = _G["CinematicCam_CameraPad_Right"]
+    if texture then texture:SetColor(0, 0, 0, 0.4) end
 end
