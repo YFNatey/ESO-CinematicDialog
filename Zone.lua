@@ -124,13 +124,13 @@ CinematicCam.categorizedEmotes = {
     },
 
     friendly = {
-        "/approve", "/cheer", "/clap", "/grats", "/thanks", "/thank", "/thankyou",
-        "/thumbsup", "/applaud", "/celebrate", "/beckon",
-        "/followme", "/congrats", "/congratulate", "/wave", "/welcome"
+        "/grats", "/thanks", "/thank", "/thankyou",
+        "/beckon",
+        "/followme", "/congratulate", "/wave", "/welcome"
     },
 
     greeting = {
-        "/hello", "/welcome", '/wave', "/greet", "hail"
+        "/hello", "/welcome", '/wave', "hail"
     },
 
     hostile = {
@@ -175,7 +175,7 @@ CinematicCam.categorizedEmotes = {
 
     idle = {
         "/idle", "/idle2", "/idle3", "/idle5", "/armscrossed",
-        "/handsonhips", "/leanback", "/leanbackcoin", "/crouch"
+        "/handsonhips"
     },
 
     sitting = {
@@ -218,5 +218,5 @@ CinematicCam.categorizedEmotes = {
         "/plead", "/brushoff", "/beg", "/huh", '/rubhands', "/shrug", "/tilt", "/surprised", "/thanks"
     },
 
-
+    none = {}
 }

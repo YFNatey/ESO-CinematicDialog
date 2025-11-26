@@ -21,6 +21,7 @@ Names.lua
 Letterbox.lua
 Settings.lua
 presets.lua
+Emotes.lua
 Zone.lua
 ## XML
 CinematicCam.xml

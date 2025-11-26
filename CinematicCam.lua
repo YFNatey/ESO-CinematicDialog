@@ -10,7 +10,7 @@ local ADDON_NAME = "CinematicCam"
 CinematicCam = {}
 CinematicCam.savedVars = nil
 local interactionTypeMap = {}
-local CURRENT_VERSION = "3.52"
+local CURRENT_VERSION = "3.54"
 CinematicCam.lastWeaponsState = nil
 
 CinematicCam.currentZoneType = nil
@@ -19,31 +19,13 @@ CinematicCam.currentZoneType = nil
 CinematicCam.isInteractionModified = false -- override default cam
 CinematicCam.settingsUpdatedThisSession = false
 
-local AUTO_EMOTE_CHANCES = {
-    frequent = 75,   -- 75% chance
-    infrequent = 40, -- 40% chance
-    minimal = 15     -- 15% chance
-}
+
 
 function CinematicCam:ApplyDialogueRepositioning()
     local preset = self.savedVars.interaction.layoutPreset
     if preset and preset.applyFunction then
         preset.applyFunction(self)
     end
-end
-
-function CinematicCam:ShouldPlayAutoEmote()
-    if not self.savedVars.interaction.allowImmersionControls then
-        return false
-    end
-
-    local frequency = self.savedVars.interaction.autoEmoteFrequency or "infrequent"
-    local chance = AUTO_EMOTE_CHANCES[frequency] or 40
-
-    -- Generate random number between 1-100
-    local roll = math.random(1, 100)
-
-    return roll <= chance
 end
 
 function CinematicCam:GamepadStickPoll()
@@ -223,9 +205,9 @@ function CinematicCam:OnGameCameraDeactivated()
                     deadzone = 0.2,
                     moveThreshold = 0.5,
                     lastMove = GetGameTimeMilliseconds(),
-                    lastCameraSwitch = 0,       -- Add this
+                    lastCameraSwitch = 0,
                     cameraSwitchCooldown = 500, -- 500ms cooldown
-                    lastEmoteTime = 0,          -- Add this
+                    lastEmoteTime = 0,
                     emoteCooldown = 2000,       -- 2000ms cooldown for emotes
                 }
             end
@@ -239,10 +221,14 @@ function CinematicCam:OnGameCameraDeactivated()
                 if not self.cameraWheelInitialized then
                     self.cameraWheelInitialized = true
                 end
-                self:ShowEmoteWheel()
+                if self.savedVars.interaction.ButtonsVisible then
+                    self:ShowEmoteWheel()
+                end
             end
             if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue then
-                self:ShowCameraWheel()
+                if self.savedVars.interaction.ButtonsVisible then
+                    self:ShowCameraWheel()
+                end
             end
             EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
                 self:GamepadStickPoll()
@@ -263,13 +249,7 @@ function CinematicCam:OnGameCameraDeactivated()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ForceShowAllPlayerOptions()
                 end
-                if self:ShouldPlayAutoEmote() then
-                    local lastUsedSlot = self.savedVars.emoteWheel.lastUsedSlot or 1
-                    local emote = self:GetEmoteForSlot(lastUsedSlot)
-                    if emote then
-                        DoCommand(emote)
-                    end
-                end
+
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
@@ -279,6 +259,24 @@ function CinematicCam:OnGameCameraDeactivated()
                     end
 
                     self:InterceptDialogueForChunking()
+
+                    if not self.savedVars.interaction.autoEmotes then
+                        return
+                    end
+                    if self.savedVars.interaction.GreetingType == "none" then
+                        return
+                    end
+                    if not self:ShouldPlayAutoEmote() then return end
+                    if self.savedVars.interaction.GreetingType == "friendly" then
+                        local emote = self:GetEmotePack("greeting")
+                        if emote then DoCommand(emote) end
+                    elseif self.savedVars.interaction.GreetingType == "hostile" then
+                        local emote = self:GetEmotePack("hostile")
+                        if emote then DoCommand(emote) end
+                    elseif self.savedVars.interaction.GreetingType == "idle" then
+                        local emote = self:GetEmotePack("idle")
+                        if emote then DoCommand(emote) end
+                    end
                 end
             end
         )
@@ -290,13 +288,7 @@ function CinematicCam:OnGameCameraDeactivated()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ForceShowAllPlayerOptions()
                 end
-                if self:ShouldPlayAutoEmote() then
-                    local lastUsedSlot = self.savedVars.emoteWheel.lastUsedSlot or 1
-                    local emote = self:GetEmoteForSlot(lastUsedSlot)
-                    if emote then
-                        DoCommand(emote)
-                    end
-                end
+
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
@@ -306,6 +298,18 @@ function CinematicCam:OnGameCameraDeactivated()
                     end
 
                     self:InterceptDialogueForChunking()
+
+                    -- automatic greeting when entering dialogue
+                    if not self.savedVars.interaction.autoEmotes then return end
+                    if self.savedVars.interaction.ChatType == "none" then return end
+                    if not self:ShouldPlayAutoEmote() then return end
+                    if self.savedVars.interaction.ChatType == "friendly" then
+                        local emote = self:GetEmotePack("chatty")
+                        if emote then DoCommand(emote) end
+                    elseif self.savedVars.interaction.ChatType == "hostile" then
+                        local emote = self:GetEmotePack("frustrated")
+                        if emote then DoCommand(emote) end
+                    end
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                 end
             end
@@ -345,13 +349,13 @@ function CinematicCam:OnGameCameraDeactivated()
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ForceShowAllPlayerOptions()
                 end
-                if self:ShouldPlayAutoEmote() then
-                    local lastUsedSlot = self.savedVars.emoteWheel.lastUsedSlot or 1
-                    local emote = self:GetEmoteForSlot(lastUsedSlot)
-                    if emote then
-                        DoCommand(emote)
-                    end
+
+                if self.savedVars.interaction.autoEmotes then
+                    DoCommand("/take")
                 end
+
+
+
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
                     if ZO_InteractWindowTargetAreaBodyText then
                         ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
@@ -401,16 +405,6 @@ function CinematicCam:OnGameCameraDeactivated()
     end
 end
 
-function CinematicCam:OnGameCameraActivated()
-    if CinematicCam.isInteractionModified then
-        local currentInteraction = GetInteractionType()
-        if currentInteraction == INTERACTION_NONE then
-            CinematicCam:OnInteractionEnd()
-        end
-    end
-    self:StopGamepadStickPoll()
-end
-
 function CinematicCam:OnInteractionEnd()
     CinematicCam.lastWeaponsState = nil
     self:StopGamepadStickPoll()
@@ -454,31 +448,14 @@ function CinematicCam:ForceShowAllPlayerOptions()
     end
 end
 
-function CinematicCam:UpdateHorizontal()
-    if self.savedVars.interaction.subtitles.posX ~= 0.5 then
-        self.savedVars.interaction.subtitles.posX = 0.5
-    end
-end
-
-function CinematicCam:MigrateSettings()
-    -- Migrate hideCompass from boolean to string
-    if type(self.savedVars.interface.hideCompass) == "boolean" then
-        self.savedVars.interface.hideCompass = self.savedVars.interface.hideCompass and "never" or "always"
-    end
-
-    -- Migrate hideReticle from boolean to string
-    if type(self.savedVars.interface.hideReticle) == "boolean" then
-        self.savedVars.interface.hideReticle = self.savedVars.interface.hideReticle and "never" or "always"
-    end
-
-    -- Migrate hideActionBar from boolean to string
-    if type(self.savedVars.interface.hideActionBar) == "boolean" then
-        self.savedVars.interface.hideActionBar = self.savedVars.interface.hideActionBar and "never" or "always"
-    end
-end
-
 function CinematicCam:InitDefaults()
     CinematicCam.savedVars = ZO_SavedVars:NewAccountWide("CinematicCam2SavedVars", 2, nil, CinematicCam.defaults)
+end
+
+function CinematicCam:ResetEmoteWheel()
+    if CinematicCam.savedVars.resetEmoteWheelNeeded then
+
+    end
 end
 
 ---=============================================================================
@@ -487,7 +464,6 @@ end
 local function Initialize()
     CinematicCam:InitDefaults()
     CinematicCam:InitializeLetterbox()
-    CinematicCam:InitializeSepiaFilter()
     CinematicCam:ConfigurePlayerOptionsBackground()
     CinematicCam:InitializeChunkedTextControl()
     CinematicCam:InitializePreviewSystem()
@@ -500,14 +476,9 @@ local function Initialize()
         CinematicCam:RegisterSceneHiddenCallbacks()
         CinematicCam:MigrateSettings()
         CinematicCam:InitializeInteractionSettings()
-        CinematicCam:UpdateHorizontal()
         CinematicCam:RegisterUIRefreshEvent()
         CinematicCam:CreateEmoteSettingsMenu()
-        --CinematicCam:UpdateActionBarVisibility()
-        --CinematicCam:UpdateCompassVisibility()
-        --CinematicCam:UpdateReticleVisibility()
         CinematicCam:InitializeUITweaks()
-
         CinematicCam:BuildHomeIdsLookup()
         CinematicCam:checkhid()
         CinematicCam:InitializeUpdateSystem()
@@ -898,7 +869,6 @@ function CinematicCam:ShouldBlockInteraction(interactionType)
             CinematicCam:checkhid()
             return false -- Don't block - use ESO default camera
         end
-        -- Otherwise continue with third person override
     end
     return interactionTypeMap[interactionType] == true
 end
@@ -1076,7 +1046,6 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
     local lastSeenVersion = self.savedVars.lastSeenUpdateVersion or "0.0.0"
     local hasSeenWelcome = self.savedVars.hasSeenWelcomeMessage or false
 
-
     -- Compare versions
     if self:IsNewerVersion(CURRENT_VERSION, lastSeenVersion) then
         -- Determine if this is a first install or update
@@ -1086,8 +1055,8 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
             self:ShowWelcomeNotificationUI()
         else
             self:ShowUpdateNotificationUI()
-            CinematicCam:ShowUpdatedSettingsMenu()
-            CinematicCam.settingsUpdatedThisSession = true
+            -- Set flag that user needs to reload to clear update indicators
+            self.savedVars.hasReloadedSinceUpdate = false
         end
 
         -- Mark this version as seen
@@ -1095,10 +1064,30 @@ function CinematicCam:ShowUpdateNotificationIfNeeded()
         self.savedVars.hasSeenWelcomeMessage = true
     else
         local notification = _G["CinematicCam_UpdateNotification"]
-        notification:SetHidden(true)
-        CinematicCam:CreateSettingsMenu()
+        if notification then
+            notification:SetHidden(true)
+        end
     end
+
+    -- Always create the single settings menu
+    CinematicCam:CreateSettingsMenu()
 end
+
+-- Add event handler to detect UI reload and clear update indicators
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_UIReload", EVENT_PLAYER_ACTIVATED, function()
+    -- Check if this is the first activation after an update
+    if CinematicCam.savedVars and not CinematicCam.savedVars.hasReloadedSinceUpdate then
+        -- User has reloaded UI, clear the update indicators
+        zo_callLater(function()
+            CinematicCam.savedVars.hasReloadedSinceUpdate = true
+            -- Refresh the settings menu to remove green dots
+            if LibAddonMenu2 then
+                CALLBACK_MANAGER:FireCallbacks("LAM-RefreshPanel", "CinematicCamOptions")
+            end
+        end, 1000)
+    end
+end)
+
 
 function CinematicCam:InitializeUpdateSystem()
     if not self.savedVars then
@@ -1109,168 +1098,6 @@ function CinematicCam:InitializeUpdateSystem()
     end
     -- Check for updates
     self:CheckForUpdates()
-end
-
--- Initialize the emote wheel system
-function CinematicCam:InitializeEmoteWheel()
-    self.emoteWheelVisible = false
-    self.emotePadVisible = false
-
-    -- Set platform-specific trigger icon
-    self:SetPlatformTriggerIcon()
-
-    -- Start hidden
-    self:HideEmoteWheel()
-    self:HideEmotePad()
-end
-
--- Set the correct trigger icon based on platform
--- Set the correct trigger icon based on platform
-function CinematicCam:SetPlatformTriggerIcon()
-    local xboxLT = _G["CinematicCam_XboxLT"]
-    local ps4LT = _G["CinematicCam_PS4LT"]
-    local xboxLS_Slide = _G["CinematicCam_XboxLS_Slide"]
-    local xboxLS_Scroll = _G["CinematicCam_XboxLS_Scroll"]
-    local ps4LS = _G["CinematicCam_PS4LS"]
-
-    if not xboxLT or not ps4LT then
-        return
-    end
-
-    local worldName = GetWorldName()
-
-    -- Default to Xbox, switch to PS if on PlayStation
-    if worldName == "PS4live" or worldName == "PS4live-eu" or worldName == "NA Megaserver" then
-        -- Show PlayStation icons
-        xboxLT:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_l2.dds")
-
-
-        if xboxLS_Slide then xboxLS_Slide:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_scroll.dds") end
-        if xboxLS_Scroll then xboxLS_Scroll:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_slide.dds") end
-        if ps4LS then ps4LS:SetHidden(false) end
-    else
-        -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
-        xboxLT:SetHidden(false)
-        ps4LT:SetHidden(true)
-
-        if xboxLS_Slide then xboxLS_Slide:SetHidden(false) end
-        if xboxLS_Scroll then xboxLS_Scroll:SetHidden(false) end
-        if ps4LS then ps4LS:SetHidden(true) end
-    end
-end
-
--- Show the emote wheel indicator
-function CinematicCam:ShowEmoteWheel()
-    local control = _G["CinematicCam_EmoteWheel"]
-    if not control then return end
-
-    -- Set platform-specific icon BEFORE showing
-    self:SetPlatformTriggerIcon()
-
-    control:SetHidden(false)
-    control:SetAlpha(0)
-
-    -- Fade in animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(0, 1)
-    animation:SetDuration(200)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-    timeline:PlayFromStart()
-
-    self.emoteWheelVisible = true
-end
-
--- Hide the emote wheel indicator
-function CinematicCam:HideEmoteWheel()
-    local control = _G["CinematicCam_EmoteWheel"]
-    if not control then return end
-
-    -- Fade out animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(control:GetAlpha(), 0)
-    animation:SetDuration(200)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-
-    timeline:SetHandler("OnStop", function()
-        control:SetHidden(true)
-    end)
-
-    timeline:PlayFromStart()
-
-    self.emoteWheelVisible = false
-end
-
--- Show the emote directional pad
-function CinematicCam:ShowEmotePad()
-    local control = _G["CinematicCam_EmotePad"]
-    if not control then return end
-
-    -- Update labels before showing
-    self:UpdateEmotePadLabels()
-
-    control:SetHidden(false)
-    control:SetAlpha(0)
-
-    -- Fade in animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(0, 1)
-    animation:SetDuration(150)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-    timeline:PlayFromStart()
-
-    self.emotePadVisible = true
-end
-
--- Hide the emote directional pad
-function CinematicCam:HideEmotePad()
-    local control = _G["CinematicCam_EmotePad"]
-    if not control then return end
-
-    -- Fade out animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(control:GetAlpha(), 0)
-    animation:SetDuration(150)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-
-    timeline:SetHandler("OnStop", function()
-        control:SetHidden(true)
-    end)
-
-    timeline:PlayFromStart()
-
-    self.emotePadVisible = false
-end
-
--- Highlight active direction
-function CinematicCam:HighlightEmoteDirection(direction)
-    local directions = { "Top", "Right", "Bottom", "Left" }
-
-    for _, dir in ipairs(directions) do
-        local texture = _G["CinematicCam_EmotePad_" .. dir]
-        if texture then
-            if dir == direction then
-                texture:SetColor(0.3, 0.3, 0.3, 0.95) -- Lighter gray for selected
-            else
-                texture:SetColor(0, 0, 0, 0.85)       -- Dark for unselected
-            end
-        end
-    end
-end
-
--- Reset all direction highlights
-function CinematicCam:ResetEmoteHighlights()
-    local directions = { "Top", "Right", "Bottom", "Left" }
-
-    for _, dir in ipairs(directions) do
-        local texture = _G["CinematicCam_EmotePad_" .. dir]
-        if texture then
-            texture:SetColor(0, 0, 0, 0.85)
-        end
-    end
 end
 
 function CinematicCam:InitializeCameraWheel()
@@ -1494,68 +1321,4 @@ end
 -- Common handler for all scenes
 function CinematicCam:OnAnyTargetSceneHidden(sceneName)
 
-end
-
-function CinematicCam:GetEmoteForSlot(slotNumber)
-    local slotKey = "slot" .. slotNumber
-    local packName = self.savedVars.emoteWheel[slotKey]
-
-    if not packName or not CinematicCam.categorizedEmotes[packName] then
-        return nil
-    end
-
-    local emotePack = CinematicCam.categorizedEmotes[packName]
-    local randomIndex = math.random(1, #emotePack)
-    return emotePack[randomIndex]
-end
-
-function CinematicCam:GetEmotePackDisplayName(packKey)
-    local displayNames = {
-        respectful = "Respectful",
-        friendly = "Friendly",
-        greeting = "Greeting",
-        flirty = "Flirty",
-        hostile = "Hostile",
-        frustrated = "Frustrated",
-        sad = "Sad",
-        scared = "Scared",
-        confused = "Confused",
-        celebratory = "Celebratory",
-        disgusted = "Disgusted",
-        eating = "Eating/Drinking",
-        entertainment = "Entertainment/Dance",
-        idle = "Idle Poses",
-        sitting = "Sitting/Resting",
-        pointing = "Pointing/Directing",
-        physical = "Physical Actions",
-        exercise = "Exercise",
-        working = "Working/Tools",
-        tired = "Tired/Sick",
-        agreement = "Agreement",
-        disagreement = "Disagreement",
-        playful = "Playful",
-        attention = "Get Attention",
-        misc = "Miscellaneous"
-    }
-    return displayNames[packKey] or packKey
-end
-
--- Function to update emote pad labels when pack changes
-function CinematicCam:UpdateEmotePadLabels()
-    local slotMap = {
-        [1] = "Top",
-        [2] = "Right",
-        [3] = "Bottom",
-        [4] = "Left"
-    }
-
-    for slotNum, direction in pairs(slotMap) do
-        local slotKey = "slot" .. slotNum
-        local packName = self.savedVars.emoteWheel[slotKey]
-        local label = _G["CinematicCam_EmotePad_" .. direction .. "Text"]
-
-        if label and packName then
-            label:SetText(self:GetEmotePackDisplayName(packName))
-        end
-    end
 end
