@@ -228,7 +228,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Allow Camera Movement During Dialogue",
+            name = "Free Cam During Dialogue",
             description = "Move the camera with the Right Stick, Move your character with the Left Stick",
             getFunc = function()
                 return CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue
@@ -236,6 +236,859 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue = value
             end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+
+        },
+        {
+            type = "checkbox",
+            name = "Emotes During Dialogue",
+            tooltip =
+            "Adds on screen controls emotes. Move the camera with the Right Stick, Move your character with the Left Stick",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowImmersionControls
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowImmersionControls = value
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+
+        },
+        {
+            type = "checkbox",
+            name = "Auto Emotes",
+            tooltip = "Automatically play emotes from your last-used emote wheel slot during dialogue progression",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowImmersionControls
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowImmersionControls = value
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+        },
+        {
+            type = "dropdown",
+            name = "Auto Emotes Frequency",
+            tooltip =
+            "How often auto-emotes play during dialogue:\nFrequent: 75% chance\nInfrequent: 40% chance\nMinimal: 15% chance",
+            choices = { "Frequent", "Infrequent", "Minimal" },
+            choicesValues = { "frequent", "infrequent", "minimal" },
+            getFunc = function()
+                return self.savedVars.interaction.autoEmoteFrequency or "infrequent"
+            end,
+            setFunc = function(value)
+                self.savedVars.interaction.autoEmoteFrequency = value
+            end,
+            width = "full",
+            disabled = function()
+                return not self.savedVars.interaction.allowImmersionControls
+            end,
+        },
+
+
+        {
+        },
+        {
+            type = "header",
+            name = "Subtitle Appearance",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Font",
+            tooltip = "Change the font for subtitle text, and your responses",
+            choices = choices,
+            choicesValues = choicesValues,
+            getFunc = function() return self.savedVars.interface.selectedFont end,
+            setFunc = function(value)
+                self.savedVars.interface.selectedFont = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = " Text Size",
+            min = 10,
+            max = 64,
+            step = 1,
+            getFunc = function() return self.savedVars.interface.customFontSize end,
+            setFunc = function(value)
+                self.savedVars.interface.customFontSize = value
+                self:OnFontChanged()
+            end,
+            width = "full",
+        },
+        {
+            type = "colorpicker",
+            name = "Text Color",
+            tooltip = "Change the color of subtitle text",
+            getFunc = function()
+                local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.interaction.subtitles.textColor = { r = r, g = g, b = b, a = a }
+
+                -- Apply immediately if in dialogue
+                local control = CinematicCam.chunkedDialogueData.customControl
+                if control then
+                    control:SetColor(r, g, b, a)
+                end
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Text Background",
+            tooltip =
+            "Backgrounds for easier viewing of subtitles. Light background is only available in Cinematic layout",
+            choices = { "Default", "Light", "None" },
+            choicesValues = { "default", "light", "none" },
+            getFunc = function()
+                local currentLayout = self.savedVars.interaction.layoutPreset
+                if currentLayout == "default" then
+                    local bgMode = self.savedVars.interface.defaultBackgroundMode or "esoDefault"
+                    if bgMode == "esoDefault" then
+                        return "default"
+                    elseif bgMode == "none" then
+                        return "none"
+                    else
+                        return "light"
+                    end
+                else -- cinematic layout
+                    local bgMode = self.savedVars.interface.cinematicBackgroundMode or "redemption_banner"
+                    if bgMode == "redemption_banner" then
+                        return "default"
+                    elseif bgMode == "kingdom" then
+                        return "light"
+                    else
+                        return "none"
+                    end
+                end
+            end,
+            setFunc = function(value)
+                local currentLayout = self.savedVars.interaction.layoutPreset
+                if currentLayout == "default" then
+                    -- Map unified values to default layout values
+                    local defaultValue
+                    if value == "default" then
+                        defaultValue = "esoDefault"
+                    elseif value == "light" then
+                        defaultValue = "esoDefault" -- Default layout doesn't support light mode, default to esoDefault
+                    else
+                        defaultValue = "none"
+                    end
+                    self.savedVars.interface.defaultBackgroundMode = defaultValue
+                    self:ApplyDefaultBackgroundSettings(defaultValue)
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE then
+                        zo_callLater(function()
+                            self:ApplyDialogueRepositioning()
+                        end, 50)
+                    end
+                else -- cinematic
+                    -- Map unified values to cinematic layout values
+                    local cinematicValue
+                    if value == "default" then
+                        cinematicValue = "redemption_banner"
+                    elseif value == "light" then
+                        cinematicValue = "kingdom"
+                    else -- "none"
+                        cinematicValue = "none"
+                    end
+                    self.savedVars.interface.cinematicBackgroundMode = cinematicValue
+                    self:ApplyCinematicBackgroundSettings(cinematicValue)
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE then
+                        zo_callLater(function()
+                            self:RefreshDialogueBackgrounds()
+                        end, 50)
+                    end
+                end
+            end,
+            width = "full",
+        },
+
+
+        {
+            type = "slider",
+            name = "Position",
+            min = 0,
+            max = 100,
+            step = 1,
+            getFunc = function()
+                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
+                return math.floor(normalizedPos * 100)
+            end,
+            setFunc = function(value)
+                local normalizedY = value / 100
+                self.savedVars.interaction.subtitles.posY = normalizedY
+                CinematicCam:OnSubtitlePositionChanged(nil, normalizedY)
+                -- Show preview when slider changes
+                CinematicCam:ShowSubtitlePreview(nil, value)
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "full",
+        },
+
+        {
+            type = "header",
+            name = "Name Appearance",
+            width = "full",
+        },
+
+        {
+            type = "dropdown",
+            name = "Select Companion",
+            choices = {
+                "Bastian Hallix",
+                "Mirri Elendis",
+                "Ember",
+                "Isobel Veloise",
+                "Azandar al-Cybiades",
+                "Sharp-as-Night",
+                "Tanlorin",
+                "Zerith-var"
+            },
+            choicesValues = {
+                "bastian hallix",
+                "mirri elendis",
+                "ember",
+                "isobel veloise",
+                "azandar",
+                "sharp-as-night",
+                "tanlorin",
+                "zerith-var"
+            },
+            getFunc = function()
+                return self.savedVars.selectedCompanion or "ember"
+            end,
+            setFunc = function(value)
+                self.savedVars.selectedCompanion = value
+                CALLBACK_MANAGER:FireCallbacks("LAM-RefreshPanel", controlPanel)
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "half",
+        },
+        {
+            type = "colorpicker",
+            name = function()
+                local companionName = self.savedVars.selectedCompanion or "ember"
+                -- Capitalize first letter of each word
+                local displayName = companionName:gsub("(%a)([%w_']*)", function(first, rest)
+                    return first:upper() .. rest
+                end)
+                return displayName .. " Color"
+            end,
+            getFunc = function()
+                local companionName = self.savedVars.selectedCompanion or "ember"
+                if not self.savedVars.companionColors then
+                    self.savedVars.companionColors = {}
+                end
+                if not self.savedVars.companionColors[companionName] then
+                    -- Default to white for all companions
+                    self.savedVars.companionColors[companionName] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }
+                end
+                local color = self.savedVars.companionColors[companionName]
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                local companionName = self.savedVars.selectedCompanion or "ember"
+                if not self.savedVars.companionColors then
+                    self.savedVars.companionColors = {}
+                end
+                self.savedVars.companionColors[companionName] = { r = r, g = g, b = b, a = a }
+
+                -- Apply immediately if in dialogue with this companion
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE then
+                        self:UpdateNPCNameColor()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+            width = "half",
+        },
+        {
+            type = "colorpicker",
+            name = "Default NPC Color",
+            getFunc = function()
+                local color = self.savedVars.npcNameColor
+                return color.r, color.g, color.b, color.a
+            end,
+            setFunc = function(r, g, b, a)
+                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
+                self:UpdateNPCNameColor()
+                -- If we're in prepended mode and dialogue is active, refresh the text
+                if self.savedVars.npcNamePreset == "prepended" then
+                    local interactionType = GetInteractionType()
+                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
+                        -- Re-process the dialogue with the new color
+                        self:InterceptDialogueForChunking()
+                    end
+                end
+            end,
+            disabled = function()
+                return self.savedVars.npcNamePreset == "default"
+            end,
+            width = "full",
+
+        },
+
+
+        --- FONT SETTINGS
+
+        {
+            type = "header",
+            name = "Cinematic Settings",
+        },
+        {
+            type = "checkbox",
+            name = "Enable UI settings",
+            tooltip =
+            "Turn ON to use this addons custom hiding behavior.\n - Hide compass, group tracker and more.\nTurn OFF to use default hiding behavior.",
+            getFunc = function()
+                return CinematicCam.savedVars.interface.usingModTweaks
+            end,
+            setFunc = function(value) CinematicCam.savedVars.interface.usingModTweaks = value end,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Show Compass",
+            tooltip =
+            "Choose when to hide the compass\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
+            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            choicesValues = { "always", "never", "combat", "weapons" },
+            getFunc = function() return self.savedVars.interface.hideCompass end,
+            setFunc = function(value)
+                self.savedVars.interface.hideCompass = value
+                CinematicCam:UpdateCompassVisibility()
+                self.pendingUIRefresh = true
+            end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
+        },
+        {
+            type = "dropdown",
+            name = "Show Skill Bar",
+            tooltip =
+            "Choose when to hide the skill and resource bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
+
+            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            choicesValues = { "always", "never", "combat", "weapons" },
+            getFunc = function() return self.savedVars.interface.hideActionBar end,
+            setFunc = function(value)
+                self.savedVars.interface.hideActionBar = value
+                CinematicCam:UpdateActionBarVisibility()
+                self.pendingUIRefresh = true
+            end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
+        },
+        {
+            type = "dropdown",
+            name = "Show Reticle",
+            tooltip =
+            "Choose when to hide the center reticle and resource bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
+
+            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            choicesValues = { "always", "never", "combat", "weapons" },
+            getFunc = function() return self.savedVars.interface.hideReticle end,
+            setFunc = function(value)
+                self.savedVars.interface.hideReticle = value
+                CinematicCam:UpdateReticleVisibility()
+                self.pendingUIRefresh = true
+            end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
+        },
+        {
+
+            type = "header",
+            name = "Black Bar Settings",
+        },
+
+        {
+            type = "button",
+            name = "Toggle Black Bars",
+            tooltip = "Add movie-like black bars",
+            func = function()
+                self:ToggleLetterbox()
+            end,
+            width = "half",
+        },
+        {
+            type = "checkbox",
+            name = "Auto Black Bars During Dialogue",
+            getFunc = function() return self.savedVars.interaction.auto.autoLetterboxDialogue end,
+            setFunc = function(value)
+                self.savedVars.interaction.auto.autoLetterboxDialogue = value
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Auto Black Bars on Mount",
+
+            getFunc = function() return CinematicCam.savedVars.letterbox.autoLetterboxMount end,
+            setFunc = function(value) CinematicCam.savedVars.letterbox.autoLetterboxMount = value end,
+            width = "full",
+        },
+        {
+            type = "slider",
+            name = "Mount Black Bars Delay",
+            tooltip = "Delay showing black bars when mounting (in seconds)",
+            min = 0,
+            max = 60,
+            step = 20,
+            getFunc = function() return CinematicCam.savedVars.letterbox.mountLetterboxDelay end,
+            setFunc = function(value)
+                CinematicCam.savedVars.letterbox.mountLetterboxDelay = value
+            end,
+            disabled = function() return not CinematicCam.savedVars.letterbox.autoLetterboxMount end,
+            width = "full",
+        },
+
+        {
+            type = "slider",
+            name = "Black Bar Size",
+            min = 10,
+            max = 300,
+            step = 5,
+            getFunc = function() return self.savedVars.letterbox.size end,
+            setFunc = function(value)
+                self.savedVars.letterbox.size = value
+                if not CinematicCam_LetterboxTop:IsHidden() then
+                    CinematicCam_LetterboxTop:SetHeight(value)
+                    CinematicCam_LetterboxBottom:SetHeight(value)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Vignette",
+
+            getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
+            setFunc = function(value)
+                self.savedVars.interface.sepiaFilter.enabled = value
+                self.savedVars.interface.sepiaFilter.useTextured = value
+                self:UpdateSepiaFilter()
+            end,
+            width = "full",
+        },
+        {
+
+            type = "dropdown",
+            name = "Quick Presets",
+            choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla" },
+            choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
+            getFunc = function() return self.savedVars.interface.currentPreset end,
+            setFunc = function(value)
+                if value == "tarantinoril" then
+                    self:ShowLetterbox()
+                    self:ApplyTarantinoriPreset()
+                elseif value == "redemption" then
+                    if self.savedVars.letterbox.letterboxVisible then
+                        self:HideLetterbox()
+                    end
+                    self:ApplyRedemptionPreset()
+                elseif value == "kingdom" then
+                    if self.savedVars.letterbox.letterboxVisible then
+                        self:HideLetterbox()
+                    end
+                    self:ApplyKingdomPreset()
+                elseif value == "vanilla" then
+                    self:ApplyVanillaPreset()
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Apply Addon to",
+        },
+        {
+            type = "description",
+            text =
+            "Enables seamless transitions from gameplay to NPC interactions. Turning OFF uses the default NPC camera angle.",
+        },
+        {
+            type = "checkbox",
+            name = "Citizens",
+            tooltip = [[Keep game camera when talking to regular characters]],
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonDialogue = value
+                self:InitializeInteractionSettings()
+
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Merchants & Bankers",
+            tooltip =
+            [[Keep game camera when using stores, stables, and banks]],
+            getFunc = function()
+                return self.savedVars.interaction.forceThirdPersonVendor and
+                    self.savedVars.interaction.forceThirdPersonBank
+            end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonVendor = value
+                self.savedVars.interaction.forceThirdPersonBank = value
+                self:InitializeInteractionSettings()
+
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Crafting Stations",
+            tooltip = "Keep game camera when using crafting stations",
+            getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
+            setFunc = function(value)
+                self.savedVars.interaction.forceThirdPersonCrafting = value
+                self.savedVars.interaction.forceThirdPersonDye = false
+                self:InitializeInteractionSettings()
+            end,
+            width = "full",
+        },
+
+        {
+            type = "description",
+            text = [[/ccui - Photo Mdde
+/ccbars - Black Bars]],
+            width = "full"
+        },
+        {
+            type = "description",
+            text = "Update Notes",
+            tooltip =
+            [[
+Version 6d - Added camera movement during dialogue interactions
+---
+Version 6c - Bug Fixes
+• Made using presets easier by adding buttons to apply/save/delete
+• Added a "weapons drawn" options for hiding compass, reticle, and skill bar
+• Fixed UI error when loading in while mounted
+]],
+
+            width = "full",
+        },
+
+        {
+            type = "header",
+            name = "Support"
+        },
+        {
+            type = "description",
+            text = "Author: YFNatey, Xbox NA",
+            width = "full"
+        },
+        {
+            type = "description",
+            text = "If you find this addon useful, consider supporting its development!",
+            width = "full"
+        },
+        {
+            type = "button",
+            name = "Paypal",
+            tooltip = "paypal.me/yfnatey",
+            func = function() RequestOpenUnsafeURL("https://paypal.me/yfnatey") end,
+            width = "half"
+        },
+    }
+
+    LAM:RegisterAddonPanel(panelName, panelData)
+    LAM:RegisterOptionControls(panelName, optionsData)
+end
+
+function CinematicCam:ShowUpdatedSettingsMenu()
+    local LAM = LibAddonMenu2
+
+    if not LAM then
+        return
+    end
+    local choices, choicesValues = self:GetFontChoices()
+
+    local panelName = "CinematicCamOptions2"
+
+    local panelData = {
+        type = "panel",
+        name = "Cinematic Dialogue",
+        displayName = "Cinemtaic Dialogue",
+        author = "YFNatey",
+        version = "1.0",
+        registerForRefresh = true,
+        registerForDefaults = true,
+    }
+
+    local optionsData = {
+        {
+            type = "description",
+            text = "|c00FF00●|rUpdate Notes",
+            tooltip =
+            [[
+Version 6l - Added Emote controls
+- Added Camera Zoom controls
+- Fixed bugs when viewing furniture
+---
+Version 6k - Added camera movement during dialogue interactions
+• Use right stick to move camera
+• Use left stick to move your character
+
+]],
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Custom Presets",
+            tooltip = function()
+                local slot = self.selectedPresetSlot or 1
+                return self:GetPresetTooltip(slot)
+            end,
+            choices = {
+                self:GetSlotDisplayName(1),
+                self:GetSlotDisplayName(2),
+                self:GetSlotDisplayName(3)
+            },
+            choicesValues = { 1, 2, 3 },
+            choicesTooltips = {
+                function() return self:GetPresetTooltip(1) end,
+                function() return self:GetPresetTooltip(2) end,
+                function() return self:GetPresetTooltip(3) end
+            },
+            getFunc = function()
+                return self.selectedPresetSlot
+            end,
+            setFunc = function(value)
+                self.selectedPresetSlot = value
+
+                zo_callLater(function()
+                    local tooltip = LibAddonMenu2 and LibAddonMenu2.tooltip
+                    if tooltip and not tooltip:IsHidden() then
+                        tooltip:ClearLines()
+
+                        tooltip:AddLine(self:GetPresetTooltip(value), "", ZO_TOOLTIP_DEFAULT_COLOR:UnpackRGB())
+                    end
+                end, 10)
+            end,
+            width = "full",
+        },
+        {
+
+        },
+        {
+            type = "button",
+            name = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotName = self:GetSlotDisplayName(slot)
+
+
+                return "[Apply " .. slotName .. " Preset]"
+            end,
+            tooltip = "Button to apply the selected preset settings",
+            func = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotName = self:GetSlotDisplayName(slot)
+                self:LoadFromPresetSlot(slot)
+                CinematicCam:ShowPresetNotificationUI(slotName)
+            end,
+            width = "half",
+            disabled = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotKey = "slot" .. slot
+                local presetSlot = self.savedVars.customPresets and self.savedVars.customPresets[slotKey]
+                return not (presetSlot and presetSlot.settings)
+            end,
+        },
+        {
+            type = "button",
+            name = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotName = self:GetSlotDisplayName(slot)
+
+
+                return "[Save Settings to " .. slotName .. "]"
+            end,
+            tooltip = "Button to save all settings to the current preset",
+            func = function()
+                local slot = self.selectedPresetSlot or 1
+                self:SaveToPresetSlot(slot)
+            end,
+            width = "half",
+        },
+        {
+            type = "button",
+            name = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotName = self:GetSlotDisplayName(slot)
+
+
+                return "[Delete Saved Settings for " .. slotName .. "]"
+            end,
+            tooltip = "Button to clear all settings from the selected preset",
+            func = function()
+                local slot = self.selectedPresetSlot or 1
+                self:ClearPresetSlot(slot)
+                local slotName = self:GetSlotDisplayName(slot)
+
+                local notification = _G["CinematicCam_UpdateNotification"]
+                local notificationText = _G["CinematicCam_UpdateNotificationText"]
+                if not notification then
+                    return
+                end
+
+                notification:SetHidden(false)
+                notification:SetAlpha(0)
+                notificationText:SetText("Cinematic Dialogue: Deleted " .. slotName)
+
+                -- Start fade in animation
+                self:AnimateUpdateNotification(notification, true)
+
+                -- Auto-hide wafter 5 seconds
+                zo_callLater(function()
+                    self:HideUpdateNotification()
+                end, 4000)
+            end,
+            width = "half",
+            disabled = function()
+                local slot = self.selectedPresetSlot or 1
+                local slotKey = "slot" .. slot
+                local presetSlot = self.savedVars.customPresets and self.savedVars.customPresets[slotKey]
+                return not (presetSlot and presetSlot.settings)
+            end,
+        },
+        {
+            type = "checkbox",
+            name = "Auto Presets",
+            tooltip = "Automatically apply the correct preset in homes, overland, or dungeon zones",
+            getFunc = function() return self.savedVars.autoSwapPresets end,
+            setFunc = function(value)
+                self.savedVars.autoSwapPresets = value
+            end,
+            width = "full",
+        },
+
+        {
+            type = "header",
+            name = "General Settings",
+        },
+        {
+            type = "checkbox",
+            name = "Subtitles",
+            tooltip = "Show NPC subtitles during dialogue",
+            getFunc = function() return not self.savedVars.interaction.subtitles.isHidden end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.isHidden = not value
+                self:UpdateChunkedTextVisibility()
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Subtitle Style",
+            tooltip =
+            "Default: Original style\n Cinematic: Centered captions with additional customization\n",
+            choices = { "Default", "Cinematic" },
+            choicesValues = { "default", "cinematic" },
+            getFunc = function() return self.savedVars.interaction.layoutPreset end,
+            setFunc = function(value)
+                self.savedVars.interaction.layoutPreset = value
+                currentRepositionPreset = value
+
+                -- Set NPC name location based on style
+                if value == "cinematic" then
+                    self.savedVars.npcNamePreset = "prepended"
+                    self.savedVars.interaction.ui.hidePanelsESO = true
+                    if self.savedVars.interaction.ui.hidePanelsESO then
+                        CinematicCam:HideDialoguePanels()
+                    end
+                    self.savedVars.interaction.subtitles.useChunkedDialogue = true
+                    self.presetPending = false
+                    self.vanillaPending = false
+                elseif value == "default" then
+                    self.savedVars.npcNamePreset = "default"
+                    self.savedVars.interaction.ui.hidePanelsESO = false
+                    CinematicCam:ShowDialoguePanels()
+                    self.presetPending = true
+                    self.vanillaPending = true
+                end
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    -- Apply NPC name preset first
+                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
+
+                    zo_callLater(function()
+                        self:ApplyDialogueRepositioning()
+                    end, 50)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = "Hide Choices until Dialogue finishes",
+            tooltip = "Hides your response options until the NPC has finished speaking",
+            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
+            end,
+            width = "full",
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+        },
+        {
+            type = "checkbox",
+            name = "Free Cam During Dialogue",
+            description = "Move the camera with the Right Stick, Move your character with the Left Stick",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue = value
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+
+        },
+        {
+            type = "checkbox",
+            name = "|c00FF00●|rEmotes During Dialogue",
+            description =
+            "Adds on screen controls emotes. Move the camera with the Right Stick, Move your character with the Left Stick",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowImmersionControls
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowImmersionControls = value
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+
         },
         {
         },
@@ -504,32 +1357,11 @@ function CinematicCam:CreateSettingsMenu()
             type = "header",
             name = "Cinematic Settings",
         },
-
-
-
-        --[[{
-            type = "dropdown",
-            name = "Sepia Style",
-            tooltip = "Choose between a vignette edge effect or solid color overlay",
-            choices = { "Vignette", "Solid Sepia" },
-            choicesValues = { true, false },
-            getFunc = function() return self.savedVars.interface.sepiaFilter.useTextured end,
-            setFunc = function(value)
-                self.savedVars.interface.sepiaFilter.useTextured = value
-                if self.savedVars.interface.sepiaFilter.enabled then
-                    self:UpdateSepiaFilter()
-                end
-            end,
-            disabled = function() return not self.savedVars.interface.sepiaFilter.enabled end,
-            width = "full",
-        --},]]
-
-        --]]
         {
             type = "checkbox",
             name = "Enable UI settings",
             tooltip =
-            "Turn ON to use this addons custom hiding behavior.\n - Hide compass, group tracker and more.\nTurn OFF to use ESOs default hiding behavior.",
+            "Turn ON to use this addons custom hiding behavior.\n - Hide compass, group tracker and more.\nTurn OFF to use default hiding behavior.",
             getFunc = function()
                 return CinematicCam.savedVars.interface.usingModTweaks
             end,
@@ -687,12 +1519,12 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Apply Cinematic Camera to",
+            name = "Apply Addon to",
         },
         {
             type = "description",
             text =
-            "Enables custom camera controls, and seamless transitions from gameplay to NPC interactions. Turning OFF uses the default NPC camera angle.",
+            "Enables seamless transitions from gameplay to NPC interactions. Turning OFF uses the default NPC camera angle.",
         },
         {
             type = "checkbox",
@@ -739,18 +1571,18 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Emote Wheel Configuration",
+            name = "|c00FF00●|rEmote Pad",
         },
         {
             type = "description",
             text =
-            "Assign emote packs to each direction of the emote wheel. A random emote from the selected pack will be performed when you hold Left Trigger and move the Right Stick.",
+            "Assign emote packs to the emote pad. Plays a random emote when you hold Left Trigger and move the Right Stick.",
         },
         {
             type = "dropdown",
-            name = "Slot 1 (Top - Right Stick Up)",
+            name = "Slot (Up)",
             tooltip = [[Available Emote Packs:
-- Respectful
+- Attention
 - Friendly
 - Greeting
 - Hostile
@@ -774,14 +1606,14 @@ function CinematicCam:CreateSettingsMenu()
 - Playful
 - Get Attention ]],
             choices = {
-                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Attention", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
                 "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
                 "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
                 "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
                 "Disagreement", "Playful", "Get Attention", "Miscellaneous"
             },
             choicesValues = {
-                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "Attention", "friendly", "greeting", "flirty", "hostile", "frustrated",
                 "sad", "scared", "confused", "celebratory", "disgusted", "eating",
                 "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
                 "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
@@ -795,9 +1627,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Slot 2 (Right - Right Stick Right)",
+            name = "Slot 2 (Right)",
             tooltip = [[Available Emote Packs:
-- Respectful
+- Attention
 - Friendly
 - Greeting
 - Hostile
@@ -821,14 +1653,14 @@ function CinematicCam:CreateSettingsMenu()
 - Playful
 - Get Attention ]],
             choices = {
-                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Attention", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
                 "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
                 "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
                 "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
                 "Disagreement", "Playful", "Get Attention", "Miscellaneous"
             },
             choicesValues = {
-                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "Attention", "friendly", "greeting", "flirty", "hostile", "frustrated",
                 "sad", "scared", "confused", "celebratory", "disgusted", "eating",
                 "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
                 "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
@@ -842,9 +1674,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Slot 3 (Bottom - Right Stick Down)",
+            name = "Slot 3 (Down)",
             tooltip = [[Available Emote Packs:
-- Respectful
+- Attention
 - Friendly
 - Greeting
 - Hostile
@@ -868,14 +1700,14 @@ function CinematicCam:CreateSettingsMenu()
 - Playful
 - Get Attention ]],
             choices = {
-                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Attention", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
                 "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
                 "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
                 "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
                 "Disagreement", "Playful", "Get Attention", "Miscellaneous"
             },
             choicesValues = {
-                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "Attention", "friendly", "greeting", "flirty", "hostile", "frustrated",
                 "sad", "scared", "confused", "celebratory", "disgusted", "eating",
                 "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
                 "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
@@ -889,9 +1721,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Slot 4 (Left - Right Stick Left)",
+            name = "Slot 4 (Left)",
             tooltip = [[Available Emote Packs:
-- Respectful
+- Attention
 - Friendly
 - Greeting
 - Hostile
@@ -915,14 +1747,14 @@ function CinematicCam:CreateSettingsMenu()
 - Playful
 - Get Attention ]],
             choices = {
-                "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
+                "Attention", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
                 "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
                 "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
                 "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
                 "Disagreement", "Playful", "Get Attention", "Miscellaneous"
             },
             choicesValues = {
-                "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
+                "Attention", "friendly", "greeting", "flirty", "hostile", "frustrated",
                 "sad", "scared", "confused", "celebratory", "disgusted", "eating",
                 "entertainment", "idle", "sitting", "pointing", "physical", "exercise",
                 "working", "tired", "agreement", "disagreement", "playful", "attention", "misc"
@@ -931,679 +1763,7 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 self.savedVars.emoteWheel.slot4 = value
             end,
-            default = "respectful",
-            width = "full",
-        },
-        {
-            type = "description",
-            text = [[/ccui - Photo Mdde
-/ccbars - Black Bars]],
-            width = "full"
-        },
-        {
-            type = "description",
-            text = "Update Notes",
-            tooltip =
-            [[
-Version 6d - Added camera movement during dialogue interactions
----
-Version 6c - Bug Fixes
-• Made using presets easier by adding buttons to apply/save/delete
-• Added a "weapons drawn" options for hiding compass, reticle, and skill bar
-• Fixed UI error when loading in while mounted
-]],
-
-            width = "full",
-        },
-
-        {
-            type = "header",
-            name = "Support"
-        },
-        {
-            type = "description",
-            text = "Author: YFNatey, Xbox NA",
-            width = "full"
-        },
-        {
-            type = "description",
-            text = "If you find this addon useful, consider supporting its development!",
-            width = "full"
-        },
-        {
-            type = "button",
-            name = "Paypal",
-            tooltip = "paypal.me/yfnatey",
-            func = function() RequestOpenUnsafeURL("https://paypal.me/yfnatey") end,
-            width = "half"
-        },
-    }
-
-    LAM:RegisterAddonPanel(panelName, panelData)
-    LAM:RegisterOptionControls(panelName, optionsData)
-end
-
-function CinematicCam:ShowUpdatedSettingsMenu()
-    local LAM = LibAddonMenu2
-
-    if not LAM then
-        return
-    end
-    local choices, choicesValues = self:GetFontChoices()
-
-    local panelName = "CinematicCamOptions2"
-
-    local panelData = {
-        type = "panel",
-        name = "Cinematic Dialogue",
-        displayName = "Cinemtaic Dialogue",
-        author = "YFNatey",
-        version = "1.0",
-        registerForRefresh = true,
-        registerForDefaults = true,
-    }
-
-    local optionsData = {
-        {
-            type = "description",
-            text = "|c00FF00●|rUpdate Notes",
-            tooltip =
-            [[
-Version 6d - Added camera movement during dialogue interactions
-• Use right stick to move camera
-• Use left stick to move your character
----
-Version 6c - Bug Fixes
-• Made using presets easier by adding buttons to apply/save/delete
-• Added a "weapons drawn" options for hiding compass, reticle, and skill bar
-• Fixed UI error when loading in while mounted
-]],
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = "Custom Presets",
-            tooltip = function()
-                local slot = self.selectedPresetSlot or 1
-                return self:GetPresetTooltip(slot)
-            end,
-            choices = {
-                self:GetSlotDisplayName(1),
-                self:GetSlotDisplayName(2),
-                self:GetSlotDisplayName(3)
-            },
-            choicesValues = { 1, 2, 3 },
-            choicesTooltips = {
-                function() return self:GetPresetTooltip(1) end,
-                function() return self:GetPresetTooltip(2) end,
-                function() return self:GetPresetTooltip(3) end
-            },
-            getFunc = function()
-                return self.selectedPresetSlot
-            end,
-            setFunc = function(value)
-                self.selectedPresetSlot = value
-
-                zo_callLater(function()
-                    local tooltip = LibAddonMenu2 and LibAddonMenu2.tooltip
-                    if tooltip and not tooltip:IsHidden() then
-                        tooltip:ClearLines()
-
-                        tooltip:AddLine(self:GetPresetTooltip(value), "", ZO_TOOLTIP_DEFAULT_COLOR:UnpackRGB())
-                    end
-                end, 10)
-            end,
-            width = "full",
-        },
-        {
-
-        },
-        {
-            type = "button",
-            name = function()
-                local slot = self.selectedPresetSlot or 1
-                local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Apply " .. slotName .. " Preset]"
-            end,
-            tooltip = "Button to apply the selected preset settings",
-            func = function()
-                local slot = self.selectedPresetSlot or 1
-                self:LoadFromPresetSlot(slot)
-            end,
-            width = "half",
-            disabled = function()
-                local slot = self.selectedPresetSlot or 1
-                local slotKey = "slot" .. slot
-                local presetSlot = self.savedVars.customPresets and self.savedVars.customPresets[slotKey]
-                return not (presetSlot and presetSlot.settings)
-            end,
-        },
-        {
-            type = "button",
-            name = function()
-                local slot = self.selectedPresetSlot or 1
-                local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Save Settings to " .. slotName .. "]"
-            end,
-            tooltip = "Button to save all settings to the current preset",
-            func = function()
-                local slot = self.selectedPresetSlot or 1
-                self:SaveToPresetSlot(slot)
-            end,
-            width = "half",
-        },
-        {
-            type = "button",
-            name = function()
-                local slot = self.selectedPresetSlot or 1
-                local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Delete Saved Settings for " .. slotName .. "]"
-            end,
-            tooltip = "Button to clear all settings from the selected preset",
-            func = function()
-                local slot = self.selectedPresetSlot or 1
-                self:ClearPresetSlot(slot)
-            end,
-            width = "half",
-            disabled = function()
-                local slot = self.selectedPresetSlot or 1
-                local slotKey = "slot" .. slot
-                local presetSlot = self.savedVars.customPresets and self.savedVars.customPresets[slotKey]
-                return not (presetSlot and presetSlot.settings)
-            end,
-        },
-        {
-            type = "checkbox",
-            name = "Auto Presets",
-            tooltip = "Automatically apply the correct preset in homes, overland, or dungeon zones",
-            getFunc = function() return self.savedVars.autoSwapPresets end,
-            setFunc = function(value)
-                self.savedVars.autoSwapPresets = value
-            end,
-            width = "full",
-        },
-
-        {
-            type = "header",
-            name = "General Settings",
-        },
-        {
-            type = "checkbox",
-            name = "Subtitles",
-            getFunc = function() return not self.savedVars.interaction.subtitles.isHidden end,
-            setFunc = function(value)
-                self.savedVars.interaction.subtitles.isHidden = not value
-                self:UpdateChunkedTextVisibility()
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = "Subtitle Style",
-            tooltip =
-            "Default: Original style\n Cinematic: Centered captions with additional customization\n",
-            choices = { "Default", "Cinematic" },
-            choicesValues = { "default", "cinematic" },
-            getFunc = function() return self.savedVars.interaction.layoutPreset end,
-            setFunc = function(value)
-                self.savedVars.interaction.layoutPreset = value
-                currentRepositionPreset = value
-
-                -- Set NPC name location based on style
-                if value == "cinematic" then
-                    self.savedVars.npcNamePreset = "prepended"
-                    self.savedVars.interaction.ui.hidePanelsESO = true
-                    if self.savedVars.interaction.ui.hidePanelsESO then
-                        CinematicCam:HideDialoguePanels()
-                    end
-                    self.savedVars.interaction.subtitles.useChunkedDialogue = true
-                    self.presetPending = false
-                    self.vanillaPending = false
-                elseif value == "default" then
-                    self.savedVars.npcNamePreset = "default"
-                    self.savedVars.interaction.ui.hidePanelsESO = false
-                    CinematicCam:ShowDialoguePanels()
-                    self.presetPending = true
-                    self.vanillaPending = true
-                    self:UpdateDefaultLayoutScrollBackground()
-                end
-
-                -- Apply immediately if in dialogue
-                local interactionType = GetInteractionType()
-                if interactionType ~= INTERACTION_NONE then
-                    -- Apply NPC name preset first
-                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
-
-                    zo_callLater(function()
-                        self:ApplyDialogueRepositioning()
-                    end, 50)
-                end
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Hide Choices until Dialogue finishes",
-            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
-            setFunc = function(value)
-                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
-            end,
-            width = "full",
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-        },
-        {
-            type = "checkbox",
-            name = "|c00FF00●|rAllow Camera Movement During Dialogue",
-            description = "Move the camera with the Right Stick, Move your character with the Left Stick",
-            getFunc = function()
-                return CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue
-            end,
-            setFunc = function(value)
-                CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue = value
-            end,
-        },
-        {
-        },
-        {
-            type = "header",
-            name = "Subtitle Appearance",
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = "Font",
-            choices = choices,
-            choicesValues = choicesValues,
-            getFunc = function() return self.savedVars.interface.selectedFont end,
-            setFunc = function(value)
-                self.savedVars.interface.selectedFont = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = " Text Size",
-            min = 10,
-            max = 64,
-            step = 1,
-            getFunc = function() return self.savedVars.interface.customFontSize end,
-            setFunc = function(value)
-                self.savedVars.interface.customFontSize = value
-                self:OnFontChanged()
-            end,
-            width = "full",
-        },
-        {
-            type = "colorpicker",
-            name = "Text Color",
-            getFunc = function()
-                local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                self.savedVars.interaction.subtitles.textColor = { r = r, g = g, b = b, a = a }
-
-                -- Apply immediately if in dialogue
-                local control = CinematicCam.chunkedDialogueData.customControl
-                if control then
-                    control:SetColor(r, g, b, a)
-                end
-            end,
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = "Default Layout Background",
-            tooltip = "Choose background style for Default layout mode",
-            choices = { "ESO Default", "Light Scroll", "None" },
-            choicesValues = { "esoDefault", "light", "none" },
-            getFunc = function() return self.savedVars.interface.defaultBackgroundMode or "esoDefault" end,
-            setFunc = function(value)
-                self.savedVars.interface.defaultBackgroundMode = value
-                self:UpdateDefaultLayoutScrollBackground()
-            end,
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "default"
-            end,
-            width = "full",
-        },
-
-
-        {
-            type = "slider",
-            name = "Position",
-            min = 0,
-            max = 100,
-            step = 1,
-            getFunc = function()
-                local normalizedPos = self.savedVars.interaction.subtitles.posY or 0.7
-                return math.floor(normalizedPos * 100)
-            end,
-            setFunc = function(value)
-                local normalizedY = value / 100
-                self.savedVars.interaction.subtitles.posY = normalizedY
-                CinematicCam:OnSubtitlePositionChanged(nil, normalizedY)
-                -- Show preview when slider changes
-                CinematicCam:ShowSubtitlePreview(nil, value)
-            end,
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-            width = "full",
-        },
-
-        {
-            type = "header",
-            name = "Name Appearance",
-            width = "full",
-        },
-
-        {
-            type = "dropdown",
-            name = "Select Companion",
-            choices = {
-                "Bastian Hallix",
-                "Mirri Elendis",
-                "Ember",
-                "Isobel Veloise",
-                "Azandar al-Cybiades",
-                "Sharp-as-Night",
-                "Tanlorin",
-                "Zerith-var"
-            },
-            choicesValues = {
-                "bastian hallix",
-                "mirri elendis",
-                "ember",
-                "isobel veloise",
-                "azandar",
-                "sharp-as-night",
-                "tanlorin",
-                "zerith-var"
-            },
-            getFunc = function()
-                return self.savedVars.selectedCompanion or "ember"
-            end,
-            setFunc = function(value)
-                self.savedVars.selectedCompanion = value
-                CALLBACK_MANAGER:FireCallbacks("LAM-RefreshPanel", controlPanel)
-            end,
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-            width = "half",
-        },
-        {
-            type = "colorpicker",
-            name = function()
-                local companionName = self.savedVars.selectedCompanion or "ember"
-                -- Capitalize first letter of each word
-                local displayName = companionName:gsub("(%a)([%w_']*)", function(first, rest)
-                    return first:upper() .. rest
-                end)
-                return displayName .. " Color"
-            end,
-            getFunc = function()
-                local companionName = self.savedVars.selectedCompanion or "ember"
-                if not self.savedVars.companionColors then
-                    self.savedVars.companionColors = {}
-                end
-                if not self.savedVars.companionColors[companionName] then
-                    -- Default to white for all companions
-                    self.savedVars.companionColors[companionName] = { r = 1.0, g = 1.0, b = 1.0, a = 1.0 }
-                end
-                local color = self.savedVars.companionColors[companionName]
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                local companionName = self.savedVars.selectedCompanion or "ember"
-                if not self.savedVars.companionColors then
-                    self.savedVars.companionColors = {}
-                end
-                self.savedVars.companionColors[companionName] = { r = r, g = g, b = b, a = a }
-
-                -- Apply immediately if in dialogue with this companion
-                if self.savedVars.npcNamePreset == "prepended" then
-                    local interactionType = GetInteractionType()
-                    if interactionType ~= INTERACTION_NONE then
-                        self:UpdateNPCNameColor()
-                    end
-                end
-            end,
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-            width = "half",
-        },
-        {
-            type = "colorpicker",
-            name = "Default NPC Color",
-            getFunc = function()
-                local color = self.savedVars.npcNameColor
-                return color.r, color.g, color.b, color.a
-            end,
-            setFunc = function(r, g, b, a)
-                self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
-                self:UpdateNPCNameColor()
-                -- If we're in prepended mode and dialogue is active, refresh the text
-                if self.savedVars.npcNamePreset == "prepended" then
-                    local interactionType = GetInteractionType()
-                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
-                        -- Re-process the dialogue with the new color
-                        self:InterceptDialogueForChunking()
-                    end
-                end
-            end,
-            disabled = function()
-                return self.savedVars.npcNamePreset == "default"
-            end,
-            width = "full",
-
-        },
-
-
-        --- FONT SETTINGS
-
-        {
-            type = "header",
-            name = "Cinematic Settings",
-        },
-        {
-            type = "dropdown",
-            name = "Show Compass",
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
-            choicesValues = { "always", "never", "combat", "weapons" },
-            getFunc = function() return self.savedVars.interface.hideCompass end,
-            setFunc = function(value)
-                self.savedVars.interface.hideCompass = value
-                CinematicCam:UpdateCompassVisibility()
-                self.pendingUIRefresh = true
-            end,
-        },
-        {
-            type = "dropdown",
-            name = "Show Skill Bar",
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
-            choicesValues = { "always", "never", "combat", "weapons" },
-            getFunc = function() return self.savedVars.interface.hideActionBar end,
-            setFunc = function(value)
-                self.savedVars.interface.hideActionBar = value
-                CinematicCam:UpdateActionBarVisibility()
-                self.pendingUIRefresh = true
-            end,
-        },
-        {
-            type = "dropdown",
-            name = "Show Reticle",
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
-            choicesValues = { "always", "never", "combat", "weapons" },
-            getFunc = function() return self.savedVars.interface.hideReticle end,
-            setFunc = function(value)
-                self.savedVars.interface.hideReticle = value
-                CinematicCam:UpdateReticleVisibility()
-                self.pendingUIRefresh = true
-            end,
-        },
-        {
-
-            type = "divider"
-        },
-
-        {
-            type = "button",
-            name = "Toggle Black Bars",
-            tooltip = "Add movie-like black bars",
-            func = function()
-                self:ToggleLetterbox()
-            end,
-            width = "half",
-        },
-        {
-            type = "checkbox",
-            name = "Auto Black Bars During Dialogue",
-            getFunc = function() return self.savedVars.interaction.auto.autoLetterboxDialogue end,
-            setFunc = function(value)
-                self.savedVars.interaction.auto.autoLetterboxDialogue = value
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Auto Black Bars on Mount",
-
-            getFunc = function() return CinematicCam.savedVars.letterbox.autoLetterboxMount end,
-            setFunc = function(value) CinematicCam.savedVars.letterbox.autoLetterboxMount = value end,
-            width = "full",
-        },
-        {
-            type = "slider",
-            name = "Mount Black Bars Delay",
-            tooltip = "Delay showing black bars when mounting (in seconds)",
-            min = 0,
-            max = 60,
-            step = 20,
-            getFunc = function() return CinematicCam.savedVars.letterbox.mountLetterboxDelay end,
-            setFunc = function(value)
-                CinematicCam.savedVars.letterbox.mountLetterboxDelay = value
-            end,
-            disabled = function() return not CinematicCam.savedVars.letterbox.autoLetterboxMount end,
-            width = "full",
-        },
-
-        {
-            type = "slider",
-            name = "Black Bar Size",
-            min = 10,
-            max = 300,
-            step = 5,
-            getFunc = function() return self.savedVars.letterbox.size end,
-            setFunc = function(value)
-                self.savedVars.letterbox.size = value
-                if not CinematicCam_LetterboxTop:IsHidden() then
-                    CinematicCam_LetterboxTop:SetHeight(value)
-                    CinematicCam_LetterboxBottom:SetHeight(value)
-                end
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Vignette",
-
-            getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
-            setFunc = function(value)
-                self.savedVars.interface.sepiaFilter.enabled = value
-                self.savedVars.interface.sepiaFilter.useTextured = value
-                self:UpdateSepiaFilter()
-            end,
-            width = "full",
-        },
-        {
-
-            type = "dropdown",
-            name = "Quick Presets",
-            choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla" },
-            choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
-            getFunc = function() return self.savedVars.interface.currentPreset end,
-            setFunc = function(value)
-                if value == "tarantinoril" then
-                    self:ShowLetterbox()
-                    self:ApplyTarantinoriPreset()
-                elseif value == "redemption" then
-                    if self.savedVars.letterbox.letterboxVisible then
-                        self:HideLetterbox()
-                    end
-                    self:ApplyRedemptionPreset()
-                elseif value == "kingdom" then
-                    if self.savedVars.letterbox.letterboxVisible then
-                        self:HideLetterbox()
-                    end
-                    self:ApplyKingdomPreset()
-                elseif value == "vanilla" then
-                    self:ApplyVanillaPreset()
-                end
-            end,
-            width = "full",
-        },
-        {
-            type = "header",
-            name = "Apply to",
-        },
-
-        {
-            type = "checkbox",
-            name = "Citizens",
-            tooltip = [[Keep game camera when talking to regular characters]],
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonDialogue = value
-                self:InitializeInteractionSettings()
-
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Merchants & Bankers",
-            tooltip =
-            [[Keep game camera when using stores, stables, and banks]],
-            getFunc = function()
-                return self.savedVars.interaction.forceThirdPersonVendor and
-                    self.savedVars.interaction.forceThirdPersonBank
-            end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonVendor = value
-                self.savedVars.interaction.forceThirdPersonBank = value
-                self:InitializeInteractionSettings()
-
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Crafting Stations",
-            tooltip = "Keep game camera when using crafting stations",
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonCrafting = value
-                self.savedVars.interaction.forceThirdPersonDye = false
-                self:InitializeInteractionSettings()
-            end,
+            default = "Attention",
             width = "full",
         },
         {
@@ -1642,6 +1802,244 @@ Version 6c - Bug Fixes
 end
 
 ---=============================================================================
+
+
+function CinematicCam:CreateEmoteSettingsMenu()
+    local LAM = LibAddonMenu2
+
+    if not LAM then
+        return
+    end
+
+
+    local panelName = "CinematicCamEmoteOptions"
+
+    local panelData = {
+        type = "panel",
+        name = "Cinematic Emotes",
+        displayName = "Cinemtaic Emotes",
+        author = "YFNatey",
+        version = "1.0",
+        registerForRefresh = true,
+        registerForDefaults = true,
+    }
+
+    local optionsData = {
+        {
+            type = "header",
+            name = "Auto Emotes",
+        },
+        {
+            type = "checkbox",
+            name = "Auto Emotes",
+            tooltip = "Automatically play emotes from your last-used emote wheel slot during dialogue progression",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowImmersionControls
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowImmersionControls = value
+            end,
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+        },
+        {
+            type = "dropdown",
+            name = "Auto Emotes Frequency",
+            tooltip =
+            "How often auto-emotes play during dialogue:\nFrequent: 75% chance\nInfrequent: 40% chance\nMinimal: 15% chance",
+            choices = { "Frequent", "Infrequent", "Minimal" },
+            choicesValues = { "frequent", "infrequent", "minimal" },
+            getFunc = function()
+                return self.savedVars.interaction.autoEmoteFrequency or "infrequent"
+            end,
+            setFunc = function(value)
+                self.savedVars.interaction.autoEmoteFrequency = value
+            end,
+            width = "full",
+            disabled = function()
+                return not self.savedVars.interaction.allowImmersionControls
+            end,
+        },
+
+        -- Greetings Hnadler friendly, aggressive, threatening, the emote that p-lays when  you enter a dialoge
+        -- Player Responses Handler - friendly, chatty, aggrsssive - the emote that has a chance to play when you choose a dialogue options
+        --
+        {
+            type = "header",
+            name = "Emote Pad",
+        },
+        {
+            type = "description",
+            text =
+            "Assign emote packs to the emote pad. The Emote Pad is used in interactions with NPC",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 1 (Up)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Confused
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Physical Actions
+- Agreement
+- Disagreement
+- Playful]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "hostile", "frustrated",
+                "sad", "scared", "confused", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical",
+                "working", "tired", "agreement", "disagreement", "playful"
+            },
+            getFunc = function() return "respectful" end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot1 = value
+            end,
+            default = "entertainment",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 2 (Right)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Confused
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Physical Actions
+- Agreement
+- Disagreement
+- Playful]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "hostile", "frustrated",
+                "sad", "scared", "confused", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical",
+                "working", "tired", "agreement", "disagreement", "playful"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot2 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot2 = value
+            end,
+            default = "friendly",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 3 (Down)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Confused
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Physical Actions
+- Agreement
+- Disagreement
+- Playful]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "hostile", "frustrated",
+                "sad", "scared", "confused", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical",
+                "working", "tired", "agreement", "disagreement", "playful"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot3 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot3 = value
+            end,
+            default = "greeting",
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = "Slot 4 (Left)",
+            tooltip = [[Available Emote Packs:
+- Respectful
+- Friendly
+- Greeting
+- Hostile
+- Frustrated
+- Sad
+- Confused
+- Disgusted
+- Eating/Drinking
+- Entertainment/Dance
+- Idle Poses
+- Physical Actions
+- Agreement
+- Disagreement
+- Playful]],
+            choices = {
+                "Respectful", "Friendly", "Greeting", "Hostile", "Frustrated",
+                "Sad", "Scared", "Confused", "Disgusted", "Eating/Drinking",
+                "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
+                "Physical Actions", "Working/Tools", "Tired/Sick", "Agreement",
+                "Disagreement", "Playful"
+            },
+            choicesValues = {
+                "respectful", "friendly", "greeting", "hostile", "frustrated",
+                "sad", "scared", "confused", "disgusted", "eating",
+                "entertainment", "idle", "sitting", "pointing", "physical",
+                "working", "tired", "agreement", "disagreement", "playful"
+            },
+            getFunc = function() return self.savedVars.emoteWheel.slot4 end,
+            setFunc = function(value)
+                self.savedVars.emoteWheel.slot4 = value
+            end,
+            default = "attention",
+            width = "full",
+        },
+        {
+            type = "header",
+            name = "Emote Manager",
+
+        },
+    }
+    LAM:RegisterAddonPanel(panelName, panelData)
+    LAM:RegisterOptionControls(panelName, optionsData)
+end
+
 function CinematicCam:ConvertFromScreenCoordinates(pixelY)
     -- Convert absolute pixels back to normalized range
     local screenHeight = GuiRoot:GetHeight()

@@ -184,7 +184,7 @@
                 textureFile="/esoui/art/miscellaneous/toast_bg.dds"
                 layer="DL_OVERLAY" tier="DT_HIGH" level="9">
             <Anchor point="BOTTOMLEFT" relativeTo="GuiRoot" relativePoint="BOTTOMLEFT" 
-                    offsetX="20" offsetY="-150" />
+                    offsetX="20" offsetY="-170" />
             <Dimensions x="340" y="80" />
         </Texture>
     
@@ -231,7 +231,7 @@
                     <Controls>
                         <!-- Left Stick - Slide (Left/Right) - Bottom Layer -->
                         <Texture name="CinematicCam_XboxLS_Slide" mouseEnabled="false"
-                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_ls_slide.dds"
+                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_slide.dds"
                                 layer="DL_OVERLAY" tier="DT_HIGH" level="10">
                             <Anchor point="CENTER" relativeTo="CinematicCam_EmoteWheel_LeftStickContainer" 
                                     relativePoint="CENTER" offsetX="0" offsetY="0" />
@@ -240,7 +240,7 @@
                         
                         <!-- Left Stick - Scroll (Up/Down) - Top Layer -->
                         <Texture name="CinematicCam_XboxLS_Scroll" mouseEnabled="false"
-                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_ls_scroll.dds"
+                                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_scroll.dds"
                                 layer="DL_OVERLAY" tier="DT_HIGH" level="11">
                             <Anchor point="CENTER" relativeTo="CinematicCam_EmoteWheel_LeftStickContainer" 
                                     relativePoint="CENTER" offsetX="0" offsetY="0" />
@@ -263,7 +263,7 @@
         <!-- Label Text -->
         <Label name="CinematicCam_TriggerText" mouseEnabled="false"
             font="EsoUI/Common/Fonts/FTN57.slug|28|soft-shadow-thick" color="FFFFFF" 
-            text="Emote Wheel"
+            text="Emotes"
             layer="DL_OVERLAY" tier="DT_HIGH" level="10" wrapMode="TEXT_WRAP_MODE_ELLIPSIS"
             verticalAlignment="CENTER" horizontalAlignment="LEFT">
             <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_IconContainer" 
@@ -508,7 +508,7 @@
         </Texture>
         <Label name="CinematicCam_CameraPad_RightText" mouseEnabled="false"
             font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="808080" 
-            text="--"
+            
             layer="DL_OVERLAY" tier="DT_HIGH" level="12"
             verticalAlignment="CENTER" horizontalAlignment="CENTER">
             <Anchor point="CENTER" relativeTo="CinematicCam_CameraPad_Right" 
@@ -544,7 +544,7 @@
         </Texture>
         <Label name="CinematicCam_CameraPad_LeftText" mouseEnabled="false"
             font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="808080" 
-            text="--"
+           
             layer="DL_OVERLAY" tier="DT_HIGH" level="12"
             verticalAlignment="CENTER" horizontalAlignment="CENTER">
             <Anchor point="CENTER" relativeTo="CinematicCam_CameraPad_Left" 

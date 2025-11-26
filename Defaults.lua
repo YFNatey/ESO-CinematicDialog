@@ -43,7 +43,9 @@ CinematicCam.defaults = {
         hidePlayerOptions = false,
         forceThirdPersonInteractiveNotes = false,
         allowCameraMovementDuringDialogue = true,
+        allowImmersionControls = true,
         layoutPreset = "cinematic",
+        autoEmoteFrequency = "infrequent",
         ui = {
             hidePanelsESO = true,
         },
@@ -94,10 +96,11 @@ CinematicCam.defaults = {
         },
     },
     emoteWheel = {
-        slot1 = "entertainment", -- Top
-        slot2 = "friendly",      -- Right
-        slot3 = "greeting",      -- Bottom
-        slot4 = "respectful",    -- Left
+        slot1 = "idle",     -- Top
+        slot2 = "friendly", -- Right
+        slot3 = "greeting", -- Bottom
+        slot4 = "hostile",  -- Left
+        lastUsedSlot = 1    -- 1,2,3,4
     },
     hideUiElements = {},
     chunkedDialog = {
