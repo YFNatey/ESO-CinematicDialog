@@ -506,9 +506,9 @@
                     relativePoint="RIGHT" offsetX="20" offsetY="0" />
             <Dimensions x="120" y="80" />
         </Texture>
-        <Label name="CinematicCam_CameraPad_RightText" mouseEnabled="false"
-            font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="808080" 
-            
+       <Label name="CinematicCam_CameraPad_RightText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="FFFFFF" 
+            text="NPC Cam"
             layer="DL_OVERLAY" tier="DT_HIGH" level="12"
             verticalAlignment="CENTER" horizontalAlignment="CENTER">
             <Anchor point="CENTER" relativeTo="CinematicCam_CameraPad_Right" 
@@ -542,9 +542,9 @@
                     relativePoint="LEFT" offsetX="-20" offsetY="0" />
             <Dimensions x="120" y="80" />
         </Texture>
-        <Label name="CinematicCam_CameraPad_LeftText" mouseEnabled="false"
-            font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="808080" 
-           
+         <Label name="CinematicCam_CameraPad_LeftText" mouseEnabled="false"
+            font="EsoUI/Common/Fonts/FTN57.slug|24|soft-shadow-thick" color="FFFFFF" 
+            text="Player Cam"
             layer="DL_OVERLAY" tier="DT_HIGH" level="12"
             verticalAlignment="CENTER" horizontalAlignment="CENTER">
             <Anchor point="CENTER" relativeTo="CinematicCam_CameraPad_Left" 

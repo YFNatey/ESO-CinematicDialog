@@ -126,15 +126,15 @@ CinematicCam.categorizedEmotes = {
     friendly = {
         "/grats", "/thanks", "/thank", "/thankyou",
         "/beckon",
-        "/followme", "/congratulate", "/wave", "/welcome"
+        "/congratulate", "/wave", "/welcome"
     },
 
     greeting = {
-        "/hello", "/welcome", '/wave', "hail"
+        "/hello", "/welcome", '/wave', "/hail"
     },
 
     hostile = {
-        "/idle4", "/brushoff", "twiddle"
+        "/idle4", "/brushoff", "/twiddle"
     },
 
     frustrated = {
@@ -152,7 +152,7 @@ CinematicCam.categorizedEmotes = {
     },
 
     confused = {
-        "/confused", "/headscratch", "/shrug", "/tilt", "/huh"
+        "/armscrossed", "/twiddle", "/shrug", "/tilt", "/huh"
     },
 
 
@@ -174,7 +174,7 @@ CinematicCam.categorizedEmotes = {
     },
 
     idle = {
-        "/idle", "/idle2", "/idle3", "/idle5", "/armscrossed",
+        "/idle", "/idle2", "/idle3", "/armscrossed",
         "/handsonhips"
     },
 
@@ -183,9 +183,8 @@ CinematicCam.categorizedEmotes = {
     },
 
     pointing = {
-        "/point", "/pointb", "/pointd", "/pointl", "/pointr", "/pointu",
-        "/self", "/you", "/rally", "/search", "/stop"
-    },
+        "/poke",
+        "/you" },
 
     physical = {
         "/dustoff", "/headscratch", '/rubhands', "/stretch"
@@ -206,7 +205,7 @@ CinematicCam.categorizedEmotes = {
     },
 
     disagreement = {
-        "/no", "/disapprove", "/thumbsdown", "/shakefist", "twiddle"
+        "/no", "/disapprove", "/thumbsdown", "/shakefist", "/twiddle", "/stop"
     },
 
     playful = {
@@ -215,8 +214,12 @@ CinematicCam.categorizedEmotes = {
 
     --Hand gestures when player speaks
     chatty = {
-        "/plead", "/brushoff", "/beg", "/huh", '/rubhands', "/shrug", "/tilt", "/surprised", "/thanks"
+        "/plead", "/brushoff", "/beg", "/huh", '/rubhands', "/shrug", "/tilt", "/surprised", "/thanks", "/twiddle"
     },
 
-    none = {}
+    reward = { "/take", "/thankyou" },
+
+    vendor = { "/give" },
+
+    reading = { "/read", "/letter" }
 }

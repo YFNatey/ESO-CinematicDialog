@@ -199,13 +199,11 @@ function CinematicCam:CreateSettingsMenu()
                     end
                     self.savedVars.interaction.subtitles.useChunkedDialogue = true
                     self.presetPending = false
-                    self.vanillaPending = false
                 elseif value == "default" then
                     self.savedVars.npcNamePreset = "default"
                     self.savedVars.interaction.ui.hidePanelsESO = false
                     CinematicCam:ShowDialoguePanels()
                     self.presetPending = true
-                    self.vanillaPending = true
                 end
 
                 -- Apply immediately if in dialogue
@@ -493,14 +491,6 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(r, g, b, a)
                 self.savedVars.npcNameColor = { r = r, g = g, b = b, a = a }
                 self:UpdateNPCNameColor()
-                -- If we're in prepended mode and dialogue is active, refresh the text
-                if self.savedVars.npcNamePreset == "prepended" then
-                    local interactionType = GetInteractionType()
-                    if interactionType ~= INTERACTION_NONE and chunkedDialogueData.isActive then
-                        -- Re-process the dialogue with the new color
-                        self:InterceptDialogueForChunking()
-                    end
-                end
             end,
             disabled = function()
                 return self.savedVars.npcNamePreset == "default"
@@ -524,7 +514,12 @@ function CinematicCam:CreateSettingsMenu()
             getFunc = function()
                 return CinematicCam.savedVars.interface.usingModTweaks
             end,
-            setFunc = function(value) CinematicCam.savedVars.interface.usingModTweaks = value end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interface.usingModTweaks = value
+                if value == true then
+                    CinematicCam:UpdateUIVisibility()
+                end
+            end,
             width = "full",
         },
         {
@@ -678,43 +673,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Apply Addon to",
-        },
-        {
-            type = "description",
-            text =
-            "Seamless transitions from gameplay to NPC interactions. Turning OFF uses the default NPC camera angle.",
-        },
-        {
-            type = "checkbox",
-            name = "Citizens",
-            tooltip = [[Keep game camera when talking to regular characters]],
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonDialogue end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonDialogue = value
-                self:InitializeInteractionSettings()
-
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = "Merchants & Bankers",
-            tooltip =
-            [[Keep game camera when using stores, stables, and banks]],
-            getFunc = function()
-                return self.savedVars.interaction.forceThirdPersonVendor and
-                    self.savedVars.interaction.forceThirdPersonBank
-            end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonVendor = value
-                self.savedVars.interaction.forceThirdPersonBank = value
-                self:InitializeInteractionSettings()
-
-                self.presetPending = true
-            end,
-            width = "full",
+            name = "Use Game Camera",
         },
         {
             type = "checkbox",
@@ -740,17 +699,26 @@ function CinematicCam:CreateSettingsMenu()
             text = "Update Notes",
             tooltip =
             [[
-Version 6d - Added camera movement during dialogue interactions
----
-Version 6c - Bug Fixes
-• Made using presets easier by adding buttons to apply/save/delete
-• Added a "weapons drawn" options for hiding compass, reticle, and skill bar
-• Fixed UI error when loading in while mounted
+Version 6o - Added Features
+ - Added NPC Cam and Player Cam controls
+ - Added a new Settings menu: Cinematic Emotes
+ - Added Auto Emotes
 ]],
 
             width = "full",
         },
-
+        {
+            type = "divider"
+        },
+        {
+            type = "button",
+            name = "Reload UI",
+            tooltip = "If you encounter any issues, reloading UI usually fixes them",
+            func = function()
+                ReloadUI()
+            end,
+            width = "half",
+        },
         {
             type = "header",
             name = "Support"
@@ -1250,5 +1218,89 @@ function CinematicCam:MigrateSettings()
     -- Migrate hideActionBar from boolean to string
     if type(self.savedVars.interface.hideActionBar) == "boolean" then
         self.savedVars.interface.hideActionBar = self.savedVars.interface.hideActionBar and "never" or "always"
+    end
+
+    -- Prevent settings errors from removed emote packs
+    if not self.savedVars.emoteWheelVersion or self.savedVars.emoteWheelVersion < 1 then
+        self.savedVars.emoteWheel = {
+            slot1 = "friendly",
+            slot2 = "confused",
+            slot3 = "greeting",
+            slot4 = "idle"
+        }
+        self.savedVars.emoteWheelVersion = 2
+    end
+
+
+    if self.savedVars.interaction.forceThirdPersonVendor == true then
+        self.savedVars.interaction.forceThirdPersonVendor = false
+    end
+
+    if self.savedVars.interaction.forceThirdPersonBank == true then
+        self.savedVars.interaction.forceThirdPersonBank = false
+    end
+    self:InitializeInteractionSettings()
+end
+
+function CinematicCam:InitializeSepiaFilter()
+    -- Initialize saved variable for sepia filter
+    if self.savedVars.interface.sepiaFilter == nil then
+        self.savedVars.interface.sepiaFilter = {
+            enabled = false,
+            intensity = 0.35,  -- Alpha value
+            useTextured = true -- Use the textured version or solid color version
+        }
+    end
+
+    -- Apply the initial state
+    self:UpdateSepiaFilter()
+end
+
+function CinematicCam:ToggleSepiaFilter()
+    self.savedVars.interface.sepiaFilter.enabled = not self.savedVars.interface.sepiaFilter.enabled
+    self:UpdateSepiaFilter()
+end
+
+function CinematicCam:ShowSepiaFilter()
+    local settings = self.savedVars.interface.sepiaFilter
+
+    if settings.useTextured then
+        -- Use the vignette effect (textured blur on top and bottom)
+        CinematicCam_SepiaFilterTexturedContainer:SetHidden(false)
+        CinematicCam_SepiaFilterTexturedTop:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterTexturedBottom:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterContainer:SetHidden(true)
+    else
+        -- Use the solid color sepia version
+        CinematicCam_SepiaFilterContainer:SetHidden(false)
+        CinematicCam_SepiaFilter:SetAlpha(settings.intensity)
+        CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
+    end
+end
+
+function CinematicCam:HideSepiaFilter()
+    CinematicCam_SepiaFilterContainer:SetHidden(true)
+    CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
+end
+
+function CinematicCam:UpdateSepiaFilter()
+    if self.savedVars.interface.sepiaFilter.enabled then
+        self:ShowSepiaFilter()
+    else
+        self:HideSepiaFilter()
+    end
+end
+
+function CinematicCam:SetSepiaIntensity(intensity)
+    self.savedVars.interface.sepiaFilter.intensity = intensity
+
+    -- Update the alpha if filter is currently active
+    if self.savedVars.interface.sepiaFilter.enabled then
+        if self.savedVars.interface.sepiaFilter.useTextured then
+            CinematicCam_SepiaFilterTexturedTop:SetAlpha(intensity)
+            CinematicCam_SepiaFilterTexturedBottom:SetAlpha(intensity)
+        else
+            CinematicCam_SepiaFilter:SetAlpha(intensity)
+        end
     end
 end

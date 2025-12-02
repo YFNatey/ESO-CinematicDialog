@@ -371,6 +371,12 @@ function CinematicCam:UpdateActionBarVisibility()
     self:StopPollingWeapons()
 end
 
+function CinematicCam:UpdateUIVisibility()
+    CinematicCam:UpdateActionBarVisibility()
+    CinematicCam:UpdateCompassVisibility()
+    CinematicCam:UpdateReticleVisibility()
+end
+
 function CinematicCam:PollWeapons()
     local ReticleSetting = self.savedVars.interface.hideReticle
     local CompassSetting = self.savedVars.interface.hideCompass

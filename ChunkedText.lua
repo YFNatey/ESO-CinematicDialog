@@ -116,8 +116,21 @@ end
 -- MAIN DIALOGUE INTERCEPTION AND PROCESSING
 --=============================================================================
 
-function CinematicCam:InterceptDialogueForChunking()
+function CinematicCam:InterceptDialogueForChunking(dialogType)
+    local dialogTypeForEmote = dialogType
+    if self.savedVars.interaction.autoEmotes then
+        local emote = self:determineAutoEmote(dialogTypeForEmote)
+
+        if emote then
+            zo_callLater(function()
+                DoCommand(emote)
+            end, 300)
+        end
+    end
+
+
     local originalText, sourceElement = self:GetDialogueText()
+
 
     -- Check voice over status
     local voStatus = self:CheckVoiceOverStatus()
@@ -940,7 +953,7 @@ function CinematicCam:StartDialogueChangeMonitoring()
         local currentRawText, _ = self:GetDialogueText()
         if currentRawText and currentRawText ~= CinematicCam.chunkedDialogueData.rawDialogueText then
             if string.len(currentRawText) > 10 then
-                self:InterceptDialogueForChunking()
+                self:InterceptDialogueForChunking("ConversationUpdate")
             end
         end
 

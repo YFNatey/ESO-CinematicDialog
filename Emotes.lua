@@ -1,13 +1,143 @@
 local AUTO_EMOTE_CHANCES = {
-    frequent = 75,   -- 75% chance
-    infrequent = 40, -- 40% chance
-    minimal = 15     -- 15% chance
+    frequent = 85,   -- 85% chance
+    normal = 50,
+    infrequent = 30, -- 30% chance
+    minimal = 10     -- 15% chance
 }
+function CinematicCam:GetDialogueData()
+    local npcText = ""
+    local npcName = ""
+    local playerOptions = ""
+
+    -- Get NPC dialogue text
+    local dialogueText, _ = self:GetDialogueText()
+    if dialogueText and string.len(dialogueText) > 0 then
+        npcText = dialogueText
+    end
+
+    -- Get NPC name
+    local npcNameText, _ = self:GetNPCName()
+    if npcNameText and string.len(npcNameText) > 0 then
+        npcName = npcNameText
+    end
+
+    -- Get player options
+    local optionsTable = {}
+
+    -- Check both long and short option element names
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
+        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
+
+        -- Try long name first
+        local option = _G[longOptionName]
+        if not option then
+            -- Try short name
+            option = _G[shortOptionName]
+        end
+
+        if option then
+            local textElement = self:FindPlayerOptionTextElement(option)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                if optionText ~= "" then
+                    table.insert(optionsTable, optionText)
+                end
+            end
+        end
+    end
+
+    -- Join all options with comma separator
+    if #optionsTable > 0 then
+        playerOptions = table.concat(optionsTable, ", ")
+    end
+
+    return npcText, npcName, playerOptions
+end
+
+function CinematicCam:determineAutoEmote(dialogType)
+    local npcText, npcName, playerOptions = CinematicCam:GetDialogueData()
+    if not self:ShouldPlayAutoEmote() then return end
+
+    -- If player Options contains ">" it is an action, don't play an emote
+    if playerOptions and string.find(playerOptions, ">") then
+        return nil
+    end
+
+    -- If npc Name contains ">" it is an inanimate object
+    if npcName and string.find(npcName, ">") then
+        return nil
+    end
+
+    if dialogType == "ChatterBegin" then
+        -- Crafting Writs
+        if npcName == "Consumables Crafting Writs" or npcName == "Equipment Crafting Writs" then
+            return CinematicCam:GetEmotePack("reading")
+        end
+
+        -- Store detection
+        if playerOptions and string.find(playerOptions, "(Store)") then
+            return CinematicCam:GetEmotePack("vendor")
+        end
+
+        -- Greeting based on type
+        if self.savedVars.interaction.GreetingType == "friendly" then
+            return self:GetEmotePack("greeting")
+        elseif self.savedVars.interaction.GreetingType == "hostile" then
+            return self:GetEmotePack("hostile")
+        elseif self.savedVars.interaction.GreetingType == "idle" then
+            return self:GetEmotePack("idle")
+        end
+    end
+
+    if dialogType == "ConversationUpdate" then
+        -- Crafting Writs
+        if npcName == "Consumables Crafting Writs" or npcName == "Equipment Crafting Writs" then
+            return CinematicCam:GetEmotePack("reading")
+        end
+
+        if playerOptions then
+            -- Priority 1: Question detected
+            if not self:ShouldPlayAutoEmote() then return end
+
+            if string.find(playerOptions, "?") then
+                return CinematicCam:GetEmotePack("confused")
+            end
+
+            -- Priority 2: "You" detected
+            if string.find(playerOptions, "%f[%a]You%f[%A]") or
+                string.find(playerOptions, "%f[%a]you%f[%A]") then
+                return CinematicCam:GetEmotePack("pointing")
+            end
+
+            -- Priority 3: Fallback to ChatType setting
+            if self.savedVars.interaction.ChatType == "friendly" then
+                return self:GetEmotePack("chatty")
+            elseif self.savedVars.interaction.ChatType == "hostile" then
+                return self:GetEmotePack("frustrated")
+            end
+        end
+
+        -- Use the last used emote slot as fallback
+        if not playerOptions or playerOptions == "" then
+            local lastUsedSlot = self.savedVars.emoteWheel.lastUsedSlot or 1
+            return self:GetEmoteForSlot(lastUsedSlot)
+        end
+    end
+
+    if dialogType == "QuestCompleteDialog" then
+        return CinematicCam:GetEmotePack("reward")
+    end
+
+    -- No specific emote determined
+    return nil
+end
+
 function CinematicCam:ShouldPlayAutoEmote()
     if not self.savedVars.interaction.autoEmotes then
         return false
     end
-
+    if CinematicCam.isMounted then return false end
     local frequency = self.savedVars.interaction.autoEmoteFrequency or "infrequent"
     local chance = AUTO_EMOTE_CHANCES[frequency] or 40
 
@@ -273,19 +403,19 @@ function CinematicCam:CreateEmoteSettingsMenu()
 
     -- Available emote packs for display
     local emotePackChoices = {
-        "Respectful", "Friendly", "Greeting", "Flirty", "Hostile", "Frustrated",
-        "Sad", "Scared", "Confused", "Celebratory", "Disgusted", "Eating/Drinking",
-        "Entertainment/Dance", "Idle Poses", "Sitting/Resting", "Pointing/Directing",
-        "Physical Actions", "Exercise", "Working/Tools", "Tired/Sick", "Agreement",
-        "Disagreement", "Playful", "Get Attention", "Miscellaneous"
+        "Respectful", "Friendly", "Greeting", "Hostile", "Frustrated",
+        "Sad", "Scared", "Confused", "Disgusted", "Eating/Drinking",
+        "Entertainment/Dance", "Idle Poses", "Pointing/Directing",
+        "Physical Actions", "Agreement",
+        "Disagreement", "Playful"
     }
 
     local emotePackValues = {
-        "respectful", "friendly", "greeting", "flirty", "hostile", "frustrated",
-        "sad", "scared", "confused", "celebratory", "disgusted", "eating",
-        "entertainment", "idle", "sitting", "pointing", "physical",
-        "exercise", "working", "tired", "agreement", "disagreement",
-        "playful", "attention", "misc"
+        "respectful", "friendly", "greeting", "hostile", "frustrated",
+        "sad", "scared", "confused", "disgusted", "eating",
+        "entertainment", "idle", "pointing", "physical",
+        "agreement", "disagreement",
+        "playful"
     }
 
     local optionsData = {
@@ -311,7 +441,7 @@ function CinematicCam:CreateEmoteSettingsMenu()
         {
             type = "checkbox",
             name = "Enable Auto Emotes",
-            tooltip = "Automatically play emotes from your last-used emote wheel slot during dialogue progression",
+            tooltip = "Automatically play emotes for greetings and responses",
             getFunc = function()
                 return CinematicCam.savedVars.interaction.autoEmotes
             end,
@@ -324,9 +454,9 @@ function CinematicCam:CreateEmoteSettingsMenu()
             type = "dropdown",
             name = "Auto Emotes Frequency",
             tooltip =
-            "How often auto-emotes play during dialogue:\nFrequent: 75% chance\nInfrequent: 40% chance\nMinimal: 15% chance",
-            choices = { "Frequent", "Infrequent", "Minimal" },
-            choicesValues = { "frequent", "infrequent", "minimal" },
+            "How often auto-emotes play during dialogue",
+            choices = { "High", "Normal", "Low", "Rare" },
+            choicesValues = { "frequent", "normal", "infrequent", "minimal" },
             getFunc = function()
                 return self.savedVars.interaction.autoEmoteFrequency or "infrequent"
             end,
@@ -390,7 +520,26 @@ function CinematicCam:CreateEmoteSettingsMenu()
         {
             type = "dropdown",
             name = "Slot 1 (Up)",
-            tooltip = "Emote pack for Up direction on the emote wheel",
+            tooltip =
+            [[
+-Respectful
+-Friendly
+-Greeting
+-Hostile
+-Frustrated
+-Sad
+-Scared
+-Confused
+-Disgusted
+-Eating/Drinking
+-Entertainment/Dance
+-Idle Poses
+-Pointing/Directing
+-Physical Actions
+-Agreement
+-Disagreement
+-Playful
+]],
             choices = emotePackChoices,
             choicesValues = emotePackValues,
             getFunc = function()
@@ -400,13 +549,31 @@ function CinematicCam:CreateEmoteSettingsMenu()
                 self.savedVars.emoteWheel.slot1 = value
                 self:UpdateEmotePadLabels()
             end,
-            default = "entertainment",
             width = "full",
         },
         {
             type = "dropdown",
             name = "Slot 2 (Right)",
-            tooltip = "Emote pack for Right direction on the emote wheel",
+            tooltip =
+            [[
+-Respectful
+-Friendly
+-Greeting
+-Hostile
+-Frustrated
+-Sad
+-Scared
+-Confused
+-Disgusted
+-Eating/Drinking
+-Entertainment/Dance
+-Idle Poses
+-Pointing/Directing
+-Physical Actions
+-Agreement
+-Disagreement
+-Playful
+]],
             choices = emotePackChoices,
             choicesValues = emotePackValues,
             getFunc = function()
@@ -416,13 +583,31 @@ function CinematicCam:CreateEmoteSettingsMenu()
                 self.savedVars.emoteWheel.slot2 = value
                 self:UpdateEmotePadLabels()
             end,
-            default = "friendly",
             width = "full",
         },
         {
             type = "dropdown",
             name = "Slot 3 (Down)",
-            tooltip = "Emote pack for Down direction on the emote wheel",
+            tooltip =
+            [[
+-Respectful
+-Friendly
+-Greeting
+-Hostile
+-Frustrated
+-Sad
+-Scared
+-Confused
+-Disgusted
+-Eating/Drinking
+-Entertainment/Dance
+-Idle Poses
+-Pointing/Directing
+-Physical Actions
+-Agreement
+-Disagreement
+-Playful
+]],
             choices = emotePackChoices,
             choicesValues = emotePackValues,
             getFunc = function()
@@ -432,13 +617,31 @@ function CinematicCam:CreateEmoteSettingsMenu()
                 self.savedVars.emoteWheel.slot3 = value
                 self:UpdateEmotePadLabels()
             end,
-            default = "greeting",
             width = "full",
         },
         {
             type = "dropdown",
             name = "Slot 4 (Left)",
-            tooltip = "Emote pack for Left direction on the emote wheel",
+            tooltip =
+            [[
+-Respectful
+-Friendly
+-Greeting
+-Hostile
+-Frustrated
+-Sad
+-Scared
+-Confused
+-Disgusted
+-Eating/Drinking
+-Entertainment/Dance
+-Idle Poses
+-Pointing/Directing
+-Physical Actions
+-Agreement
+-Disagreement
+-Playful
+]],
             choices = emotePackChoices,
             choicesValues = emotePackValues,
             getFunc = function()
@@ -448,7 +651,6 @@ function CinematicCam:CreateEmoteSettingsMenu()
                 self.savedVars.emoteWheel.slot4 = value
                 self:UpdateEmotePadLabels()
             end,
-            default = "respectful",
             width = "full",
         },
 

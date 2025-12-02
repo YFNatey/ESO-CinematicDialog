@@ -1,4 +1,5 @@
 CinematicCam.defaults = {
+    useCinematicCamera = true,
     camEnabled = false,
     npcNamePreset = "prepended",
     npcNameColor = { r = 0.9, g = 0.9, b = 0.8, a = 1.0 },
