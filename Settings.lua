@@ -504,7 +504,7 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "header",
-            name = "Cinematic Settings",
+            name = "Cinematic Camera Settings",
         },
         {
             type = "checkbox",
@@ -572,7 +572,7 @@ function CinematicCam:CreateSettingsMenu()
         {
 
             type = "header",
-            name = "Black Bar Settings",
+            name = "Black Bars",
         },
 
         {
@@ -640,7 +640,7 @@ function CinematicCam:CreateSettingsMenu()
             setFunc = function(value)
                 self.savedVars.interface.sepiaFilter.enabled = value
                 self.savedVars.interface.sepiaFilter.useTextured = value
-                self:UpdateSepiaFilter()
+                self:UpdateFilter()
             end,
             width = "full",
         },
@@ -673,8 +673,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Use Game Camera",
+            name = "Use NPC Camera",
         },
+
         {
             type = "checkbox",
             name = "Crafting Stations",
@@ -806,118 +807,36 @@ function CinematicCam:OnSubtitlePositionChanged(newX, newY)
     end
 end
 
-local playerOptionsPreviewTimer = nil
-local isPlayerOptionsPreviewActive = false
 local previewTimer = nil
 local isPreviewActive = false
----=============================================================================
--- Player Options preview
---=============================================================================
-function CinematicCam:ShowPlayerOptionsPreview(xPosition)
-    if not CinematicCam_PlayerOptionsPreviewContainer or not CinematicCam_PlayerOptionsPreviewText or not CinematicCam_PlayerOptionsPreviewBackground then
-        return
-    end
-
-    isPlayerOptionsPreviewActive = true
-
-    -- Convert percentage to screen coordinates
-    local screenWidth = GuiRoot:GetWidth()
-    local targetX = screenWidth * (xPosition / 100)
-
-    -- Position the background box
-    CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
-    CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-
-    -- Set background properties (slightly opaque dark background)
-    CinematicCam_PlayerOptionsPreviewBackground:SetColor(0, 0, 0, 0.7) -- (r,g,b,opacity)
-    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLayer(DL_CONTROLS)
-    CinematicCam_PlayerOptionsPreviewBackground:SetDrawLevel(5)
-
-    -- Position the preview text
-    CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
-    CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-
-    -- Set preview text properties
-    CinematicCam_PlayerOptionsPreviewText:SetText("Preview")
-    CinematicCam_PlayerOptionsPreviewText:SetColor(1, 1, 1, 1)
-    CinematicCam_PlayerOptionsPreviewText:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
-    CinematicCam_PlayerOptionsPreviewText:SetVerticalAlignment(TEXT_ALIGN_CENTER)
-    CinematicCam_PlayerOptionsPreviewText:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
-
-    -- Apply current font settings to preview
-    local fontString = self:BuildUserFontString()
-    CinematicCam_PlayerOptionsPreviewText:SetFont(fontString)
-
-    -- Show the preview container
-    CinematicCam_PlayerOptionsPreviewContainer:SetHidden(false)
-    CinematicCam_PlayerOptionsPreviewBackground:SetHidden(false)
-    CinematicCam_PlayerOptionsPreviewText:SetHidden(false)
-
-    -- Clear any existing timer
-    if playerOptionsPreviewTimer then
-        zo_removeCallLater(playerOptionsPreviewTimer)
-    end
-
-    -- Hide preview after 3 seconds
-    playerOptionsPreviewTimer = zo_callLater(function()
-        self:HidePlayerOptionsPreview()
-    end, 3000)
-end
-
-function CinematicCam:HidePlayerOptionsPreview()
-    if not isPlayerOptionsPreviewActive then
-        return
-    end
-
-    isPlayerOptionsPreviewActive = false
-
-    -- Clear timer
-    if playerOptionsPreviewTimer then
-        zo_removeCallLater(playerOptionsPreviewTimer)
-        playerOptionsPreviewTimer = nil
-    end
-
-    -- Hide preview elements
-    if CinematicCam_PlayerOptionsPreviewContainer then
-        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
-    end
-    if CinematicCam_PlayerOptionsPreviewBackground then
-        CinematicCam_PlayerOptionsPreviewBackground:SetHidden(true)
-    end
-    if CinematicCam_PlayerOptionsPreviewText then
-        CinematicCam_PlayerOptionsPreviewText:SetHidden(true)
-    end
-end
-
-function CinematicCam:UpdatePlayerOptionsPreviewPosition(xPosition)
-    if isPlayerOptionsPreviewActive then
-        -- Update position while slider is being moved
-        local screenWidth = GuiRoot:GetWidth()
-        local targetX = (xPosition / 100) * screenWidth - (screenWidth / 2)
-
-        if CinematicCam_PlayerOptionsPreviewBackground then
-            CinematicCam_PlayerOptionsPreviewBackground:ClearAnchors()
-            CinematicCam_PlayerOptionsPreviewBackground:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-        end
-
-        if CinematicCam_PlayerOptionsPreviewText then
-            CinematicCam_PlayerOptionsPreviewText:ClearAnchors()
-            CinematicCam_PlayerOptionsPreviewText:SetAnchor(CENTER, GuiRoot, CENTER, targetX, 0)
-        end
-
-        -- Reset the auto-hide timer
-        if playerOptionsPreviewTimer then
-            zo_removeCallLater(playerOptionsPreviewTimer)
-        end
-        playerOptionsPreviewTimer = zo_callLater(function()
-            self:HidePlayerOptionsPreview()
-        end, 3000)
-    end
-end
 
 ---=============================================================================
 -- Subtitle Preview
 --=============================================================================
+-- Initialize preview system
+function CinematicCam:InitializePreviewSystem()
+    -- Ensure preview containers start hidden
+    if CinematicCam_PreviewContainer then
+        CinematicCam_PreviewContainer:SetHidden(true)
+    end
+
+    if CinematicCam_PlayerOptionsPreviewContainer then
+        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
+    end
+
+    -- Register for scene changes to hide preview when settings close
+    local function hidePreviewOnSceneChange()
+        self:HideSubtitlePreview()
+    end
+
+    -- Hook into various scene changes that might close settings
+    SCENE_MANAGER:RegisterCallback("SceneStateChanged", function(scene, oldState, newState)
+        if newState == SCENE_HIDING or newState == SCENE_HIDDEN then
+            hidePreviewOnSceneChange()
+        end
+    end)
+end
+
 function CinematicCam:ShowSubtitlePreview(xPosition, yPosition)
     if not CinematicCam_PreviewContainer or not CinematicCam_PreviewText or not CinematicCam_PreviewBackground then
         return
@@ -1022,31 +941,6 @@ function CinematicCam:UpdatePreviewPosition(xPosition, yPosition)
             self:HideSubtitlePreview()
         end, 3000)
     end
-end
-
--- Initialize preview system
-function CinematicCam:InitializePreviewSystem()
-    -- Ensure preview containers start hidden
-    if CinematicCam_PreviewContainer then
-        CinematicCam_PreviewContainer:SetHidden(true)
-    end
-
-    if CinematicCam_PlayerOptionsPreviewContainer then
-        CinematicCam_PlayerOptionsPreviewContainer:SetHidden(true)
-    end
-
-    -- Register for scene changes to hide preview when settings close
-    local function hidePreviewOnSceneChange()
-        self:HideSubtitlePreview()
-        self:HidePlayerOptionsPreview()
-    end
-
-    -- Hook into various scene changes that might close settings
-    SCENE_MANAGER:RegisterCallback("SceneStateChanged", function(scene, oldState, newState)
-        if newState == SCENE_HIDING or newState == SCENE_HIDDEN then
-            hidePreviewOnSceneChange()
-        end
-    end)
 end
 
 ---=============================================================================
@@ -1194,55 +1088,14 @@ function CinematicCam:SetActiveBackgroundControl()
     if backgroundKingdom then backgroundKingdom:SetHidden(true) end
 
     -- Set the active background control
-    if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" or backgroundMode == "dark" then
+    if backgroundMode == "kingdom" or backgroundMode == "redemption_banner" then
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundKingdom
     else
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundNormal
     end
 end
 
-function CinematicCam:MigrateSettings()
-    if self.savedVars.interaction.subtitles.posX ~= 0.5 then
-        self.savedVars.interaction.subtitles.posX = 0.5
-    end
-    -- Migrate hideCompass from boolean to string
-    if type(self.savedVars.interface.hideCompass) == "boolean" then
-        self.savedVars.interface.hideCompass = self.savedVars.interface.hideCompass and "never" or "always"
-    end
-
-    -- Migrate hideReticle from boolean to string
-    if type(self.savedVars.interface.hideReticle) == "boolean" then
-        self.savedVars.interface.hideReticle = self.savedVars.interface.hideReticle and "never" or "always"
-    end
-
-    -- Migrate hideActionBar from boolean to string
-    if type(self.savedVars.interface.hideActionBar) == "boolean" then
-        self.savedVars.interface.hideActionBar = self.savedVars.interface.hideActionBar and "never" or "always"
-    end
-
-    -- Prevent settings errors from removed emote packs
-    if not self.savedVars.emoteWheelVersion or self.savedVars.emoteWheelVersion < 1 then
-        self.savedVars.emoteWheel = {
-            slot1 = "friendly",
-            slot2 = "confused",
-            slot3 = "greeting",
-            slot4 = "idle"
-        }
-        self.savedVars.emoteWheelVersion = 2
-    end
-
-
-    if self.savedVars.interaction.forceThirdPersonVendor == true then
-        self.savedVars.interaction.forceThirdPersonVendor = false
-    end
-
-    if self.savedVars.interaction.forceThirdPersonBank == true then
-        self.savedVars.interaction.forceThirdPersonBank = false
-    end
-    self:InitializeInteractionSettings()
-end
-
-function CinematicCam:InitializeSepiaFilter()
+function CinematicCam:InitializeFilters()
     -- Initialize saved variable for sepia filter
     if self.savedVars.interface.sepiaFilter == nil then
         self.savedVars.interface.sepiaFilter = {
@@ -1253,15 +1106,15 @@ function CinematicCam:InitializeSepiaFilter()
     end
 
     -- Apply the initial state
-    self:UpdateSepiaFilter()
+    self:UpdateFilter()
 end
 
-function CinematicCam:ToggleSepiaFilter()
+function CinematicCam:ToggleFilter()
     self.savedVars.interface.sepiaFilter.enabled = not self.savedVars.interface.sepiaFilter.enabled
-    self:UpdateSepiaFilter()
+    self:UpdateFilter()
 end
 
-function CinematicCam:ShowSepiaFilter()
+function CinematicCam:ShowFilter()
     local settings = self.savedVars.interface.sepiaFilter
 
     if settings.useTextured then
@@ -1278,29 +1131,15 @@ function CinematicCam:ShowSepiaFilter()
     end
 end
 
-function CinematicCam:HideSepiaFilter()
+function CinematicCam:HideFilter()
     CinematicCam_SepiaFilterContainer:SetHidden(true)
     CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
 end
 
-function CinematicCam:UpdateSepiaFilter()
+function CinematicCam:UpdateFilter()
     if self.savedVars.interface.sepiaFilter.enabled then
-        self:ShowSepiaFilter()
+        self:ShowFilter()
     else
-        self:HideSepiaFilter()
-    end
-end
-
-function CinematicCam:SetSepiaIntensity(intensity)
-    self.savedVars.interface.sepiaFilter.intensity = intensity
-
-    -- Update the alpha if filter is currently active
-    if self.savedVars.interface.sepiaFilter.enabled then
-        if self.savedVars.interface.sepiaFilter.useTextured then
-            CinematicCam_SepiaFilterTexturedTop:SetAlpha(intensity)
-            CinematicCam_SepiaFilterTexturedBottom:SetAlpha(intensity)
-        else
-            CinematicCam_SepiaFilter:SetAlpha(intensity)
-        end
+        self:HideFilter()
     end
 end

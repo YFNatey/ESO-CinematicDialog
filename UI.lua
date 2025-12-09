@@ -78,34 +78,7 @@ end
 ---=============================================================================
 -- Manage ESO UI Elements
 --=============================================================================
-
-function CinematicCam:ReapplyUIState()
-    -- Reapply current UI state
-    if not self.savedVars.interface.UiElementsVisible then
-        self:HideUI() -- This will restart monitoring
-    end
-
-    -- Reapply letterbox if user sets visible
-    if self.savedVars.letterbox.letterboxVisible then
-        CinematicCam_Container:SetHidden(false)
-        CinematicCam_LetterboxTop:SetHidden(false)
-        CinematicCam_LetterboxBottom:SetHidden(false)
-    end
-end
-
-function CinematicCam:HideNPCText()
-    if ZO_InteractWindowTargetAreaBodyText then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-    end
-end
-
--- Show regular npc text using eso's ui
-function CinematicCam:ShowNPCText()
-    if ZO_InteractWindowTargetAreaBodyText and self.savedVars.interaction.layoutPreset ~= "cinematic" then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(false)
-    end
-end
-
+-- TODO Refactor into a "movie mode"
 function CinematicCam:HideUI()
     if not self.savedVars.interface.UiElementsVisible then
         return
@@ -128,7 +101,6 @@ function CinematicCam:HideUI()
         end
     end
     self.savedVars.interface.UiElementsVisible = false
-    self:StartUIMonitoring()
 end
 
 -- Show UI elements
@@ -136,7 +108,6 @@ function CinematicCam:ShowUI()
     if self.savedVars.interface.UiElementsVisible then
         return
     end
-    self:StopUIMonitoring()
     for elementName, _ in pairs(CinematicCam.uiElementsMap) do
         local element = _G[elementName]
         if element then
@@ -153,49 +124,6 @@ function CinematicCam:ToggleUI()
         self:HideUI()
     else
         self:ShowUI()
-    end
-end
-
-function CinematicCam:StartUIMonitoring()
-    -- Stop monitoring
-    self:StopUIMonitoring()
-
-    -- Start monitoring
-    local function monitorUIElements()
-        if self.savedVars.interface.UiElementsVisible then
-            self:StopUIMonitoring()
-            return
-        end
-
-        -- Hide elements from the predefined list if visible
-        for _, elementName in ipairs(CinematicCam.uiElements) do
-            local element = _G[elementName]
-            if element and not element:IsHidden() then
-                element:SetHidden(true)
-            end
-        end
-
-        -- Hide custom UI elements if visible
-        for elementName, shouldHide in pairs(self.savedVars.hideUiElements) do
-            if shouldHide then
-                local element = _G[elementName]
-                if element and not element:IsHidden() then
-                    element:SetHidden(true)
-                end
-            end
-        end
-
-        -- Schedule next check
-        uiMonitoringTimer = zo_callLater(monitorUIElements, MONITORING_INTERVAL)
-    end
-    uiMonitoringTimer = zo_callLater(monitorUIElements, MONITORING_INTERVAL)
-end
-
--- Stop monitoring
-function CinematicCam:StopUIMonitoring()
-    if uiMonitoringTimer then
-        zo_removeCallLater(uiMonitoringTimer)
-        uiMonitoringTimer = nil
     end
 end
 
@@ -647,10 +575,167 @@ function CinematicCam:OnDialoguelayoutPresetChanged(newPreset)
 end
 
 ---=============================================================================
+-- Interaction Emote/Camera Wheel UI
+--=============================================================================
+function CinematicCam:InitializeCameraWheel()
+    self.cameraWheelVisible = false
+    self.cameraPadVisible = false
+
+    -- Set platform-specific trigger icon
+    self:SetPlatformCameraTriggerIcon()
+
+    -- Start hidden
+    self:HideCameraWheel()
+    self:HideCameraPad()
+end
+
+-- Set the correct trigger icon based on platform for camera wheel
+function CinematicCam:SetPlatformCameraTriggerIcon()
+    local xboxRT = _G["CinematicCam_XboxRT"]
+    local ps4RT = _G["CinematicCam_PS4RT"]
+    local xboxRS_Slide = _G["CinematicCam_XboxRS_Slide"]
+    local xboxRS_Scroll = _G["CinematicCam_XboxRS_Scroll"]
+    local ps4RS = _G["CinematicCam_PS4RS"]
+
+    if not xboxRT or not ps4RT then
+        return
+    end
+
+    local worldName = GetWorldName()
+
+    -- Default to Xbox, switch to PS if on PlayStation
+    if worldName == "PS4live" or worldName == "PS4live-eu" or worldName == "NA Megaserver" then
+        -- Show PlayStation icons
+        xboxRT:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_r2.dds")
+
+        if xboxRS_Slide then xboxRS_Slide:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_slide.dds") end
+        if xboxRS_Scroll then xboxRS_Scroll:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_scroll.dds") end
+        if ps4RS then ps4RS:SetHidden(false) end
+    else
+        -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
+        xboxRT:SetHidden(false)
+        ps4RT:SetHidden(true)
+
+        if xboxRS_Slide then xboxRS_Slide:SetHidden(false) end
+        if xboxRS_Scroll then xboxRS_Scroll:SetHidden(false) end
+        if ps4RS then ps4RS:SetHidden(true) end
+    end
+end
+
+-- Show the camera wheel indicator
+function CinematicCam:ShowCameraWheel()
+    local control = _G["CinematicCam_CameraWheel"]
+    if not control then return end
+
+    -- Set platform-specific icon BEFORE showing
+    self:SetPlatformCameraTriggerIcon()
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.cameraWheelVisible = true
+end
+
+-- Hide the camera wheel indicator
+function CinematicCam:HideCameraWheel()
+    local control = _G["CinematicCam_CameraWheel"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(200)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.cameraWheelVisible = false
+end
+
+-- Show the camera directional pad
+function CinematicCam:ShowCameraPad()
+    local control = _G["CinematicCam_CameraPad"]
+    if not control then return end
+
+    control:SetHidden(false)
+    control:SetAlpha(0)
+
+    -- Fade in animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(0, 1)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+    timeline:PlayFromStart()
+
+    self.cameraPadVisible = true
+end
+
+-- Hide the camera directional pad
+function CinematicCam:HideCameraPad()
+    local control = _G["CinematicCam_CameraPad"]
+    if not control then return end
+
+    -- Fade out animation
+    local timeline = ANIMATION_MANAGER:CreateTimeline()
+    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
+    animation:SetAlphaValues(control:GetAlpha(), 0)
+    animation:SetDuration(150)
+    animation:SetEasingFunction(ZO_EaseOutQuadratic)
+
+    timeline:SetHandler("OnStop", function()
+        control:SetHidden(true)
+    end)
+
+    timeline:PlayFromStart()
+
+    self.cameraPadVisible = false
+end
+
+-- Highlight active camera direction
+function CinematicCam:HighlightCameraDirection(direction)
+    local directions = { "Top", "Right", "Bottom", "Left" }
+
+    for _, dir in ipairs(directions) do
+        local texture = _G["CinematicCam_CameraPad_" .. dir]
+        if texture then
+            if dir == direction then
+                texture:SetColor(0.3, 0.3, 0.3, 0.95) -- Lighter gray for selected
+            else
+                -- ALL directions now active (not just Top/Bottom)
+                texture:SetColor(0, 0, 0, 0.85) -- Dark for unselected active buttons
+            end
+        end
+    end
+end
+
+function CinematicCam:ResetCameraHighlights()
+    local directions = { "Top", "Right", "Bottom", "Left" }
+
+    for _, dir in ipairs(directions) do
+        local texture = _G["CinematicCam_CameraPad_" .. dir]
+        if texture then
+            texture:SetColor(0, 0, 0, 0.85) -- All active now
+        end
+    end
+end
+
+---=============================================================================
 -- Animations
 --=============================================================================
-
-
 -- fade-in for any UI element
 function CinematicCam:FadeInElement(element, duration)
     if not element then return end

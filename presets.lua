@@ -179,8 +179,6 @@ function CinematicCam:ApplyVanillaPreset()
     self:ApplyNPCNamePreset("default")
     -- Disable all third-person forcing
     self.savedVars.interaction.forceThirdPersonDialogue = false
-    self.savedVars.interaction.forceThirdPersonVendor = false
-    self.savedVars.interaction.forceThirdPersonBank = false
     self.savedVars.interaction.forceThirdPersonCrafting = false
     self.savedVars.interaction.forceThirdPersonDye = false
 

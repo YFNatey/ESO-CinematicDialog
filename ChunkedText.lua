@@ -64,9 +64,46 @@ function CinematicCam:FindPlayerOptionTextElement(option)
     return nil
 end
 
+function CinematicCam:IsVendorInteraction()
+    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Guild Store" }
+
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
+        local option = _G[longOptionName]
+        if option then
+            local textElement = self:FindPlayerOptionTextElement(option)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                for _, pattern in ipairs(vendorPatterns) do
+                    if optionText and string.find(optionText, pattern) then
+                        return true
+                    end
+                end
+            end
+        end
+
+        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
+        local option2 = _G[shortOptionName]
+        if option2 then
+            local textElement = self:FindPlayerOptionTextElement(option2)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                for _, pattern in ipairs(vendorPatterns) do
+                    if optionText and string.find(optionText, pattern) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return false
+end
+
 function CinematicCam:CheckPlayerOptionsForVendorText()
     local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
         "Morphs:", "Skill Lines", "Companion Menu" }
+    local vendorOnly = { "^[Ss]tore", "^[Bb]uy" }
     -- Check individual option elements
     for i = 1, 10 do
         local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i

@@ -18,8 +18,18 @@ CinematicCam.currentZoneType = nil
 CinematicCam.isInteractionModified = false -- override default cam
 CinematicCam.settingsUpdatedThisSession = false
 CinematicCam.isMenuActive = false
+CinematicCam.blockGamepad = false
 
+-- Camera Renaming
+local CAMERA_MODE = {
+    -- SetGameCameraUIMode()
+    FREE     = false,
+    STATIC   = true,
 
+    --SetInteractionUsingInteractCamera()
+    INTERACT = true,
+    GAMEPLAY = false,
+}
 
 function CinematicCam:ApplyDialogueRepositioning()
     local preset = self.savedVars.interaction.layoutPreset
@@ -63,14 +73,14 @@ function CinematicCam:GamepadStickPoll()
 
     --  disable camera UI mode (free camera)
     if rightMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     end
     if leftMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     end
     -- Left trigger to activate emote pad
     if leftTrigger > 0.3 and CinematicCam.savedVars.interaction.allowImmersionControls then
-        SetGameCameraUIMode(true)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
 
         -- Show emote pad if not visible
         if not self.emotePadVisible then
@@ -178,11 +188,11 @@ function CinematicCam:GamepadStickPoll()
                 if rightY > 0 then
                     self:HighlightCameraDirection("Top")
                     CameraZoomIn()
-                    SetGameCameraUIMode(true)
+                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
                 elseif rightY < 0 then
                     self:HighlightCameraDirection("Bottom")
                     CameraZoomOut()
-                    SetGameCameraUIMode(true)
+                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
                 end
             end
         else
@@ -204,7 +214,7 @@ function CinematicCam:GamepadStickPoll()
         -- Only apply free camera if we're in free mode
         if rightMagnitude >= self.gamepadStickPoll.deadzone then
             if self.gamepadStickPoll.currentCameraMode == "free" then
-                SetGameCameraUIMode(false)
+                SetGameCameraUIMode(CAMERA_MODE.FREE)
             end
         end
     end
@@ -221,25 +231,49 @@ function CinematicCam:StopGamepadStickPoll()
     self:HideCameraPad()
 end
 
--- Handles the logic when the default interaction camera is deactivated.
--- Applies UI changes, letterbox, and font updates based on user settings and interaction type.
-function CinematicCam:OnGameCameraDeactivated()
-    local lastUsedEmote = CinematicCam.savedVars.emoteWheel.lastUsedSlot
-    if not CinematicCam.isInteractionModified then
-        self:ResetChunkedDialogueState()
+-- Handles the visibility of the games default subtitles.
+-- @param visibility string: the user settings. If using "cinematic" layout, the default subtitles need to be hidden on each new dialogue event
+function CinematicCam:HandleDefaultSubtitles(visibility)
+    -- Hide Subtitles with user settings
+    local npcSubtitles = ZO_InteractWindowTargetAreaBodyText
+    local npcName = ZO_InteractWindow_GamepadContainerText
+    if visibility == "savedSettings" then
+        if npcSubtitles then
+            npcSubtitles:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+        end
+        if npcName then
+            npcName:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+        end
     end
-
-    if ZO_InteractWindowTargetAreaBodyText then
-        ZO_InteractWindowTargetAreaBodyText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
+    -- Hide
+    if visibility == "cinematic" then
+        if npcSubtitles then
+            npcSubtitles:SetHidden(true)
+        end
+        if npcName then
+            npcName:SetHidden(true)
+        end
     end
-    if ZO_InteractWindow_GamepadContainerText then
-        ZO_InteractWindow_GamepadContainerText:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-    end
+end
 
+---
 
+-- Handles the logic when the player enters an interaction with an interactive object (NPCs, notes, quest starters, etc)
+-- This function tracks the state of the interaction using dialogue events to watch for subtitle changes, update the chunked text system and apply the appropriate visibility settings.
+function CinematicCam:OnInteractionStart()
+    local useGameplayCam = false
     local interactionType = GetInteractionType()
-    if self:ShouldBlockInteraction(interactionType) then
-        SetGameCameraUIMode(false)
+
+    if interactionTypeMap[interactionType] == true then
+        useGameplayCam = true
+    end
+
+    -- Handle the default subtitle visibility immediately
+    CinematicCam:HandleDefaultSubtitles("savedSettings")
+
+    -- Check if the current interaction should block the normal camera behavior.
+    if useGameplayCam then
+        SetGameCameraUIMode(CAMERA_MODE.FREE) -- Enable free camera movement
 
         CinematicCam.isInteractionModified = true
         if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue or CinematicCam.savedVars.interaction.allowImmersionControls then
@@ -274,9 +308,23 @@ function CinematicCam:OnGameCameraDeactivated()
                     self:ShowCameraWheel()
                 end
             end
-            EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
-                self:GamepadStickPoll()
-            end)
+            zo_callLater(function()
+                local isVendor = self:IsVendorInteraction()
+                CinematicCam.blockGamepad = isVendor
+
+                if isVendor then
+                    -- Hide the wheels for vendor interactions
+
+                    self:HideEmoteWheel()
+                    self:HideCameraWheel()
+                    self:HideEmotePad()
+                    self:HideCameraPad()
+                elseif CinematicCam.isInteractionModified then
+                    EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
+                        self:GamepadStickPoll()
+                    end)
+                end
+            end) -- 100ms delay for UI to populate
         end
         if interactionType == INTERACTION_FURNITURE or interactionType == INTERACTION_STORE then
             self:StopGamepadStickPoll()
@@ -291,18 +339,13 @@ function CinematicCam:OnGameCameraDeactivated()
             EVENT_CHATTER_BEGIN,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(false)
+                SetGameCameraUIMode(CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    CinematicCam:ForceShowAllPlayerOptions()
+                    CinematicCam:ShowPlayerResponse()
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    if ZO_InteractWindowTargetAreaBodyText then
-                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-                    end
-                    if ZO_InteractWindow_GamepadContainerText then
-                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-                    end
+                    CinematicCam:HandleDefaultSubtitles("cinematic")
 
                     self:InterceptDialogueForChunking("ChatterBegin")
 
@@ -321,18 +364,14 @@ function CinematicCam:OnGameCameraDeactivated()
             EVENT_CONVERSATION_UPDATED,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-
+                SetGameCameraUIMode(CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    CinematicCam:ForceShowAllPlayerOptions()
+                    CinematicCam:ShowPlayerResponse()
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    if ZO_InteractWindowTargetAreaBodyText then
-                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-                    end
-                    if ZO_InteractWindow_GamepadContainerText then
-                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-                    end
+                    CinematicCam:HandleDefaultSubtitles("cinematic")
+
 
                     self:InterceptDialogueForChunking("ConversationUpdate")
 
@@ -349,18 +388,14 @@ function CinematicCam:OnGameCameraDeactivated()
             EVENT_QUEST_OFFERED,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-
+                SetGameCameraUIMode(CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    CinematicCam:ForceShowAllPlayerOptions()
+                    CinematicCam:ShowPlayerResponse()
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    if ZO_InteractWindowTargetAreaBodyText then
-                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-                    end
-                    if ZO_InteractWindow_GamepadContainerText then
-                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-                    end
+                    CinematicCam:HandleDefaultSubtitles("cinematic")
+
 
                     self:InterceptDialogueForChunking("QuestOffered")
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
@@ -373,18 +408,14 @@ function CinematicCam:OnGameCameraDeactivated()
             EVENT_QUEST_COMPLETE_DIALOG,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-
+                SetGameCameraUIMode(CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
-                    CinematicCam:ForceShowAllPlayerOptions()
+                    CinematicCam:ShowPlayerResponse()
                 end
 
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
-                    if ZO_InteractWindowTargetAreaBodyText then
-                        ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-                    end
-                    if ZO_InteractWindow_GamepadContainerText then
-                        ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-                    end
+                    CinematicCam:HandleDefaultSubtitles("cinematic")
+
 
                     self:InterceptDialogueForChunking("QuestCompleteDialog")
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
@@ -395,12 +426,7 @@ function CinematicCam:OnGameCameraDeactivated()
         )
         -- Move NPC dialogue text off-screen for cinematic mode (instead of hiding) to prevent flashing
         if self.savedVars.interaction.layoutPreset == "cinematic" then
-            if ZO_InteractWindowTargetAreaBodyText then
-                ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-            end
-            if ZO_InteractWindow_GamepadContainerText then
-                ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-            end
+            CinematicCam:HandleDefaultSubtitles("cinematic")
         end
 
         -- Hide UI Panels according to user preferences
@@ -429,7 +455,7 @@ end
 
 function CinematicCam:OnInteractionEnd()
     EVENT_MANAGER:UnregisterForUpdate("CinematicCam_GamepadStickPoll")
-    SetInteractionUsingInteractCamera(false)
+    SetInteractionUsingInteractCamera(CAMERA_MODE.GAMEPLAY)
 
     CinematicCam.lastWeaponsState = nil
 
@@ -457,7 +483,7 @@ function CinematicCam:OnInteractionEnd()
     end
 end
 
-function CinematicCam:ForceShowAllPlayerOptions()
+function CinematicCam:ShowPlayerResponse()
     local playerOptionElements = {
         "ZO_InteractWindowPlayerAreaOptions",
         "ZO_InteractWindow_GamepadContainerInteractList",
@@ -495,7 +521,7 @@ local function Initialize()
     CinematicCam:InitializeEmoteWheel()
     CinematicCam:RegisterFontEvents()
     CinematicCam:InitializeCameraWheel()
-    CinematicCam:InitializeSepiaFilter()
+    CinematicCam:InitializeFilters()
     zo_callLater(function()
         CinematicCam:InitializeUI()
         CinematicCam:MigrateSettings()
@@ -504,7 +530,6 @@ local function Initialize()
         CinematicCam:CreateEmoteSettingsMenu()
         CinematicCam:InitializeUITweaks()
         CinematicCam:BuildHomeIdsLookup()
-        CinematicCam:checkhid()
         CinematicCam:InitializeUpdateSystem()
     end, 1000)
     zo_callLater(function()
@@ -684,7 +709,7 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_ADD_ON_LOADED, OnAddOnLoaded)
 -- Events
 --=============================================================================
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_GAME_CAMERA_DEACTIVATED, function()
-    CinematicCam:OnGameCameraDeactivated()
+    CinematicCam:OnInteractionStart()
 end)
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CHATTER_END, function()
@@ -722,7 +747,7 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                SetInteractionUsingInteractCamera(false)
+                SetInteractionUsingInteractCamera(CAMERA_MODE.GAMEPLAY)
                 CinematicCam:InitializeUITweaks()
 
                 if self.presetPending then
@@ -732,9 +757,8 @@ function CinematicCam:RegisterUIRefreshEvent()
                     CinematicCam:ConfigurePlayerOptionsBackground()
                     CinematicCam:InitializePreviewSystem()
                     CinematicCam:InitializeInteractionSettings()
-                    self:ApplyPresetSettings()
-                    self:OnFontChanged()
-                    CinematicCam:checkhid()
+                    CinematicCam:ApplyPresetSettings()
+                    CinematicCam:OnFontChanged()
                     self.presetPending = false
                 end
                 if self.pendingUIRefresh then
@@ -848,50 +872,45 @@ end)
 ---=============================================================================
 -- Utility Functions
 --=============================================================================
-
-
-function CinematicCam:ForceApplyFontsToDialogue()
-    local dialogueElements = {
-        "ZO_InteractWindowTargetAreaBodyText",
-        "ZO_InteractWindow_GamepadContainerText",
-        "ZO_InteractWindowTargetAreaTitle",
-        "ZO_InteractWindow_GamepadTitle",
-        "ZO_InteractWindowPlayerAreaOptions",
-        "ZO_InteractWindowPlayerAreaHighlight"
-    }
-
-    for _, elementName in ipairs(dialogueElements) do
-        local element = _G[elementName]
-        if element then
-            self:ApplyFontToElement(element, self.savedVars.interface.customFontSize)
-        end
+function CinematicCam:MigrateSettings()
+    if self.savedVars.interaction.subtitles.posX ~= 0.5 then
+        self.savedVars.interaction.subtitles.posX = 0.5
     end
-end
-
----
--- Checks if the current interaction should be forced to 3rd person.
--- @param interactionType number: The current interaction type constant
--- @return boolean: True if the interaction should be blocked, false otherwise
-function CinematicCam:ShouldBlockInteraction(interactionType)
-    local unitName = GetUnitName("interact")
-
-    return interactionTypeMap[interactionType] == true
-end
-
-function CinematicCam:checkhid()
-    if self.savedVars.interaction.subtitles.isHidden then
-        if ZO_InteractWindowTargetAreaBodyText then
-            ZO_InteractWindowTargetAreaBodyText:SetHidden(true)
-        end
-        if ZO_InteractWindow_GamepadContainerText then
-            ZO_InteractWindow_GamepadContainerText:SetHidden(true)
-        end
+    -- Migrate hideCompass from boolean to string
+    if type(self.savedVars.interface.hideCompass) == "boolean" then
+        self.savedVars.interface.hideCompass = self.savedVars.interface.hideCompass and "never" or "always"
     end
-    if self.savedVars.interaction.subtitles.isHidden == false then
-        if ZO_InteractWindowTargetAreaBodyText then
-            ZO_InteractWindowTargetAreaBodyText:SetHidden(false)
-        end
+
+    -- Migrate hideReticle from boolean to string
+    if type(self.savedVars.interface.hideReticle) == "boolean" then
+        self.savedVars.interface.hideReticle = self.savedVars.interface.hideReticle and "never" or "always"
     end
+
+    -- Migrate hideActionBar from boolean to string
+    if type(self.savedVars.interface.hideActionBar) == "boolean" then
+        self.savedVars.interface.hideActionBar = self.savedVars.interface.hideActionBar and "never" or "always"
+    end
+
+    -- Prevent settings errors from removed emote packs
+    if not self.savedVars.emoteWheelVersion or self.savedVars.emoteWheelVersion < 1 then
+        self.savedVars.emoteWheel = {
+            slot1 = "friendly",
+            slot2 = "confused",
+            slot3 = "greeting",
+            slot4 = "idle"
+        }
+        self.savedVars.emoteWheelVersion = 2
+    end
+
+
+    if self.savedVars.interaction.forceThirdPersonVendor == true then
+        self.savedVars.interaction.forceThirdPersonVendor = false
+    end
+
+    if self.savedVars.interaction.forceThirdPersonBank == true then
+        self.savedVars.interaction.forceThirdPersonBank = false
+    end
+    self:InitializeInteractionSettings()
 end
 
 function CinematicCam:CheckForUpdates()
@@ -901,13 +920,13 @@ function CinematicCam:CheckForUpdates()
         EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_UpdateCheck", EVENT_PLAYER_ACTIVATED, function()
             EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_UpdateCheck", EVENT_PLAYER_ACTIVATED)
             zo_callLater(function()
-                self:ShowUpdateNotificationIfNeeded()
+                self:DetermineNotificationType()
             end, 2000)
         end)
         return
     end
 
-    self:ShowUpdateNotificationIfNeeded()
+    self:DetermineNotificationType()
 end
 
 function CinematicCam:IsNewerVersion(current, last)
@@ -1046,8 +1065,7 @@ function CinematicCam:AnimateUpdateNotification(control, fadeIn)
     timeline:PlayFromStart()
 end
 
-----
-function CinematicCam:ShowUpdateNotificationIfNeeded()
+function CinematicCam:DetermineNotificationType()
     local lastSeenVersion = self.savedVars.lastSeenUpdateVersion or "0.0.0"
     local hasSeenWelcome = self.savedVars.hasSeenWelcomeMessage or false
 
@@ -1105,162 +1123,6 @@ function CinematicCam:InitializeUpdateSystem()
     self:CheckForUpdates()
 end
 
-function CinematicCam:InitializeCameraWheel()
-    self.cameraWheelVisible = false
-    self.cameraPadVisible = false
-
-    -- Set platform-specific trigger icon
-    self:SetPlatformCameraTriggerIcon()
-
-    -- Start hidden
-    self:HideCameraWheel()
-    self:HideCameraPad()
-end
-
--- Set the correct trigger icon based on platform for camera wheel
-function CinematicCam:SetPlatformCameraTriggerIcon()
-    local xboxRT = _G["CinematicCam_XboxRT"]
-    local ps4RT = _G["CinematicCam_PS4RT"]
-    local xboxRS_Slide = _G["CinematicCam_XboxRS_Slide"]
-    local xboxRS_Scroll = _G["CinematicCam_XboxRS_Scroll"]
-    local ps4RS = _G["CinematicCam_PS4RS"]
-
-    if not xboxRT or not ps4RT then
-        return
-    end
-
-    local worldName = GetWorldName()
-
-    -- Default to Xbox, switch to PS if on PlayStation
-    if worldName == "PS4live" or worldName == "PS4live-eu" or worldName == "NA Megaserver" then
-        -- Show PlayStation icons
-        xboxRT:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_r2.dds")
-
-        if xboxRS_Slide then xboxRS_Slide:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_slide.dds") end
-        if xboxRS_Scroll then xboxRS_Scroll:SetTexture("/esoui/art/buttons/gamepad/ps5/nav_ps5_rs_scroll.dds") end
-        if ps4RS then ps4RS:SetHidden(false) end
-    else
-        -- Show Xbox icons (includes PC, NA Megaserver, EU Megaserver, XB1live, XB1live-eu)
-        xboxRT:SetHidden(false)
-        ps4RT:SetHidden(true)
-
-        if xboxRS_Slide then xboxRS_Slide:SetHidden(false) end
-        if xboxRS_Scroll then xboxRS_Scroll:SetHidden(false) end
-        if ps4RS then ps4RS:SetHidden(true) end
-    end
-end
-
--- Show the camera wheel indicator
-function CinematicCam:ShowCameraWheel()
-    local control = _G["CinematicCam_CameraWheel"]
-    if not control then return end
-
-    -- Set platform-specific icon BEFORE showing
-    self:SetPlatformCameraTriggerIcon()
-
-    control:SetHidden(false)
-    control:SetAlpha(0)
-
-    -- Fade in animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(0, 1)
-    animation:SetDuration(200)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-    timeline:PlayFromStart()
-
-    self.cameraWheelVisible = true
-end
-
--- Hide the camera wheel indicator
-function CinematicCam:HideCameraWheel()
-    local control = _G["CinematicCam_CameraWheel"]
-    if not control then return end
-
-    -- Fade out animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(control:GetAlpha(), 0)
-    animation:SetDuration(200)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-
-    timeline:SetHandler("OnStop", function()
-        control:SetHidden(true)
-    end)
-
-    timeline:PlayFromStart()
-
-    self.cameraWheelVisible = false
-end
-
--- Show the camera directional pad
-function CinematicCam:ShowCameraPad()
-    local control = _G["CinematicCam_CameraPad"]
-    if not control then return end
-
-    control:SetHidden(false)
-    control:SetAlpha(0)
-
-    -- Fade in animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(0, 1)
-    animation:SetDuration(150)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-    timeline:PlayFromStart()
-
-    self.cameraPadVisible = true
-end
-
--- Hide the camera directional pad
-function CinematicCam:HideCameraPad()
-    local control = _G["CinematicCam_CameraPad"]
-    if not control then return end
-
-    -- Fade out animation
-    local timeline = ANIMATION_MANAGER:CreateTimeline()
-    local animation = timeline:InsertAnimation(ANIMATION_ALPHA, control)
-    animation:SetAlphaValues(control:GetAlpha(), 0)
-    animation:SetDuration(150)
-    animation:SetEasingFunction(ZO_EaseOutQuadratic)
-
-    timeline:SetHandler("OnStop", function()
-        control:SetHidden(true)
-    end)
-
-    timeline:PlayFromStart()
-
-    self.cameraPadVisible = false
-end
-
--- Highlight active camera direction
-function CinematicCam:HighlightCameraDirection(direction)
-    local directions = { "Top", "Right", "Bottom", "Left" }
-
-    for _, dir in ipairs(directions) do
-        local texture = _G["CinematicCam_CameraPad_" .. dir]
-        if texture then
-            if dir == direction then
-                texture:SetColor(0.3, 0.3, 0.3, 0.95) -- Lighter gray for selected
-            else
-                -- ALL directions now active (not just Top/Bottom)
-                texture:SetColor(0, 0, 0, 0.85) -- Dark for unselected active buttons
-            end
-        end
-    end
-end
-
-function CinematicCam:ResetCameraHighlights()
-    local directions = { "Top", "Right", "Bottom", "Left" }
-
-    for _, dir in ipairs(directions) do
-        local texture = _G["CinematicCam_CameraPad_" .. dir]
-        if texture then
-            texture:SetColor(0, 0, 0, 0.85) -- All active now
-        end
-    end
-end
-
 function CinematicCam:RegisterSceneHiddenCallbacks()
     local scenesToWatch = {
         "gamepad_store",
@@ -1293,7 +1155,7 @@ function CinematicCam:OnTargetSceneShown(sceneName)
         self:StopGamepadStickPoll()
     elseif sceneName == "hudui" then
         if CinematicCam.isInteractionModified then
-            SetGameCameraUIMode(true)
+            SetGameCameraUIMode(CAMERA_MODE.FREE)
         end
     elseif sceneName == "gamepadMainMenu" then
         -- mark when menu is opened so StopGamepadStickPoll doesn't override
@@ -1304,20 +1166,20 @@ end
 
 function CinematicCam:OnTargetSceneHidden(sceneName)
     if sceneName == "gamepad_store" then
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     elseif sceneName == "gamepad_housing_furniture_scene" then
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     elseif sceneName == "housingEditorHud" then
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     elseif sceneName == "hudui" then
         if not CinematicCam.isInteractionModified then
-            SetGameCameraUIMode(false)
+            SetGameCameraUIMode(CAMERA_MODE.FREE)
         end
     elseif sceneName == "gamepadMainMenu" then
         -- Menu is closing - safe to reset
         CinematicCam.isMenuActive = false
         CinematicCam.isInteractionModified = false
-        SetGameCameraUIMode(false)
+        SetGameCameraUIMode(CAMERA_MODE.FREE)
     end
 end
 
@@ -1330,7 +1192,7 @@ end
 function CinematicCam:OnHudUISceneShown()
     -- Only lock camera if we're in an interaction
     if CinematicCam.isInteractionModified then
-        SetGameCameraUIMode(true)
+        SetGameCameraUIMode(CAMERA_MODE.STATIC)
     end
 end
 

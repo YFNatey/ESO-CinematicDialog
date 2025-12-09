@@ -54,9 +54,6 @@ function CinematicCam:ShowLetterbox()
 
 
     local interactionType = GetInteractionType()
-    if self:ShouldBlockInteraction(interactionType) then
-
-    end
 end
 
 -- Hide letterbox bars
