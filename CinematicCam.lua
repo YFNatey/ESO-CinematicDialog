@@ -11,14 +11,15 @@ CinematicCam = {}
 CinematicCam.savedVars = nil
 local interactionTypeMap = {}
 local CURRENT_VERSION = "3.54"
-CinematicCam.lastWeaponsState = nil
-CinematicCam.isMounted = false
-CinematicCam.currentZoneType = nil
+
 -- State tracking
-CinematicCam.isInteractionModified = false -- override default cam
+CinematicCam.isInteractionModified = false
 CinematicCam.settingsUpdatedThisSession = false
 CinematicCam.isMenuActive = false
 CinematicCam.blockGamepad = false
+CinematicCam.lastWeaponsState = nil
+CinematicCam.isMounted = false
+CinematicCam.currentZoneType = nil
 
 -- Camera Renaming
 local CAMERA_MODE = {
@@ -31,204 +32,12 @@ local CAMERA_MODE = {
     GAMEPLAY = false,
 }
 
+
 function CinematicCam:ApplyDialogueRepositioning()
     local preset = self.savedVars.interaction.layoutPreset
     if preset and preset.applyFunction then
         preset.applyFunction(self)
     end
-end
-
-function CinematicCam:GamepadStickPoll()
-    if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
-        self:StopGamepadStickPoll()
-        return
-    end
-
-    local interactionType = GetInteractionType()
-    if interactionType == INTERACTION_NONE then
-        -- Interaction ended but event hasn't fired yet
-        self:StopGamepadStickPoll()
-        if self.isInteractionModified then
-            self:OnInteractionEnd()
-        end
-        return
-    end
-
-    -- Only run polling during actual interactions
-    if not CinematicCam.isInteractionModified then
-        return
-    end
-
-    local leftTrigger = GetGamepadLeftTriggerMagnitude()
-    local rightTrigger = GetGamepadRightTriggerMagnitude()
-    local rightX = ZO_Gamepad_GetRightStickEasedX()
-    local rightY = ZO_Gamepad_GetRightStickEasedY()
-    local leftX = ZO_Gamepad_GetLeftStickEasedX()
-    local leftY = ZO_Gamepad_GetLeftStickEasedY()
-
-    local rightMagnitude = zo_sqrt(rightX * rightX + rightY * rightY)
-    local leftMagnitude = zo_sqrt(leftX * leftX + leftY * leftY)
-    local currentTime = GetGameTimeMilliseconds()
-
-
-    --  disable camera UI mode (free camera)
-    if rightMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
-    end
-    if leftMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
-    end
-    -- Left trigger to activate emote pad
-    if leftTrigger > 0.3 and CinematicCam.savedVars.interaction.allowImmersionControls then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
-
-        -- Show emote pad if not visible
-        if not self.emotePadVisible then
-            self:ShowEmotePad()
-        end
-
-        -- Hide camera pad if visible
-        if self.cameraPadVisible then
-            self:HideCameraPad()
-            self:ResetCameraHighlights()
-        end
-
-        if rightMagnitude > self.gamepadStickPoll.deadzone then
-            -- Check emote cooldown
-            local timeSinceLastEmote = currentTime - self.gamepadStickPoll.lastEmoteTime
-
-            if timeSinceLastEmote >= self.gamepadStickPoll.emoteCooldown then
-                if math.abs(rightX) > math.abs(rightY) then
-                    if rightX > 0 then
-                        -- Slot 2 (Right)
-                        self:HighlightEmoteDirection("Right")
-                        local emote = self:GetEmoteForSlot(2)
-                        CinematicCam.savedVars.emoteWheel.lastUsedSlot = 2
-
-                        if emote then
-                            DoCommand(emote)
-                            self.gamepadStickPoll.lastEmoteTime = currentTime
-                        end
-                    elseif rightX < 0 then
-                        -- Slot 4 (Left)
-                        self:HighlightEmoteDirection("Left")
-                        local emote = self:GetEmoteForSlot(4)
-                        CinematicCam.savedVars.emoteWheel.lastUsedSlot = 4
-
-                        if emote then
-                            DoCommand(emote)
-                            self.gamepadStickPoll.lastEmoteTime = currentTime
-                        end
-                    end
-                else
-                    if rightY > 0 then
-                        -- Slot 1 (Top)
-                        self:HighlightEmoteDirection("Top")
-                        local emote = self:GetEmoteForSlot(1)
-                        CinematicCam.savedVars.emoteWheel.lastUsedSlot = 1
-                        if emote then
-                            DoCommand(emote)
-                            self.gamepadStickPoll.lastEmoteTime = currentTime
-                        end
-                    elseif rightY < 0 then
-                        -- Slot 3 (Bottom)
-                        self:HighlightEmoteDirection("Bottom")
-                        local emote = self:GetEmoteForSlot(3)
-                        CinematicCam.savedVars.emoteWheel.lastUsedSlot = 3
-
-                        if emote then
-                            DoCommand(emote)
-                            self.gamepadStickPoll.lastEmoteTime = currentTime
-                        end
-                    end
-                end
-            end
-        else
-            self:ResetEmoteHighlights()
-        end
-        -- Right trigger to activate camera pad
-    elseif rightTrigger > 0.3 and CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue then
-        -- Show camera pad if not visible
-        if not self.cameraPadVisible then
-            self:ShowCameraPad()
-        end
-
-        -- Hide emote pad if visible
-        if self.emotePadVisible then
-            self:HideEmotePad()
-            self:ResetEmoteHighlights()
-        end
-
-
-        if rightMagnitude > 0 then
-            -- Check cooldown before allowing camera switch
-            local timeSinceLastSwitch = currentTime - self.gamepadStickPoll.lastCameraSwitch
-
-            if math.abs(rightX) > math.abs(rightY) then
-                -- Left/Right for camera UI mode toggle (with cooldown)
-                if timeSinceLastSwitch >= self.gamepadStickPoll.cameraSwitchCooldown then
-                    if rightX > 0 then
-                        -- Right - Enable camera UI mode (lock camera)
-                        self:HighlightCameraDirection("Right")
-                        self.savedVars.useCinematicCamera = true
-                        SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-
-                        self.gamepadStickPoll.lastCameraSwitch = currentTime
-                    elseif rightX < 0 then
-                        -- Left - Disable camera UI mode (free camera)
-                        self:HighlightCameraDirection("Left")
-
-                        self.savedVars.useCinematicCamera = false
-                        SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                        self.gamepadStickPoll.lastCameraSwitch = currentTime
-                    end
-                end
-            else
-                -- Up/Down for zoom
-                if rightY > 0 then
-                    self:HighlightCameraDirection("Top")
-                    CameraZoomIn()
-                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
-                elseif rightY < 0 then
-                    self:HighlightCameraDirection("Bottom")
-                    CameraZoomOut()
-                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
-                end
-            end
-        else
-            self:ResetCameraHighlights()
-        end
-    else
-        -- Hide both pads when no trigger is pressed
-        if self.emotePadVisible then
-            self:HideEmotePad()
-            self:ResetEmoteHighlights()
-        end
-
-        if self.cameraPadVisible then
-            self:HideCameraPad()
-            self:ResetCameraHighlights()
-        end
-
-        -- Right stick camera controls when no trigger pressed
-        -- Only apply free camera if we're in free mode
-        if rightMagnitude >= self.gamepadStickPoll.deadzone then
-            if self.gamepadStickPoll.currentCameraMode == "free" then
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
-            end
-        end
-    end
-end
-
-function CinematicCam:StopGamepadStickPoll()
-    if not self.gamepadStickPoll then return end
-    self.gamepadStickPoll.isActive = false
-
-
-    self:HideEmoteWheel()
-    self:HideEmotePad()
-    self:HideCameraWheel()
-    self:HideCameraPad()
 end
 
 -- Handles the visibility of the games default subtitles.
@@ -256,10 +65,8 @@ function CinematicCam:HandleDefaultSubtitles(visibility)
     end
 end
 
----
-
 -- Handles the logic when the player enters an interaction with an interactive object (NPCs, notes, quest starters, etc)
--- This function tracks the state of the interaction using dialogue events to watch for subtitle changes, update the chunked text system and apply the appropriate visibility settings.
+-- Tracks the state of the interaction using dialogue events to watch for subtitle changes, update the chunked text system and apply the appropriate visibility settings.
 function CinematicCam:OnInteractionStart()
     local useGameplayCam = false
     local interactionType = GetInteractionType()
@@ -300,38 +107,37 @@ function CinematicCam:OnInteractionStart()
                     self.cameraWheelInitialized = true
                 end
                 if self.savedVars.interaction.ButtonsVisible then
-                    self:ShowEmoteWheel()
+                    CinematicCam:ShowEmoteWheel()
                 end
             end
             if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue then
                 if self.savedVars.interaction.ButtonsVisible then
-                    self:ShowCameraWheel()
+                    CinematicCam:ShowCameraWheel()
                 end
             end
             zo_callLater(function()
-                local isVendor = self:IsVendorInteraction()
+                local isVendor = CinematicCam:IsVendorInteraction()
                 CinematicCam.blockGamepad = isVendor
 
                 if isVendor then
                     -- Hide the wheels for vendor interactions
 
-                    self:HideEmoteWheel()
-                    self:HideCameraWheel()
-                    self:HideEmotePad()
-                    self:HideCameraPad()
+                    CinematicCam:HideEmoteWheel()
+                    CinematicCam:HideCameraWheel()
+                    CinematicCam:HideEmotePad()
+                    CinematicCam:HideCameraPad()
                 elseif CinematicCam.isInteractionModified then
                     EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
-                        self:GamepadStickPoll()
+                        CinematicCam:GamepadStickPoll()
                     end)
                 end
             end) -- 100ms delay for UI to populate
         end
         if interactionType == INTERACTION_FURNITURE or interactionType == INTERACTION_STORE then
-            self:StopGamepadStickPoll()
+            CinematicCam:StopGamepadStickPoll()
         end
 
-
-        self:ApplyDialogueRepositioning()
+        CinematicCam:ApplyDialogueRepositioning()
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
         EVENT_MANAGER:RegisterForEvent(
@@ -347,7 +153,7 @@ function CinematicCam:OnInteractionStart()
                 if self.savedVars.interaction.layoutPreset == "cinematic" then
                     CinematicCam:HandleDefaultSubtitles("cinematic")
 
-                    self:InterceptDialogueForChunking("ChatterBegin")
+                    CinematicCam:InterceptDialogueForChunking("ChatterBegin")
 
                     if not self.savedVars.interaction.autoEmotes then
                         return
@@ -373,7 +179,7 @@ function CinematicCam:OnInteractionStart()
                     CinematicCam:HandleDefaultSubtitles("cinematic")
 
 
-                    self:InterceptDialogueForChunking("ConversationUpdate")
+                    CinematicCam:InterceptDialogueForChunking("ConversationUpdate")
 
                     -- automatic greeting when entering dialogue
                     if not self.savedVars.interaction.autoEmotes then return end
@@ -397,7 +203,7 @@ function CinematicCam:OnInteractionStart()
                     CinematicCam:HandleDefaultSubtitles("cinematic")
 
 
-                    self:InterceptDialogueForChunking("QuestOffered")
+                    CinematicCam:InterceptDialogueForChunking("QuestOffered")
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
                 end
@@ -417,7 +223,7 @@ function CinematicCam:OnInteractionStart()
                     CinematicCam:HandleDefaultSubtitles("cinematic")
 
 
-                    self:InterceptDialogueForChunking("QuestCompleteDialog")
+                    CinematicCam:InterceptDialogueForChunking("QuestCompleteDialog")
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
                     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestOffered", EVENT_QUEST_OFFERED)
@@ -431,20 +237,20 @@ function CinematicCam:OnInteractionStart()
 
         -- Hide UI Panels according to user preferences
         if self.savedVars.interaction.ui.hidePanelsESO then
-            self:HideDialoguePanels()
+            CinematicCam:HideDialoguePanels()
         end
 
         -- Player options background
         if self.savedVars.interface.usePlayerOptionsBackground then
-            self:ShowPlayerOptionsBackground()
+            CinematicCam:ShowPlayerOptionsBackground()
         end
 
         -- Letterbox handling
         zo_callLater(function()
-            if self:AutoShowLetterbox(interactionType) and not CinematicCam:CheckPlayerOptionsForVendorText() then
+            if CinematicCam:AutoShowLetterbox(interactionType) and not CinematicCam:CheckPlayerOptionsForVendorText() then
                 if not self.savedVars.letterbox.letterboxVisible then
                     dialogLetterbox = true
-                    self:ShowLetterbox()
+                    CinematicCam:ShowLetterbox()
                 else
                     dialogLetterbox = false
                 end
@@ -459,7 +265,7 @@ function CinematicCam:OnInteractionEnd()
 
     CinematicCam.lastWeaponsState = nil
 
-    self:InitializeUITweaks()
+    CinematicCam:InitializeUITweaks()
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_QuestOffered", EVENT_QUEST_OFFERED)
@@ -468,14 +274,14 @@ function CinematicCam:OnInteractionEnd()
         CinematicCam.isInteractionModified = false
 
         -- Use the complete reset instead of partial cleanup
-        self:ResetChunkedDialogueState()
+        CinematicCam:ResetChunkedDialogueState()
 
         -- Hide player options background when dialogue ends
-        self:HidePlayerOptionsBackground()
+        CinematicCam:HidePlayerOptionsBackground()
 
         -- Hide letterbox if was visible
         if self.savedVars.interaction.auto.autoLetterboxDialogue and not self.savedVars.letterbox.perma then
-            self:HideLetterbox()
+            CinematicCam:HideLetterbox()
         end
 
         -- Reset tracking flags
@@ -593,7 +399,7 @@ function CinematicCam:InitializeChunkedTextControl()
         end
     end
 
-    self:ConfigureChunkedTextBackground()
+    CinematicCam:ConfigureChunkedTextBackground()
 
     -- visibility settings
     local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
@@ -611,7 +417,7 @@ function CinematicCam:InitializeChunkedTextControl()
     control:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
 
     -- DIRECT FONT SETTING
-    local fontString = self:BuildUserFontString()
+    local fontString = CinematicCam:BuildUserFontString()
     control:SetFont(fontString)
 
     -- Start hidden
@@ -620,30 +426,30 @@ function CinematicCam:InitializeChunkedTextControl()
 
     -- Store reference
     CinematicCam.chunkedDialogueData.customControl = control
-    self:ConfigureChunkedTextBackground()
+    CinematicCam:ConfigureChunkedTextBackground()
 
     -- Set the correct active background
-    self:SetActiveBackgroundControl()
+    CinematicCam:SetActiveBackgroundControl()
     return control
 end
 
 function CinematicCam:InitializePlayerOptionsBackground()
     -- Configure background if not already done
     if not CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl then
-        self:ConfigurePlayerOptionsBackground()
+        CinematicCam:ConfigurePlayerOptionsBackground()
     end
 
     -- Position it initially
-    self:PositionPlayerOptionsBackground()
+    CinematicCam:PositionPlayerOptionsBackground()
 
     -- Start monitor
-    self:StartPlayerOptionsMonitoring()
+    CinematicCam:StartPlayerOptionsMonitoring()
 end
 
 function CinematicCam:InitializeLetterbox()
     -- Hide background on startup to prevent permanent display
     zo_callLater(function()
-        self:HideChunkedTextBackground()
+        CinematicCam:HideChunkedTextBackground()
     end, 100)
 
     if CinematicCam.savedVars.letterbox.letterboxVisible then
@@ -778,24 +584,24 @@ end)
 -- Font events
 function CinematicCam:RegisterFontEvents()
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CHATTER_BEGIN, function()
-        self:ApplyFontsToUI()
+        CinematicCam:ApplyFontsToUI()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_CONVERSATION_UPDATED, function()
-        self:ApplyFontsToUI()
+        CinematicCam:ApplyFontsToUI()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_QUEST_COMPLETE_DIALOG, function()
-        self:ApplyFontsToUI()
+        CinematicCam:ApplyFontsToUI()
     end)
 
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_INTERACTION_UPDATED, function()
-        self:ApplyFontsToUI()
+        CinematicCam:ApplyFontsToUI()
     end)
 
     -- Add more specific events
     EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_Font", EVENT_SHOW_BOOK, function()
-        self:ApplyFontsToUI()
+        CinematicCam:ApplyFontsToUI()
     end)
 end
 
@@ -910,7 +716,7 @@ function CinematicCam:MigrateSettings()
     if self.savedVars.interaction.forceThirdPersonBank == true then
         self.savedVars.interaction.forceThirdPersonBank = false
     end
-    self:InitializeInteractionSettings()
+    CinematicCam:InitializeInteractionSettings()
 end
 
 function CinematicCam:CheckForUpdates()
@@ -920,13 +726,13 @@ function CinematicCam:CheckForUpdates()
         EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_UpdateCheck", EVENT_PLAYER_ACTIVATED, function()
             EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_UpdateCheck", EVENT_PLAYER_ACTIVATED)
             zo_callLater(function()
-                self:DetermineNotificationType()
+                CinematicCam:DetermineNotificationType()
             end, 2000)
         end)
         return
     end
 
-    self:DetermineNotificationType()
+    CinematicCam:DetermineNotificationType()
 end
 
 function CinematicCam:IsNewerVersion(current, last)
@@ -968,11 +774,11 @@ function CinematicCam:ShowUpdateNotificationUI()
     notification:SetAlpha(0)
 
     -- Start fade in animation
-    self:AnimateUpdateNotification(notification, true)
+    CinematicCam:AnimateUpdateNotification(notification, true)
 
     -- Auto-hide after 5 seconds
     zo_callLater(function()
-        self:HideUpdateNotification()
+        CinematicCam:HideUpdateNotification()
     end, 5000)
 end
 
@@ -992,11 +798,11 @@ function CinematicCam:ShowWelcomeNotificationUI()
         "|cFFD700Cinematic Dialog|r \n|cFFFFFFTry it out by talking to an NPC|r\n|cE0E0E0Check the settings menu for more customization options|r")
 
     -- Start fade in animation
-    self:AnimateUpdateNotification(notification, true)
+    CinematicCam:AnimateUpdateNotification(notification, true)
 
     -- Auto-hide after 5 seconds
     zo_callLater(function()
-        self:HideUpdateNotification()
+        CinematicCam:HideUpdateNotification()
     end, 10000)
     self.savedVars.hasSeenWelcomeMessage = true
 end
@@ -1013,11 +819,11 @@ function CinematicCam:ShowPresetNotificationUI(slotName)
     notificationText:SetText("Cinematic Dialogue: " .. slotName)
 
     -- Start fade in animation
-    self:AnimateUpdateNotification(notification, true)
+    CinematicCam:AnimateUpdateNotification(notification, true)
 
     -- Auto-hide after 5 seconds
     zo_callLater(function()
-        self:HideUpdateNotification()
+        CinematicCam:HideUpdateNotification()
     end, 6000)
 end
 
@@ -1029,7 +835,7 @@ function CinematicCam:HideUpdateNotification()
     end
 
     -- Start fade out animation
-    self:AnimateUpdateNotification(notification, false)
+    CinematicCam:AnimateUpdateNotification(notification, false)
 
     zo_callLater(function()
         if notification then
@@ -1070,14 +876,14 @@ function CinematicCam:DetermineNotificationType()
     local hasSeenWelcome = self.savedVars.hasSeenWelcomeMessage or false
 
     -- Compare versions
-    if self:IsNewerVersion(CURRENT_VERSION, lastSeenVersion) then
+    if CinematicCam:IsNewerVersion(CURRENT_VERSION, lastSeenVersion) then
         -- Determine if this is a first install or update
         local isFirstInstall = (lastSeenVersion == "0.0.0" and not hasSeenWelcome)
 
         if isFirstInstall then
-            self:ShowWelcomeNotificationUI()
+            CinematicCam:ShowWelcomeNotificationUI()
         else
-            self:ShowUpdateNotificationUI()
+            CinematicCam:ShowUpdateNotificationUI()
             -- Set flag that user needs to reload to clear update indicators
             self.savedVars.hasReloadedSinceUpdate = false
         end
@@ -1115,12 +921,12 @@ end)
 function CinematicCam:InitializeUpdateSystem()
     if not self.savedVars then
         zo_callLater(function()
-            self:InitializeUpdateSystem()
+            CinematicCam:InitializeUpdateSystem()
         end, 1000)
         return
     end
     -- Check for updates
-    self:CheckForUpdates()
+    CinematicCam:CheckForUpdates()
 end
 
 function CinematicCam:RegisterSceneHiddenCallbacks()
@@ -1137,9 +943,9 @@ function CinematicCam:RegisterSceneHiddenCallbacks()
         if scene then
             scene:RegisterCallback("StateChange", function(oldState, newState)
                 if newState == SCENE_SHOWN then
-                    self:OnTargetSceneShown(sceneName)
+                    CinematicCam:OnTargetSceneShown(sceneName)
                 elseif newState == SCENE_HIDDEN then
-                    self:OnTargetSceneHidden(sceneName)
+                    CinematicCam:OnTargetSceneHidden(sceneName)
                 end
             end)
         end
@@ -1148,11 +954,11 @@ end
 
 function CinematicCam:OnTargetSceneShown(sceneName)
     if sceneName == "gamepad_store" then
-        self:StopGamepadStickPoll()
+        CinematicCam:StopGamepadStickPoll()
     elseif sceneName == "gamepad_housing_furniture_scene" then
-        self:StopGamepadStickPoll()
+        CinematicCam:StopGamepadStickPoll()
     elseif sceneName == "housingEditorHud" then
-        self:StopGamepadStickPoll()
+        CinematicCam:StopGamepadStickPoll()
     elseif sceneName == "hudui" then
         if CinematicCam.isInteractionModified then
             SetGameCameraUIMode(CAMERA_MODE.FREE)
@@ -1160,7 +966,7 @@ function CinematicCam:OnTargetSceneShown(sceneName)
     elseif sceneName == "gamepadMainMenu" then
         -- mark when menu is opened so StopGamepadStickPoll doesn't override
         CinematicCam.isMenuActive = true
-        self:StopGamepadStickPoll()
+        CinematicCam:StopGamepadStickPoll()
     end
 end
 
@@ -1186,7 +992,7 @@ end
 -- Individual scene handlers
 function CinematicCam:OnStoreSceneShown()
     -- Stop freecam when store opens
-    self:StopGamepadStickPoll()
+    CinematicCam:StopGamepadStickPoll()
 end
 
 function CinematicCam:OnHudUISceneShown()
@@ -1198,10 +1004,10 @@ end
 
 function CinematicCam:OnHousingFurnitureSceneShown()
     -- Stop freecam when housing furniture browser opens
-    self:StopGamepadStickPoll()
+    CinematicCam:StopGamepadStickPoll()
 end
 
 function CinematicCam:OnHousingEditorHudShown()
     -- Stop freecam when housing editor opens
-    self:StopGamepadStickPoll()
+    CinematicCam:StopGamepadStickPoll()
 end

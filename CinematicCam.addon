@@ -10,18 +10,25 @@
 ## ConsoleDependsOn: LibAddonMenu-2.0
 
 ## Main
+
 CinematicCam.lua
+InteractionControls/Gamepad.lua
+InteractionControls/Emotes.lua
+InteractionControls/Camera.lua
 
 ## Elements
 Defaults.lua
-Fonts.lua
+InteractionStyles/Fonts.lua
+InteractionStyles/Names.lua
+
 ChunkedText.lua
+Localization.lua
 UI.lua
-Names.lua
 Letterbox.lua
 Settings.lua
-presets.lua
-Emotes.lua
-Zone.lua
+Presets.lua
+Database.lua
+
+
 ## XML
 CinematicCam.xml

@@ -1280,7 +1280,6 @@ function CinematicCam:UpdateChunkedTextVisibility()
             if background then background:SetHidden(true) end
         else
             control:SetAlpha(1.0)
-            --TODO Fix the background apeparenign when the option was selected, but disabled when the user change preset from cinematic to defalt
             if background and self.savedVars.interface and self.savedVars.interface.useSubtitleBackground then
                 background:SetHidden(false)
             end

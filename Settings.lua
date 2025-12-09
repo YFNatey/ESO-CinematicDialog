@@ -21,11 +21,11 @@ function CinematicCam:CreateSettingsMenu()
 
     local panelData = {
         type = "panel",
-        name = "Cinematic Dialogue",
-        displayName = "Cinemtaic Dialogue",
+        name = self:CC_L("SETTINGS_TITLE"),
+        displayName = self:CC_L("SETTINGS_TITLE"),
         author = "YFNatey",
         version = "1.0",
-        slashCommand = "/cinematicsettings",
+        slashCommand = self:CC_L("SETTINGS_SLASH"),
         registerForRefresh = true,
         registerForDefaults = true,
     }
@@ -34,7 +34,7 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "dropdown",
-            name = "Custom Presets",
+            name = self:CC_L("CUSTOM_PRESETS"),
             tooltip = function()
                 local slot = self.selectedPresetSlot or 1
                 return self:GetPresetTooltip(slot)
@@ -75,11 +75,9 @@ function CinematicCam:CreateSettingsMenu()
             name = function()
                 local slot = self.selectedPresetSlot or 1
                 local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Apply " .. slotName .. " Preset]"
+                return self:CC_L("APPLY_PRESET", { preset = slotName })
             end,
-            tooltip = "Button to apply the selected preset settings",
+            tooltip = self:CC_L("PRESET_APPLY_TOOLTIP"),
             func = function()
                 local slot = self.selectedPresetSlot or 1
                 local slotName = self:GetSlotDisplayName(slot)
@@ -99,11 +97,9 @@ function CinematicCam:CreateSettingsMenu()
             name = function()
                 local slot = self.selectedPresetSlot or 1
                 local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Save Settings to " .. slotName .. "]"
+                return self:CC_L("SAVE_PRESET", { preset = slotName })
             end,
-            tooltip = "Button to save all settings to the current preset",
+            tooltip = self:CC_L("PRESET_SAVE_TOOLTIP"),
             func = function()
                 local slot = self.selectedPresetSlot or 1
                 self:SaveToPresetSlot(slot)
@@ -115,11 +111,9 @@ function CinematicCam:CreateSettingsMenu()
             name = function()
                 local slot = self.selectedPresetSlot or 1
                 local slotName = self:GetSlotDisplayName(slot)
-
-
-                return "[Delete Saved Settings for " .. slotName .. "]"
+                return self:CC_L("DELETE_PRESET", { preset = slotName })
             end,
-            tooltip = "Button to clear all settings from the selected preset",
+            tooltip = self:CC_L("PRESET_DELETE_TOOLTIP"),
             func = function()
                 local slot = self.selectedPresetSlot or 1
                 self:ClearPresetSlot(slot)
@@ -133,12 +127,12 @@ function CinematicCam:CreateSettingsMenu()
 
                 notification:SetHidden(false)
                 notification:SetAlpha(0)
-                notificationText:SetText("Cinematic Dialogue: Deleted " .. slotName)
+                notificationText:SetText(self:CC_L("PRESET_DELETED_NOTIFICATION", { preset = slotName }))
 
                 -- Start fade in animation
                 self:AnimateUpdateNotification(notification, true)
 
-                -- Auto-hide wafter 5 seconds
+                -- Auto-hide after 5 seconds
                 zo_callLater(function()
                     self:HideUpdateNotification()
                 end, 4000)
@@ -153,8 +147,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto Presets",
-            tooltip = "Automatically apply the correct preset in homes, overland, or dungeon zones",
+            name = self:CC_L("AUTO_PRESETS"),
+            tooltip = self:CC_L("AUTO_PRESETS_TOOLTIP"),
             getFunc = function() return self.savedVars.autoSwapPresets end,
             setFunc = function(value)
                 self.savedVars.autoSwapPresets = value
@@ -164,12 +158,12 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "header",
-            name = "General Settings",
+            name = self:CC_L("GENERAL_SETTINGS"),
         },
         {
             type = "checkbox",
-            name = "Subtitles",
-            tooltip = "Show NPC subtitles during dialogue",
+            name = self:CC_L("SUBTITLES"),
+            tooltip = self:CC_L("SUBTITLES_TOOLTIP"),
             getFunc = function() return not self.savedVars.interaction.subtitles.isHidden end,
             setFunc = function(value)
                 self.savedVars.interaction.subtitles.isHidden = not value
@@ -180,10 +174,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Subtitle Style",
-            tooltip =
-            "Default: Original style\n Cinematic: Centered captions with additional customization\n",
-            choices = { "Default", "Cinematic" },
+            name = self:CC_L("SUBTITLE_STYLE"),
+            tooltip = self:CC_L("SUBTITLE_STYLE_TOOLTIP"),
+            choices = { self:CC_L("STYLE_DEFAULT"), self:CC_L("STYLE_CINEMATIC") },
             choicesValues = { "default", "cinematic" },
             getFunc = function() return self.savedVars.interaction.layoutPreset end,
             setFunc = function(value)
@@ -221,8 +214,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Hide Choices until Dialogue finishes",
-            tooltip = "Hides your response options until the NPC has finished speaking",
+            name = self:CC_L("HIDE_CHOICES"),
+            tooltip = self:CC_L("HIDE_CHOICES_TOOLTIP"),
             getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
             setFunc = function(value)
                 self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
@@ -236,7 +229,8 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "checkbox",
-            name = "Show Interaction Buttons",
+            name = self:CC_L("SHOW_INTERACTION_BUTTONS"),
+            tooltip = self:CC_L("SHOW_INTERACTION_BUTTONS_TOOLTIP"),
             getFunc = function()
                 return CinematicCam.savedVars.interaction.ButtonsVisible
             end,
@@ -251,13 +245,13 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Subtitle Appearance",
+            name = self:CC_L("SUBTITLE_APPEARANCE"),
             width = "full",
         },
         {
             type = "dropdown",
-            name = "Font",
-            tooltip = "Change the font for subtitle text, and your responses",
+            name = self:CC_L("FONT"),
+            tooltip = self:CC_L("FONT_TOOLTIP"),
             choices = choices,
             choicesValues = choicesValues,
             getFunc = function() return self.savedVars.interface.selectedFont end,
@@ -269,7 +263,7 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "slider",
-            name = " Text Size",
+            name = self:CC_L("TEXT_SIZE"),
             min = 10,
             max = 64,
             step = 1,
@@ -282,8 +276,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "colorpicker",
-            name = "Text Color",
-            tooltip = "Change the color of subtitle text",
+            name = self:CC_L("TEXT_COLOR"),
+            tooltip = self:CC_L("TEXT_COLOR_TOOLTIP"),
             getFunc = function()
                 local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
                 return color.r, color.g, color.b, color.a
@@ -304,10 +298,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Text Background",
-            tooltip =
-            "Backgrounds for easier viewing of subtitles. Light background is only available in Cinematic layout",
-            choices = { "Default", "Light", "None" },
+            name = self:CC_L("TEXT_BACKGROUND"),
+            tooltip = self:CC_L("TEXT_BACKGROUND_TOOLTIP"),
+            choices = { self:CC_L("BG_DEFAULT"), self:CC_L("BG_LIGHT"), self:CC_L("BG_NONE") },
             choicesValues = { "default", "light", "none" },
             getFunc = function()
                 local currentLayout = self.savedVars.interaction.layoutPreset
@@ -377,7 +370,8 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "slider",
-            name = "Position",
+            name = self:CC_L("POSITION"),
+            tooltip = self:CC_L("POSITION_TOOLTIP"),
             min = 0,
             max = 100,
             step = 1,
@@ -400,22 +394,23 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "header",
-            name = "Name Appearance",
+            name = self:CC_L("NAME_APPEARANCE"),
             width = "full",
         },
 
         {
             type = "dropdown",
-            name = "Select Companion",
+            name = self:CC_L("SELECT_COMPANION"),
+            tooltip = self:CC_L("SELECT_COMPANION_TOOLTIP"),
             choices = {
-                "Bastian Hallix",
-                "Mirri Elendis",
-                "Ember",
-                "Isobel Veloise",
-                "Azandar al-Cybiades",
-                "Sharp-as-Night",
-                "Tanlorin",
-                "Zerith-var"
+                self:CC_L("COMPANION_BASTIAN"),
+                self:CC_L("COMPANION_MIRRI"),
+                self:CC_L("COMPANION_EMBER"),
+                self:CC_L("COMPANION_ISOBEL"),
+                self:CC_L("COMPANION_AZANDAR"),
+                self:CC_L("COMPANION_SHARP"),
+                self:CC_L("COMPANION_TANLORIN"),
+                self:CC_L("COMPANION_ZERITH")
             },
             choicesValues = {
                 "bastian hallix",
@@ -447,8 +442,9 @@ function CinematicCam:CreateSettingsMenu()
                 local displayName = companionName:gsub("(%a)([%w_']*)", function(first, rest)
                     return first:upper() .. rest
                 end)
-                return displayName .. " Color"
+                return self:CC_L("COMPANION_COLOR", { companion = displayName })
             end,
+            tooltip = self:CC_L("COMPANION_COLOR_TOOLTIP"),
             getFunc = function()
                 local companionName = self.savedVars.selectedCompanion or "ember"
                 if not self.savedVars.companionColors then
@@ -483,7 +479,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "colorpicker",
-            name = "Default NPC Color",
+            name = self:CC_L("DEFAULT_NPC_COLOR"),
+            tooltip = self:CC_L("DEFAULT_NPC_COLOR_TOOLTIP"),
             getFunc = function()
                 local color = self.savedVars.npcNameColor
                 return color.r, color.g, color.b, color.a
@@ -500,17 +497,16 @@ function CinematicCam:CreateSettingsMenu()
         },
 
 
-        --- FONT SETTINGS
+        --- CAMERA SETTINGS
 
         {
             type = "header",
-            name = "Cinematic Camera Settings",
+            name = self:CC_L("CAMERA_SETTINGS"),
         },
         {
             type = "checkbox",
-            name = "Enable UI settings",
-            tooltip =
-            "Turn ON to use this addons custom hiding behavior.\n - Hide compass, group tracker and more.\nTurn OFF to use default hiding behavior.",
+            name = self:CC_L("ENABLE_UI_SETTINGS"),
+            tooltip = self:CC_L("ENABLE_UI_SETTINGS_TOOLTIP"),
             getFunc = function()
                 return CinematicCam.savedVars.interface.usingModTweaks
             end,
@@ -524,10 +520,14 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Show Compass",
-            tooltip =
-            "Choose when to hide the compass\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            name = self:CC_L("SHOW_COMPASS"),
+            tooltip = self:CC_L("SHOW_COMPASS_TOOLTIP"),
+            choices = {
+                self:CC_L("ALWAYS"),
+                self:CC_L("NEVER"),
+                self:CC_L("COMBAT_ONLY"),
+                self:CC_L("WEAPONS_DRAWN")
+            },
             choicesValues = { "always", "never", "combat", "weapons" },
             getFunc = function() return self.savedVars.interface.hideCompass end,
             setFunc = function(value)
@@ -539,11 +539,14 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Show Skill Bar",
-            tooltip =
-            "Choose when to hide the skill and resource bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
-
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            name = self:CC_L("SHOW_SKILL_BAR"),
+            tooltip = self:CC_L("SHOW_SKILL_BAR_TOOLTIP"),
+            choices = {
+                self:CC_L("ALWAYS"),
+                self:CC_L("NEVER"),
+                self:CC_L("COMBAT_ONLY"),
+                self:CC_L("WEAPONS_DRAWN")
+            },
             choicesValues = { "always", "never", "combat", "weapons" },
             getFunc = function() return self.savedVars.interface.hideActionBar end,
             setFunc = function(value)
@@ -555,11 +558,14 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "dropdown",
-            name = "Show Reticle",
-            tooltip =
-            "Choose when to hide the center reticle and resource bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
-
-            choices = { "Always", "Never", "Combat Only", "Weapons Drawn" },
+            name = self:CC_L("SHOW_RETICLE"),
+            tooltip = self:CC_L("SHOW_RETICLE_TOOLTIP"),
+            choices = {
+                self:CC_L("ALWAYS"),
+                self:CC_L("NEVER"),
+                self:CC_L("COMBAT_ONLY"),
+                self:CC_L("WEAPONS_DRAWN")
+            },
             choicesValues = { "always", "never", "combat", "weapons" },
             getFunc = function() return self.savedVars.interface.hideReticle end,
             setFunc = function(value)
@@ -572,13 +578,13 @@ function CinematicCam:CreateSettingsMenu()
         {
 
             type = "header",
-            name = "Black Bars",
+            name = self:CC_L("BLACK_BARS"),
         },
 
         {
             type = "button",
-            name = "Toggle Black Bars",
-            tooltip = "Add movie-like black bars",
+            name = self:CC_L("TOGGLE_BLACK_BARS"),
+            tooltip = self:CC_L("TOGGLE_BLACK_BARS_TOOLTIP"),
             func = function()
                 self:ToggleLetterbox()
             end,
@@ -586,7 +592,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto Black Bars During Dialogue",
+            name = self:CC_L("AUTO_BLACK_BARS_DIALOGUE"),
+            tooltip = self:CC_L("AUTO_BLACK_BARS_DIALOGUE_TOOLTIP"),
             getFunc = function() return self.savedVars.interaction.auto.autoLetterboxDialogue end,
             setFunc = function(value)
                 self.savedVars.interaction.auto.autoLetterboxDialogue = value
@@ -595,16 +602,16 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Auto Black Bars on Mount",
-
+            name = self:CC_L("AUTO_BLACK_BARS_MOUNT"),
+            tooltip = self:CC_L("AUTO_BLACK_BARS_MOUNT_TOOLTIP"),
             getFunc = function() return CinematicCam.savedVars.letterbox.autoLetterboxMount end,
             setFunc = function(value) CinematicCam.savedVars.letterbox.autoLetterboxMount = value end,
             width = "full",
         },
         {
             type = "slider",
-            name = "Mount Black Bars Delay",
-            tooltip = "Delay showing black bars when mounting (in seconds)",
+            name = self:CC_L("MOUNT_BLACK_BARS_DELAY"),
+            tooltip = self:CC_L("MOUNT_BLACK_BARS_DELAY_TOOLTIP"),
             min = 0,
             max = 60,
             step = 20,
@@ -618,7 +625,8 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "slider",
-            name = "Black Bar Size",
+            name = self:CC_L("BLACK_BARS_SIZE"),
+            tooltip = self:CC_L("BLACK_BARS_SIZE_TOOLTIP"),
             min = 10,
             max = 300,
             step = 5,
@@ -634,8 +642,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Vignette",
-
+            name = self:CC_L("VIGNETTE"),
+            tooltip = self:CC_L("VIGNETTE_TOOLTIP"),
             getFunc = function() return self.savedVars.interface.sepiaFilter.enabled end,
             setFunc = function(value)
                 self.savedVars.interface.sepiaFilter.enabled = value
@@ -647,8 +655,15 @@ function CinematicCam:CreateSettingsMenu()
         {
 
             type = "dropdown",
-            name = "Quick Presets",
-            choices = { "None", "Pulp", "Redemption", "Kingdom", "Vanilla" },
+            name = self:CC_L("QUICK_PRESETS"),
+            tooltip = self:CC_L("QUICK_PRESETS_TOOLTIP"),
+            choices = {
+                self:CC_L("PRESET_NONE"),
+                self:CC_L("PRESET_PULP"),
+                self:CC_L("PRESET_REDEMPTION"),
+                self:CC_L("PRESET_KINGDOM"),
+                self:CC_L("PRESET_VANILLA")
+            },
             choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
             getFunc = function() return self.savedVars.interface.currentPreset end,
             setFunc = function(value)
@@ -673,13 +688,13 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "header",
-            name = "Use NPC Camera",
+            name = self:CC_L("NPC_CAMERA_HEADER"),
         },
 
         {
             type = "checkbox",
-            name = "Crafting Stations",
-            tooltip = "Keep game camera when using crafting stations",
+            name = self:CC_L("CRAFTING_STATIONS"),
+            tooltip = self:CC_L("CRAFTING_STATIONS_TOOLTIP"),
             getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
             setFunc = function(value)
                 self.savedVars.interaction.forceThirdPersonCrafting = value
@@ -691,21 +706,13 @@ function CinematicCam:CreateSettingsMenu()
 
         {
             type = "description",
-            text = [[/ccui - Photo Mdde
-/ccbars - Black Bars]],
+            text = self:CC_L("SLASH_COMMANDS"),
             width = "full"
         },
         {
             type = "description",
-            text = "Update Notes",
-            tooltip =
-            [[
-Version 6o - Added Features
- - Added NPC Cam and Player Cam controls
- - Added a new Settings menu: Cinematic Emotes
- - Added Auto Emotes
-]],
-
+            text = self:CC_L("UPDATE_NOTES"),
+            tooltip = self:CC_L("UPDATE_NOTES_TOOLTIP"),
             width = "full",
         },
         {
@@ -713,8 +720,8 @@ Version 6o - Added Features
         },
         {
             type = "button",
-            name = "Reload UI",
-            tooltip = "If you encounter any issues, reloading UI usually fixes them",
+            name = self:CC_L("RELOAD_UI"),
+            tooltip = self:CC_L("RELOAD_UI_TOOLTIP"),
             func = function()
                 ReloadUI()
             end,
@@ -722,22 +729,22 @@ Version 6o - Added Features
         },
         {
             type = "header",
-            name = "Support"
+            name = self:CC_L("SUPPORT")
         },
         {
             type = "description",
-            text = "Author: YFNatey, Xbox NA",
+            text = self:CC_L("AUTHOR"),
             width = "full"
         },
         {
             type = "description",
-            text = "If you find this addon useful, consider supporting its development!",
+            text = self:CC_L("SUPPORT_TEXT"),
             width = "full"
         },
         {
             type = "button",
-            name = "Paypal",
-            tooltip = "paypal.me/yfnatey",
+            name = self:CC_L("PAYPAL"),
+            tooltip = self:CC_L("PAYPAL_TOOLTIP"),
             func = function() RequestOpenUnsafeURL("https://paypal.me/yfnatey") end,
             width = "half"
         },
