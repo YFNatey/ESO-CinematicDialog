@@ -1,3 +1,36 @@
+function CinematicCam:InitializeLetterbox()
+    -- Hide background on startup to prevent permanent display
+    zo_callLater(function()
+        CinematicCam:HideChunkedTextBackground()
+    end, 100)
+
+    if CinematicCam.savedVars.letterbox.letterboxVisible then
+        CinematicCam_Container:SetHidden(false)
+        CinematicCam_LetterboxTop:SetAnchor(TOPLEFT, GuiRoot, TOPLEFT)
+        CinematicCam_LetterboxTop:SetAnchor(TOPRIGHT, GuiRoot, TOPRIGHT)
+        CinematicCam_LetterboxTop:SetHeight(CinematicCam.savedVars.letterbox.size)
+        CinematicCam_LetterboxTop:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+
+        CinematicCam_LetterboxTop:SetHidden(false)
+
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMLEFT, GuiRoot, BOTTOMLEFT)
+        CinematicCam_LetterboxBottom:SetAnchor(BOTTOMRIGHT, GuiRoot, BOTTOMRIGHT)
+        CinematicCam_LetterboxBottom:SetHeight(CinematicCam.savedVars.letterbox.size)
+        CinematicCam_LetterboxBottom:SetColor(0, 0, 0, CinematicCam.savedVars.letterboxOpacity)
+
+        CinematicCam_LetterboxBottom:SetHidden(false)
+    else
+        CinematicCam_Container:SetHidden(false)
+        CinematicCam_LetterboxTop:SetHidden(true)
+        CinematicCam_LetterboxBottom:SetHidden(true)
+    end
+    zo_callLater(function()
+        if CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl then
+            CinematicCam.chunkedDialogueData.playerOptionsBackgroundControl:SetHidden(true)
+        end
+    end, 100)
+end
+
 ---=============================================================================
 -- Manage Letterbox Bars
 --=============================================================================

@@ -59,6 +59,39 @@ CinematicCam.uiElements = {
     "ZO_TutorialOverlay",
 
 }
+
+
+function CinematicCam:InitializeUI()
+    if not CinematicCam.savedVars.interface.UiElementsVisible then
+        zo_callLater(function()
+            for _, elementName in ipairs(CinematicCam.uiElements) do
+                local element = _G[elementName]
+                if element and not element:IsHidden() then
+                    CinematicCam.uiElementsMap[elementName] = true
+                    element:SetHidden(true)
+                end
+            end
+            for elementName, shouldHide in pairs(CinematicCam.savedVars.hideUiElements) do
+                if shouldHide then
+                    local element = _G[elementName]
+                    if element and not element:IsHidden() then
+                        CinematicCam.uiElementsMap[elementName] = true
+                        element:SetHidden(true)
+                    end
+                end
+            end
+        end, 1600)
+    end
+end
+
+function CinematicCam:InitializeUITweaks()
+    if self.savedVars.interface.usingModTweaks then
+        CinematicCam:UpdateCompassVisibility()
+        CinematicCam:UpdateActionBarVisibility()
+        CinematicCam:UpdateReticleVisibility()
+    end
+end
+
 function CinematicCam:IsInAnyInteraction()
     local currentInteractionType = GetInteractionType()
 

@@ -19,27 +19,71 @@ CinematicCam.chunkedDialogueData = {
     playerOptionsHidden = false,
     originalPlayerOptionsVisibility = {}
 }
-function CinematicCam:GetDialogueText()
-    local sources = {
-        ZO_InteractWindow_GamepadContainerText,
-        ZO_InteractWindowTargetAreaBodyText
-    }
 
-    for _, element in ipairs(sources) do
-        if element then
-            local text = element.text or element:GetText() or ""
-            if string.len(text) > 0 then
-                return text, element
-            end
+function CinematicCam:InitializeChunkedTextControl()
+    local control = _G["CinematicCam_ChunkedText"] -- XML element
+
+    if not control then
+        control = CreateControl("CinematicCam_ChunkedDialogue", GuiRoot, CT_LABEL)
+
+        if not control then
+            return nil
         end
     end
 
-    return nil, nil
+    CinematicCam:ConfigureChunkedTextBackground()
+
+    -- visibility settings
+    local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
+    control:SetColor(color.r, color.g, color.b, color.a)
+    if self.savedVars.interaction.subtitles.isHidden == true then
+        control:SetAlpha(0)
+    elseif self.savedVars.interaction.subtitles.isHidden == false then
+        control:SetAlpha(1.0)
+    end
+
+
+    -- Text properties
+    control:SetWrapMode(TEXT_WRAP_MODE_ELLIPSIS)
+    control:SetVerticalAlignment(TEXT_ALIGN_CENTER)
+    control:SetHorizontalAlignment(TEXT_ALIGN_CENTER)
+
+    -- DIRECT FONT SETTING
+    local fontString = CinematicCam:BuildUserFontString()
+    control:SetFont(fontString)
+
+    -- Start hidden
+    control:SetHidden(true)
+    control:SetText("")
+
+    -- Store reference
+    CinematicCam.chunkedDialogueData.customControl = control
+    CinematicCam:ConfigureChunkedTextBackground()
+
+    -- Set the correct active background
+    CinematicCam:SetActiveBackgroundControl()
+    return control
 end
 
 ---=============================================================================
 -- Player Response Options
 --=============================================================================
+function CinematicCam:ShowPlayerResponse()
+    local playerOptionElements = {
+        "ZO_InteractWindowPlayerAreaOptions",
+        "ZO_InteractWindow_GamepadContainerInteractList",
+        "ZO_InteractWindow_GamepadContainerInteract",
+        "ZO_InteractWindowPlayerAreaHighlight"
+    }
+
+    for _, elementName in ipairs(playerOptionElements) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(false)
+        end
+    end
+end
+
 function CinematicCam:FindPlayerOptionTextElement(option)
     if option.text and option.text.GetText then
         return option.text
@@ -314,10 +358,6 @@ function CinematicCam:ProcessTextIntoChunks(fullText)
     -- Keep short chunks for timing (player options timing)
     chunks = self:SplitTextIntoChunks(processedText, delimiters, minLength, maxLength)
 
-    -- Preview timing for debugging
-    if #chunks > 1 then
-        self:PreviewChunkTiming(chunks)
-    end
 
     return chunks
 end
@@ -560,14 +600,6 @@ function CinematicCam:HideChunkDisplay(control, background)
     end
 end
 
-function CinematicCam:RepositionInteractPrompt()
-    local interactContainer = ZO_ReticleContainer
-
-    if interactContainer then
-        interactContainer:SetScale(.4)
-    end
-end
-
 function CinematicCam:UpdateChunkBackground(control, background)
     if background and self:ShouldShowSubtitleBackground() then
         -- Apply color based on current mode EVERY TIME the background is shown
@@ -760,6 +792,53 @@ end
 ---=============================================================================
 -- TIMING AND SCHEDULING
 --=============================================================================
+function CinematicCam:CleanTextForTiming(text)
+    if not text then return "" end
+
+    -- Remove abbreviation markers
+    local cleaned = string.gsub(text, "§ABBREV§", ".")
+
+    -- Remove extra whitespace
+    cleaned = string.gsub(cleaned, "%s+", " ")
+    cleaned = self:TrimString(cleaned)
+
+    return cleaned
+end
+
+function CinematicCam:TrimString(str)
+    if not str or type(str) ~= "string" then
+        return ""
+    end
+    local trimmed = string.gsub(str, "^%s*", "")
+    trimmed = string.gsub(trimmed, "%s*$", "")
+    return trimmed
+end
+
+function CinematicCam:IsValidChunkBoundary(text, position, currentChunk, minLength)
+    if string.len(currentChunk) < minLength then
+        return false
+    end
+
+    local nextChar = text:sub(position + 1, position + 1)
+    if nextChar == " " or nextChar == "\n" or nextChar == "\t" or nextChar == "" then
+        return true
+    end
+
+    if string.match(nextChar, "%w") then
+        return false
+    end
+
+    return true
+end
+
+function CinematicCam:FindWordBoundary(text, maxPosition)
+    for i = maxPosition, 1, -1 do
+        if text:sub(i, i) == " " then
+            return i - 1
+        end
+    end
+    return maxPosition
+end
 
 function CinematicCam:ScheduleNextChunk()
     if CinematicCam.chunkedDialogueData.displayTimer then
@@ -877,41 +956,6 @@ function CinematicCam:UpdateTimingChunkIndex()
     CinematicCam.chunkedDialogueData.currentChunkIndex = timingChunkIndex
 end
 
-function CinematicCam:CalculateChunkDisplayTime(chunkText)
-    local timingChunks = CinematicCam.chunkedDialogueData.chunks
-    local chunkIndex = CinematicCam.chunkedDialogueData.currentChunkIndex
-
-    local timingText = timingChunks[chunkIndex]
-
-    if not timingText or timingText == "" then
-        return self.savedVars.chunkedDialog.baseDisplayTime
-    end
-
-    local cleanText = self:CleanTextForTiming(timingText)
-    local textLength = string.len(cleanText)
-
-    -- Base calculation
-    local baseTime = 0.4
-    local timePerChar = 0.06
-    local displayTime = baseTime + (textLength * timePerChar)
-
-    -- Add punctuation timing if enabled
-    if self.savedVars.chunkedDialog.timingMode ~= "fixed" and self.savedVars.chunkedDialog.usePunctuationTiming then
-        local punctuationTime = self:CalculatePunctuationTime(cleanText)
-        displayTime = displayTime + punctuationTime
-    end
-
-    -- Apply min/max constraints
-    if self.savedVars.chunkedDialog.timingMode ~= "fixed" then
-        local minTime = self.savedVars.chunkedDialog.minDisplayTime or 1.5
-        local maxTime = self.savedVars.chunkedDialog.maxDisplayTime or 8.0
-        displayTime = math.max(minTime, displayTime)
-        displayTime = math.min(maxTime, displayTime)
-    end
-
-    return displayTime
-end
-
 function CinematicCam:CalculatePunctuationTime(text)
     if not text or not self.savedVars.chunkedDialog.usePunctuationTiming then
         return 0
@@ -953,14 +997,6 @@ function CinematicCam:CalculatePunctuationTime(text)
         (ellipsisCount * (self.savedVars.chunkedDialog.ellipsisPauseTime or 0.5))
 
     return totalPunctuationTime
-end
-
-function CinematicCam:PreviewChunkTiming(chunks)
-    local totalTime = 0
-    for i, chunk in ipairs(chunks) do
-        local chunkTime = self:CalculateChunkDisplayTime(chunk)
-        totalTime = totalTime + chunkTime
-    end
 end
 
 ---=============================================================================
@@ -1071,19 +1107,6 @@ function CinematicCam:HideAllChunkedControls()
     if CinematicCam.npcNameData.customNameControl then
         CinematicCam.npcNameData.customNameControl:SetHidden(true)
         CinematicCam.npcNameData.customNameControl:SetText("")
-    end
-end
-
-function CinematicCam:RestoreOriginalElements()
-    if CinematicCam.chunkedDialogueData.sourceElement then
-        CinematicCam.chunkedDialogueData.sourceElement:SetHidden(self.savedVars.interaction.subtitles.isHidden)
-    end
-
-    if CinematicCam.npcNameData.currentPreset == "default" then
-        local _, originalNameElement = self:GetNPCName()
-        if originalNameElement then
-            originalNameElement:SetHidden(false)
-        end
     end
 end
 
@@ -1226,9 +1249,7 @@ function CinematicCam:ConfigureChunkedTextBackground()
     local backgroundNormal = _G["CinematicCam_ChunkedTextBackground"]
     local backgroundKingdom = _G["CinematicCam_ChunkedTextBackground_Kingdom"]
 
-
-
-    -- Configure kingdom background (color will be set dynamically)
+    -- Configure kingdom background
     if backgroundKingdom then
         backgroundKingdom:SetHidden(true)
         backgroundKingdom:ClearAnchors()
@@ -1306,52 +1327,31 @@ function CinematicCam:OnChunkedDialogueComplete()
     end, 2000)
 end
 
-function CinematicCam:CleanTextForTiming(text)
-    if not text then return "" end
+---=============================================================================
+-- Utility Functions
+--=============================================================================
 
-    -- Remove abbreviation markers
-    local cleaned = string.gsub(text, "§ABBREV§", ".")
-
-    -- Remove extra whitespace
-    cleaned = string.gsub(cleaned, "%s+", " ")
-    cleaned = self:TrimString(cleaned)
-
-    return cleaned
+function CinematicCam:ApplyDialogueRepositioning()
+    local preset = self.savedVars.interaction.layoutPreset
+    if preset and preset.applyFunction then
+        preset.applyFunction(self)
+    end
 end
 
-function CinematicCam:TrimString(str)
-    if not str or type(str) ~= "string" then
-        return ""
-    end
-    local trimmed = string.gsub(str, "^%s*", "")
-    trimmed = string.gsub(trimmed, "%s*$", "")
-    return trimmed
-end
-
-function CinematicCam:IsValidChunkBoundary(text, position, currentChunk, minLength)
-    if string.len(currentChunk) < minLength then
-        return false
-    end
-
-    local nextChar = text:sub(position + 1, position + 1)
-    if nextChar == " " or nextChar == "\n" or nextChar == "\t" or nextChar == "" then
-        return true
-    end
-
-    if string.match(nextChar, "%w") then
-        return false
-    end
-
-    return true
-end
-
-function CinematicCam:FindWordBoundary(text, maxPosition)
-    for i = maxPosition, 1, -1 do
-        if text:sub(i, i) == " " then
-            return i - 1
+function CinematicCam:GetDialogueText()
+    local sources = {
+        ZO_InteractWindow_GamepadContainerText,
+        ZO_InteractWindowTargetAreaBodyText
+    }
+    for _, element in ipairs(sources) do
+        if element then
+            local text = element.text or element:GetText() or ""
+            if string.len(text) > 0 then
+                return text, element
+            end
         end
     end
-    return maxPosition
+    return nil, nil
 end
 
 function CinematicCam:GetSafeScreenDimensions()
