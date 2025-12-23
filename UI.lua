@@ -355,23 +355,23 @@ function CinematicCam:PollWeapons()
 
     if not weaponsSheathed then
         if ReticleSetting == "weapons" then
-            self:ShowReticle() -- Skip animation
+            self:ShowReticle()
         end
         if CompassSetting == "weapons" then
-            self:ShowCompass() -- Skip animation
+            self:ShowCompass()
         end
         if ActionbarSetting == "weapons" then
-            self:ShowActionBar() -- Skip animation
+            self:ShowActionBar()
         end
     else
         if ReticleSetting == "weapons" then
-            self:HideReticle() -- Skip animation
+            self:HideReticle()
         end
         if CompassSetting == "weapons" then
-            self:HideCompass() -- Skip animation
+            self:HideCompass()
         end
         if ActionbarSetting == "weapons" then
-            self:HideActionBar() -- Skip animation
+            self:HideActionBar()
         end
     end
 

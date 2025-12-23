@@ -187,7 +187,128 @@
                     offsetX="20" offsetY="-170" />
             <Dimensions x="340" y="80" />
         </Texture>
+
+
+
+
+
+
+        <!-- Settings Menu Tooltip (simplified) -->
+<Control name="CinematicCam_Settings_EmoteTooltip" mouseEnabled="false" hidden="true">
+    <Dimensions x="200" y="50" />
     
+    <Controls>
+        <!-- LT Icon -->
+        <Texture name="$(parent)_LT" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_lt.dds"
+                layer="DL_TEXT" tier="DT_HIGH">
+            <Anchor point="LEFT" offsetX="5" offsetY="0" />
+            <Dimensions x="32" y="32" />
+        </Texture>
+        
+        <!-- Plus Symbol -->
+        <Texture name="$(parent)_Plus" mouseEnabled="false"
+                textureFile="/esoui/art/chatwindow/chat_addtab_down.dds"
+                layer="DL_TEXT" tier="DT_HIGH" alpha="0.8">
+            <Anchor point="LEFT" relativeTo="$(parent)_LT" 
+                    relativePoint="RIGHT" offsetX="5" offsetY="0" />
+            <Dimensions x="20" y="20" />
+        </Texture>
+        
+        <!-- LS Icons (layered) -->
+        <Texture name="$(parent)_LS_Slide" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_slide.dds"
+                layer="DL_TEXT" tier="DT_HIGH">
+            <Anchor point="LEFT" relativeTo="$(parent)_Plus" 
+                    relativePoint="RIGHT" offsetX="5" offsetY="0" />
+            <Dimensions x="36" y="36" />
+        </Texture>
+        
+        <Texture name="$(parent)_LS_Scroll" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_scroll.dds"
+                layer="DL_TEXT" tier="DT_HIGH" level="1">
+            <Anchor point="CENTER" relativeTo="$(parent)_LS_Slide" 
+                    relativePoint="CENTER" />
+            <Dimensions x="36" y="36" />
+        </Texture>
+        
+        <!-- Label -->
+        <Label name="$(parent)_Label" mouseEnabled="false"
+            font="ZoFontGamepad27" color="FFFFFF" 
+            text="Emote Wheel"
+            layer="DL_TEXT" tier="DT_HIGH"
+            verticalAlignment="CENTER" horizontalAlignment="LEFT">
+            <Anchor point="LEFT" relativeTo="$(parent)_LS_Slide" 
+                    relativePoint="RIGHT" offsetX="10" offsetY="0" />
+        </Label>
+    </Controls>
+</Control>
+
+<!-- Simple Emote Wheel Icon Tooltip -->
+<Control name="CinematicCam_EmoteIconTooltip" mouseEnabled="false" hidden="true">
+    <Dimensions x="170" y="40" />
+    
+    <Controls>
+        <!-- LT Icon (Xbox) -->
+        <Texture name="$(parent)_XboxLT" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_lt.dds">
+            <Anchor point="LEFT" offsetX="0" offsetY="0" />
+            <Dimensions x="36" y="36" />
+        </Texture>
+        
+        <!-- LT Icon (PlayStation) -->
+        <Texture name="$(parent)_PS4LT" mouseEnabled="false"
+                textureFile="/esoui/art/buttons/gamepad/playstation/nav_ps5_l2.dds"
+                hidden="true">
+            <Anchor point="LEFT" offsetX="0" offsetY="0" />
+            <Dimensions x="36" y="36" />
+        </Texture>
+        
+        <!-- Plus Symbol -->
+        <Texture name="$(parent)_Plus" mouseEnabled="false"
+                textureFile="/esoui/art/chatwindow/chat_addtab_down.dds"
+                alpha="0.8">
+            <Anchor point="LEFT" relativeTo="$(parent)_XboxLT" 
+                    relativePoint="RIGHT" offsetX="6" offsetY="0" />
+            <Dimensions x="20" y="20" />
+        </Texture>
+        
+        <!-- Left Stick Container -->
+        <Control name="$(parent)_LeftStick" mouseEnabled="false">
+            <Anchor point="LEFT" relativeTo="$(parent)_Plus" 
+                    relativePoint="RIGHT" offsetX="6" offsetY="0" />
+            <Dimensions x="40" y="40" />
+            
+            <Controls>
+                <!-- Slide (Bottom Layer) -->
+                <Texture name="$(parent)_Slide" mouseEnabled="false"
+                        textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_slide.dds">
+                    <Anchor point="CENTER" />
+                    <Dimensions x="40" y="40" />
+                </Texture>
+                
+                <!-- Scroll (Top Layer) -->
+                <Texture name="$(parent)_Scroll" mouseEnabled="false"
+                        textureFile="/esoui/art/buttons/gamepad/xbox/nav_xbone_rs_scroll.dds"
+                        level="1">
+                    <Anchor point="CENTER" />
+                    <Dimensions x="40" y="40" />
+                </Texture>
+                
+                <!-- PlayStation L3 -->
+                <Texture name="$(parent)_PS4" mouseEnabled="false"
+                        textureFile="/esoui/art/buttons/gamepad/playstation/nav_ps5_l3.dds"
+                        hidden="true">
+                    <Anchor point="CENTER" />
+                    <Dimensions x="40" y="40" />
+                </Texture>
+            </Controls>
+        </Control>
+    </Controls>
+</Control>
+
+
+
         <!-- Icon Container (LT + LS combination) -->
         <Control name="CinematicCam_EmoteWheel_IconContainer" mouseEnabled="false">
             <Anchor point="LEFT" relativeTo="CinematicCam_EmoteWheel_BG" relativePoint="LEFT" 
@@ -272,6 +393,8 @@
                     relativePoint="RIGHT" offsetX="-15" offsetY="0" />
         </Label>
     </Controls>
+
+    
 </TopLevelControl>
 
 <!-- Emote Directional Pad (appears when LT is pressed, positioned near the emote wheel) -->

@@ -32,6 +32,135 @@ function CinematicCam:CreateSettingsMenu()
 
     local optionsData = {
 
+
+        {
+            type = "header",
+            name = self:CC_L("GENERAL_SETTINGS"),
+        },
+        {
+            type = "checkbox",
+            name = self:CC_L("SUBTITLES"),
+            tooltip = self:CC_L("SUBTITLES_TOOLTIP"),
+            getFunc = function() return not self.savedVars.interaction.subtitles.isHidden end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.isHidden = not value
+                self:UpdateChunkedTextVisibility()
+                self.presetPending = true
+            end,
+            width = "full",
+        },
+        {
+            type = "dropdown",
+            name = self:CC_L("SUBTITLE_STYLE"),
+            tooltip = self:CC_L("SUBTITLE_STYLE_TOOLTIP"),
+            choices = { self:CC_L("STYLE_DEFAULT"), self:CC_L("STYLE_CINEMATIC") },
+            choicesValues = { "default", "cinematic" },
+            getFunc = function() return self.savedVars.interaction.layoutPreset end,
+            setFunc = function(value)
+                self.savedVars.interaction.layoutPreset = value
+                currentRepositionPreset = value
+
+                -- Set NPC name location based on style
+                if value == "cinematic" then
+                    self.savedVars.npcNamePreset = "prepended"
+                    self.savedVars.interaction.ui.hidePanelsESO = true
+                    if self.savedVars.interaction.ui.hidePanelsESO then
+                        CinematicCam:HideDialoguePanels()
+                    end
+                    self.savedVars.interaction.subtitles.useChunkedDialogue = true
+                    self.presetPending = false
+                elseif value == "default" then
+                    self.savedVars.npcNamePreset = "default"
+                    self.savedVars.interaction.ui.hidePanelsESO = false
+                    CinematicCam:ShowDialoguePanels()
+                    self.presetPending = true
+                end
+
+                -- Apply immediately if in dialogue
+                local interactionType = GetInteractionType()
+                if interactionType ~= INTERACTION_NONE then
+                    -- Apply NPC name preset first
+                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
+
+                    zo_callLater(function()
+                        self:ApplyDialogueRepositioning()
+                    end, 50)
+                end
+            end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
+            name = self:CC_L("HIDE_CHOICES"),
+            tooltip = self:CC_L("HIDE_CHOICES_TOOLTIP"),
+            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
+            setFunc = function(value)
+                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
+            end,
+            width = "full",
+            disabled = function()
+                return self.savedVars.interaction.layoutPreset ~= "cinematic"
+            end,
+        },
+
+
+        {
+            type = "checkbox",
+            name = self:CC_L("SHOW_INTERACTION_BUTTONS"),
+            tooltip = function()
+                -- Show the icon control
+                local iconControl = _G["CinematicCam_EmoteIconTooltip"]
+                if iconControl then
+                    -- Set platform-specific icons
+                    local isPlayStation = GetPlatformServiceType() == PLATFORM_SERVICE_TYPE_PSN
+
+                    local xboxLT = _G["CinematicCam_EmoteIconTooltip_XboxLT"]
+                    local ps4LT = _G["CinematicCam_EmoteIconTooltip_PS4LT"]
+                    local xboxSlide = _G["CinematicCam_EmoteIconTooltip_LeftStick_Slide"]
+                    local xboxScroll = _G["CinematicCam_EmoteIconTooltip_LeftStick_Scroll"]
+                    local ps4LS = _G["CinematicCam_EmoteIconTooltip_LeftStick_PS4"]
+
+                    if isPlayStation then
+                        if ps4LT then ps4LT:SetHidden(false) end
+                        if ps4LS then ps4LS:SetHidden(false) end
+                        if xboxLT then xboxLT:SetHidden(true) end
+                        if xboxSlide then xboxSlide:SetHidden(true) end
+                        if xboxScroll then xboxScroll:SetHidden(true) end
+                    else
+                        if xboxLT then xboxLT:SetHidden(false) end
+                        if xboxSlide then xboxSlide:SetHidden(false) end
+                        if xboxScroll then xboxScroll:SetHidden(false) end
+                        if ps4LT then ps4LT:SetHidden(true) end
+                        if ps4LS then ps4LS:SetHidden(true) end
+                    end
+
+                    -- Anchor to LAM tooltip and show
+                    iconControl:ClearAnchors()
+                    iconControl:SetAnchor(TOP, LibAddonMenu2.tooltip, BOTTOM, 0, 10)
+                    iconControl:SetHidden(false)
+
+                    -- Hide when tooltip closes
+                    zo_callLater(function()
+                        if LibAddonMenu2.tooltip and LibAddonMenu2.tooltip:IsHidden() then
+                            iconControl:SetHidden(true)
+                        end
+                    end, 100)
+                end
+
+                -- Return the text tooltip
+                return self:CC_L("SHOW_INTERACTION_BUTTONS_TOOLTIP")
+            end,
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.ButtonsVisible
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.ButtonsVisible = value
+            end,
+        },
+
+        {
+        },
+
         {
             type = "dropdown",
             name = self:CC_L("CUSTOM_PRESETS"),
@@ -156,93 +285,6 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
 
-        {
-            type = "header",
-            name = self:CC_L("GENERAL_SETTINGS"),
-        },
-        {
-            type = "checkbox",
-            name = self:CC_L("SUBTITLES"),
-            tooltip = self:CC_L("SUBTITLES_TOOLTIP"),
-            getFunc = function() return not self.savedVars.interaction.subtitles.isHidden end,
-            setFunc = function(value)
-                self.savedVars.interaction.subtitles.isHidden = not value
-                self:UpdateChunkedTextVisibility()
-                self.presetPending = true
-            end,
-            width = "full",
-        },
-        {
-            type = "dropdown",
-            name = self:CC_L("SUBTITLE_STYLE"),
-            tooltip = self:CC_L("SUBTITLE_STYLE_TOOLTIP"),
-            choices = { self:CC_L("STYLE_DEFAULT"), self:CC_L("STYLE_CINEMATIC") },
-            choicesValues = { "default", "cinematic" },
-            getFunc = function() return self.savedVars.interaction.layoutPreset end,
-            setFunc = function(value)
-                self.savedVars.interaction.layoutPreset = value
-                currentRepositionPreset = value
-
-                -- Set NPC name location based on style
-                if value == "cinematic" then
-                    self.savedVars.npcNamePreset = "prepended"
-                    self.savedVars.interaction.ui.hidePanelsESO = true
-                    if self.savedVars.interaction.ui.hidePanelsESO then
-                        CinematicCam:HideDialoguePanels()
-                    end
-                    self.savedVars.interaction.subtitles.useChunkedDialogue = true
-                    self.presetPending = false
-                elseif value == "default" then
-                    self.savedVars.npcNamePreset = "default"
-                    self.savedVars.interaction.ui.hidePanelsESO = false
-                    CinematicCam:ShowDialoguePanels()
-                    self.presetPending = true
-                end
-
-                -- Apply immediately if in dialogue
-                local interactionType = GetInteractionType()
-                if interactionType ~= INTERACTION_NONE then
-                    -- Apply NPC name preset first
-                    self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
-
-                    zo_callLater(function()
-                        self:ApplyDialogueRepositioning()
-                    end, 50)
-                end
-            end,
-            width = "full",
-        },
-        {
-            type = "checkbox",
-            name = self:CC_L("HIDE_CHOICES"),
-            tooltip = self:CC_L("HIDE_CHOICES_TOOLTIP"),
-            getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
-            setFunc = function(value)
-                self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk = value
-            end,
-            width = "full",
-            disabled = function()
-                return self.savedVars.interaction.layoutPreset ~= "cinematic"
-            end,
-        },
-
-
-        {
-            type = "checkbox",
-            name = self:CC_L("SHOW_INTERACTION_BUTTONS"),
-            tooltip = self:CC_L("SHOW_INTERACTION_BUTTONS_TOOLTIP"),
-            getFunc = function()
-                return CinematicCam.savedVars.interaction.ButtonsVisible
-            end,
-            setFunc = function(value)
-                CinematicCam.savedVars.interaction.ButtonsVisible = value
-            end,
-
-
-        },
-
-        {
-        },
         {
             type = "header",
             name = self:CC_L("SUBTITLE_APPEARANCE"),
@@ -691,7 +733,7 @@ function CinematicCam:CreateSettingsMenu()
             name = self:CC_L("NPC_CAMERA_HEADER"),
         },
 
-        {
+        --[[{
             type = "checkbox",
             name = self:CC_L("CRAFTING_STATIONS"),
             tooltip = self:CC_L("CRAFTING_STATIONS_TOOLTIP"),
@@ -703,7 +745,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-
+--]]
         {
             type = "description",
             text = self:CC_L("SLASH_COMMANDS"),
@@ -1148,5 +1190,104 @@ function CinematicCam:UpdateFilter()
         self:ShowFilter()
     else
         self:HideFilter()
+    end
+end
+
+---=============================================================================
+-- Emote Wheel Tooltip for Settings
+---=============================================================================
+
+function CinematicCam:InitializeEmoteTooltip()
+    self.emoteTooltipControl = _G["CinematicCam_Settings_EmoteTooltip"]
+
+    if not self.emoteTooltipControl then
+        return
+    end
+
+    -- Cache child controls
+    self.emoteTooltipControls = {
+        xboxLT = _G["CinematicCam_Settings_EmoteTooltip_IconContainer_XboxLT"],
+        ps4LT = _G["CinematicCam_Settings_EmoteTooltip_IconContainer_PS4LT"],
+        xboxLS = _G["CinematicCam_Settings_EmoteTooltip_IconContainer_LeftStickContainer_Slide"],
+        xboxLSScroll = _G["CinematicCam_Settings_EmoteTooltip_IconContainer_LeftStickContainer_Scroll"],
+        ps4LS = _G["CinematicCam_Settings_EmoteTooltip_IconContainer_LeftStickContainer_PS4"],
+        label = _G["CinematicCam_Settings_EmoteTooltip_Label"]
+    }
+
+    -- Set platform-specific icons
+    self:UpdateEmoteTooltipPlatform()
+end
+
+function CinematicCam:UpdateEmoteTooltipPlatform()
+    if not self.emoteTooltipControls then return end
+
+    local isPlayStation = GetPlatformServiceType() == PLATFORM_SERVICE_TYPE_PSN
+
+    if isPlayStation then
+        -- Show PlayStation icons
+        self.emoteTooltipControls.ps4LT:SetHidden(false)
+        self.emoteTooltipControls.ps4LS:SetHidden(false)
+        self.emoteTooltipControls.xboxLT:SetHidden(true)
+        self.emoteTooltipControls.xboxLS:SetHidden(true)
+        self.emoteTooltipControls.xboxLSScroll:SetHidden(true)
+    else
+        -- Show Xbox icons
+        self.emoteTooltipControls.xboxLT:SetHidden(false)
+        self.emoteTooltipControls.xboxLS:SetHidden(false)
+        self.emoteTooltipControls.xboxLSScroll:SetHidden(false)
+        self.emoteTooltipControls.ps4LT:SetHidden(true)
+        self.emoteTooltipControls.ps4LS:SetHidden(true)
+    end
+end
+
+function CinematicCam:GetEmoteWheelTooltipText()
+    -- Build descriptive text for each slot
+    local slot1 = self:CC_L("EMOTE_" .. string.upper(self.savedVars.emoteWheel.slot1))
+    local slot2 = self:CC_L("EMOTE_" .. string.upper(self.savedVars.emoteWheel.slot2))
+    local slot3 = self:CC_L("EMOTE_" .. string.upper(self.savedVars.emoteWheel.slot3))
+    local slot4 = self:CC_L("EMOTE_" .. string.upper(self.savedVars.emoteWheel.slot4))
+
+    return string.format(
+        "%s\n\n%s: %s\n%s: %s\n%s: %s\n%s: %s",
+        self:CC_L("EMOTE_WHEEL_DESC"),
+        self:CC_L("SLOT_TOP"),
+        slot1,
+        self:CC_L("SLOT_RIGHT"),
+        slot2,
+        self:CC_L("SLOT_BOTTOM"),
+        slot3,
+        self:CC_L("SLOT_LEFT"),
+        slot4
+    )
+end
+
+function CinematicCam:ShowEmoteTooltip(anchorControl)
+    if not self.emoteTooltipControl then
+        self:InitializeEmoteTooltip()
+    end
+
+    if not self.emoteTooltipControl then
+        return
+    end
+
+    -- Position tooltip relative to the setting control if provided
+    self.emoteTooltipControl:ClearAnchors()
+    if anchorControl then
+        self.emoteTooltipControl:SetAnchor(TOPLEFT, anchorControl, BOTTOMLEFT, 0, 5)
+    else
+        -- Default center position
+        self.emoteTooltipControl:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
+    end
+
+    -- Update platform-specific icons
+    self:UpdateEmoteTooltipPlatform()
+
+    -- Show the tooltip
+    self.emoteTooltipControl:SetHidden(false)
+end
+
+function CinematicCam:HideEmoteTooltip()
+    if self.emoteTooltipControl then
+        self.emoteTooltipControl:SetHidden(true)
     end
 end

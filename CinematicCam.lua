@@ -1,6 +1,6 @@
 --[[
 ===============================================================================
-Cinematic Dialog - Elder Scrolls Online Addon
+Cinematic Dialogue - An Elder Scrolls Online Addon
 Author: YFNatey
 
 ===============================================================================
@@ -22,12 +22,12 @@ CinematicCam.isMounted = false
 CinematicCam.currentZoneType = nil
 
 -- Camera Renaming
-local CAMERA_MODE = {
+CinematicCam.CAMERA_MODE = {
     -- SetGameCameraUIMode()
     FREE     = false,
     STATIC   = true,
 
-    --SetInteractionUsingInteractCamera()
+    -- SetInteractionUsingInteractCamera()
     INTERACT = true,
     GAMEPLAY = false,
 }
@@ -89,7 +89,7 @@ function CinematicCam:OnInteractionStart()
     CinematicCam:HandleDefaultSubtitles("savedSettings")
 
     if useGameplayCam then
-        SetGameCameraUIMode(CAMERA_MODE.FREE) -- Enable free camera movement
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE) -- Enable free camera movement
 
         CinematicCam.isInteractionModified = true
 
@@ -149,6 +149,8 @@ function CinematicCam:OnInteractionStart()
         end
 
         CinematicCam:ApplyDialogueRepositioning()
+
+        -- CHATTER
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
         EVENT_MANAGER:RegisterForEvent(
@@ -156,7 +158,7 @@ function CinematicCam:OnInteractionStart()
             EVENT_CHATTER_BEGIN,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
+                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ShowPlayerResponse()
                 end
@@ -174,12 +176,13 @@ function CinematicCam:OnInteractionStart()
             end
         )
 
+        -- CONVERSATION UPDATE
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_ConversationUpdate",
             EVENT_CONVERSATION_UPDATED,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
+                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ShowPlayerResponse()
                 end
@@ -196,12 +199,14 @@ function CinematicCam:OnInteractionStart()
                 end
             end
         )
+
+        -- QUEST OFFERED
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_QuestOffered",
             EVENT_QUEST_OFFERED,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
+                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ShowPlayerResponse()
                 end
@@ -216,12 +221,14 @@ function CinematicCam:OnInteractionStart()
                 end
             end
         )
+
+        -- QUEST COMPLETE
         EVENT_MANAGER:RegisterForEvent(
             ADDON_NAME .. "_QuestCompleteDialog",
             EVENT_QUEST_COMPLETE_DIALOG,
             function()
                 SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
+                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ShowPlayerResponse()
                 end
@@ -265,7 +272,7 @@ end
 
 function CinematicCam:OnInteractionEnd()
     EVENT_MANAGER:UnregisterForUpdate("CinematicCam_GamepadStickPoll")
-    SetInteractionUsingInteractCamera(CAMERA_MODE.GAMEPLAY)
+    SetInteractionUsingInteractCamera(CinematicCam.CAMERA_MODE.GAMEPLAY)
 
     CinematicCam.lastWeaponsState = nil
     CinematicCam:InitializeUITweaks()
@@ -278,9 +285,6 @@ function CinematicCam:OnInteractionEnd()
 
         --Reset chunked dialogue state
         CinematicCam:ResetChunkedDialogueState()
-
-        -- Hide player options background when dialogue ends
-        CinematicCam:HidePlayerOptionsBackground()
 
         -- Hide letterbox if was visible
         if self.savedVars.interaction.auto.autoLetterboxDialogue and not self.savedVars.letterbox.perma then
@@ -394,7 +398,7 @@ function CinematicCam:RegisterUIRefreshEvent()
             -- Reticle now visible, player has exited menus/settings
             zo_callLater(function()
                 -- Check each setting independently
-                SetInteractionUsingInteractCamera(CAMERA_MODE.GAMEPLAY)
+                SetInteractionUsingInteractCamera(CinematicCam.CAMERA_MODE.GAMEPLAY)
                 CinematicCam:InitializeUITweaks()
 
                 if self.presetPending then
@@ -460,22 +464,16 @@ EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_HousingState", EVENT_HOUSING_EDIT
         -- HOUSING_EDITOR_MODE_NODE_SELECTION = 3 (path nodes)
 
         if newMode ~= HOUSING_EDITOR_MODE_DISABLED then
-            -- Entering housing editor - force show reticle
-            --CinematicCam:ToggleReticle(false)
             CinematicCam.inHousingEditor = true
         else
-            -- Exiting housing editor - restore reticle setting
             CinematicCam.inHousingEditor = false
-            --CinematicCam:UpdateReticleVisibility()
         end
     end)
 
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME .. "_ZoneChange", EVENT_PLAYER_ACTIVATED, function()
     zo_callLater(function()
-        -- Show normal settings menu when the player travels to a new zone
-
-        -- Only proceed if auto-swap is enabled
+        -- Check if auto-swap is enabled
         if not CinematicCam.savedVars.autoSwapPresets then
             return
         end
@@ -560,7 +558,7 @@ function CinematicCam:MigrateSettings()
 end
 
 ---=============================================================================
--- Update Notification System
+-- Update System
 --=============================================================================
 function CinematicCam:InitializeUpdateSystem()
     if not self.savedVars then
@@ -756,6 +754,9 @@ function CinematicCam:DetermineNotificationType()
     CinematicCam:CreateSettingsMenu()
 end
 
+---=============================================================================
+-- Scene Management System
+--=============================================================================
 function CinematicCam:RegisterSceneHiddenCallbacks()
     local scenesToWatch = {
         "gamepad_store",
@@ -788,7 +789,7 @@ function CinematicCam:OnTargetSceneShown(sceneName)
         CinematicCam:StopGamepadStickPoll()
     elseif sceneName == "hudui" then
         if CinematicCam.isInteractionModified then
-            SetGameCameraUIMode(CAMERA_MODE.FREE)
+            SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
         end
     elseif sceneName == "gamepadMainMenu" then
         -- mark when menu is opened so StopGamepadStickPoll doesn't override
@@ -799,20 +800,20 @@ end
 
 function CinematicCam:OnTargetSceneHidden(sceneName)
     if sceneName == "gamepad_store" then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     elseif sceneName == "gamepad_housing_furniture_scene" then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     elseif sceneName == "housingEditorHud" then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     elseif sceneName == "hudui" then
         if not CinematicCam.isInteractionModified then
-            SetGameCameraUIMode(CAMERA_MODE.FREE)
+            SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
         end
     elseif sceneName == "gamepadMainMenu" then
         -- Menu is closing - safe to reset
         CinematicCam.isMenuActive = false
         CinematicCam.isInteractionModified = false
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     end
 end
 
@@ -825,7 +826,7 @@ end
 function CinematicCam:OnHudUISceneShown()
     -- Only lock camera if we're in an interaction
     if CinematicCam.isInteractionModified then
-        SetGameCameraUIMode(CAMERA_MODE.STATIC)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
     end
 end
 

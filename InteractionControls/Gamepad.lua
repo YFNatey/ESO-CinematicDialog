@@ -33,14 +33,14 @@ function CinematicCam:GamepadStickPoll()
 
     --  disable camera UI mode (free camera)
     if rightMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     end
     if leftMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     end
     -- Left trigger to activate emote pad
     if leftTrigger > 0.3 and CinematicCam.savedVars.interaction.allowImmersionControls then
-        SetGameCameraUIMode(CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
 
         -- Show emote pad if not visible
         if not self.emotePadVisible then
@@ -148,11 +148,11 @@ function CinematicCam:GamepadStickPoll()
                 if rightY > 0 then
                     self:HighlightCameraDirection("Top")
                     CameraZoomIn()
-                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
+                    SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
                 elseif rightY < 0 then
                     self:HighlightCameraDirection("Bottom")
                     CameraZoomOut()
-                    SetGameCameraUIMode(CAMERA_MODE.STATIC)
+                    SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
                 end
             end
         else
@@ -174,7 +174,7 @@ function CinematicCam:GamepadStickPoll()
         -- Only apply free camera if we're in free mode
         if rightMagnitude >= self.gamepadStickPoll.deadzone then
             if self.gamepadStickPoll.currentCameraMode == "free" then
-                SetGameCameraUIMode(CAMERA_MODE.FREE)
+                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
             end
         end
     end

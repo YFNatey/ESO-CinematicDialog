@@ -31,7 +31,7 @@ function CinematicCam:InitializeChunkedTextControl()
         end
     end
 
-    CinematicCam:ConfigureChunkedTextBackground()
+    CinematicCam:InitializeChunkedTextBG()
 
     -- visibility settings
     local color = self.savedVars.interaction.subtitles.textColor or { r = 0.9, g = 0.9, b = 0.8, a = 1.0 }
@@ -58,139 +58,11 @@ function CinematicCam:InitializeChunkedTextControl()
 
     -- Store reference
     CinematicCam.chunkedDialogueData.customControl = control
-    CinematicCam:ConfigureChunkedTextBackground()
+    CinematicCam:InitializeChunkedTextBG()
 
     -- Set the correct active background
     CinematicCam:SetActiveBackgroundControl()
     return control
-end
-
----=============================================================================
--- Player Response Options
---=============================================================================
-function CinematicCam:ShowPlayerResponse()
-    local playerOptionElements = {
-        "ZO_InteractWindowPlayerAreaOptions",
-        "ZO_InteractWindow_GamepadContainerInteractList",
-        "ZO_InteractWindow_GamepadContainerInteract",
-        "ZO_InteractWindowPlayerAreaHighlight"
-    }
-
-    for _, elementName in ipairs(playerOptionElements) do
-        local element = _G[elementName]
-        if element then
-            element:SetHidden(false)
-        end
-    end
-end
-
-function CinematicCam:FindPlayerOptionTextElement(option)
-    if option.text and option.text.GetText then
-        return option.text
-    elseif option.label and option.label.GetText then
-        return option.label
-    elseif option.optionText and option.optionText.GetText then
-        return option.optionText
-    elseif option.GetText then
-        return option
-    else
-        -- Search through children for text elements
-        for j = 1, option:GetNumChildren() do
-            local child = option:GetChild(j)
-            if child and child.GetText then
-                local childText = child:GetText()
-                if childText and childText ~= "" then
-                    return child
-                end
-            end
-        end
-    end
-    return nil
-end
-
-function CinematicCam:IsVendorInteraction()
-    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Guild Store" }
-
-    for i = 1, 10 do
-        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
-        local option = _G[longOptionName]
-        if option then
-            local textElement = self:FindPlayerOptionTextElement(option)
-            if textElement then
-                local optionText = textElement:GetText() or ""
-                for _, pattern in ipairs(vendorPatterns) do
-                    if optionText and string.find(optionText, pattern) then
-                        return true
-                    end
-                end
-            end
-        end
-
-        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
-        local option2 = _G[shortOptionName]
-        if option2 then
-            local textElement = self:FindPlayerOptionTextElement(option2)
-            if textElement then
-                local optionText = textElement:GetText() or ""
-                for _, pattern in ipairs(vendorPatterns) do
-                    if optionText and string.find(optionText, pattern) then
-                        return true
-                    end
-                end
-            end
-        end
-    end
-
-    return false
-end
-
-function CinematicCam:CheckPlayerOptionsForVendorText()
-    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
-        "Morphs:", "Skill Lines", "Companion Menu" }
-    local vendorOnly = { "^[Ss]tore", "^[Bb]uy" }
-    -- Check individual option elements
-    for i = 1, 10 do
-        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
-        local option = _G[longOptionName]
-        if option then
-            local textElement = self:FindPlayerOptionTextElement(option)
-            if textElement then
-                local optionText = textElement:GetText() or ""
-                if optionText ~= "" then
-                    -- Check if first option is "Goodbye."
-                    if i == 1 and optionText == "Goodbye." then
-                        return true
-                    end
-                    for _, pattern in ipairs(vendorPatterns) do
-                        if optionText and pattern and string.find(optionText, pattern) then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
-        local option2 = _G[shortOptionName]
-        if option2 then
-            local textElement = self:FindPlayerOptionTextElement(option2)
-            if textElement then
-                local optionText = textElement:GetText() or ""
-                if optionText ~= "" then
-                    -- Check if first option is "Goodbye."
-                    -- Show immediately so player can exit whenever they want
-                    if i == 1 and optionText == "Goodbye." then
-                        return true
-                    end
-                    for _, pattern in ipairs(vendorPatterns) do
-                        if string.find(optionText, pattern) then
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-    end
-    return false
 end
 
 ---=============================================================================
@@ -1195,7 +1067,7 @@ function CinematicCam:CreateChunkedTextControl()
     CinematicCam.chunkedDialogueData.customControl = control
 
     -- Initialize background
-    self:ConfigureChunkedTextBackground()
+    self:InitializeChunkedTextBG()
 
     return control
 end
@@ -1245,7 +1117,7 @@ function CinematicCam:InitializeChunkedDisplay()
     return true
 end
 
-function CinematicCam:ConfigureChunkedTextBackground()
+function CinematicCam:InitializeChunkedTextBG()
     local backgroundNormal = _G["CinematicCam_ChunkedTextBackground"]
     local backgroundKingdom = _G["CinematicCam_ChunkedTextBackground_Kingdom"]
 
@@ -1278,6 +1150,134 @@ function CinematicCam:ConfigurePlayerOptionsBackground()
         background:SetAnchor(CENTER, GuiRoot, CENTER, 0, 0)
         background:SetDimensions(1, 1)
     end
+end
+
+---=============================================================================
+-- Player Response Options
+--=============================================================================
+function CinematicCam:ShowPlayerResponse()
+    local playerOptionElements = {
+        "ZO_InteractWindowPlayerAreaOptions",
+        "ZO_InteractWindow_GamepadContainerInteractList",
+        "ZO_InteractWindow_GamepadContainerInteract",
+        "ZO_InteractWindowPlayerAreaHighlight"
+    }
+
+    for _, elementName in ipairs(playerOptionElements) do
+        local element = _G[elementName]
+        if element then
+            element:SetHidden(false)
+        end
+    end
+end
+
+function CinematicCam:FindPlayerOptionTextElement(option)
+    if option.text and option.text.GetText then
+        return option.text
+    elseif option.label and option.label.GetText then
+        return option.label
+    elseif option.optionText and option.optionText.GetText then
+        return option.optionText
+    elseif option.GetText then
+        return option
+    else
+        -- Search through children for text elements
+        for j = 1, option:GetNumChildren() do
+            local child = option:GetChild(j)
+            if child and child.GetText then
+                local childText = child:GetText()
+                if childText and childText ~= "" then
+                    return child
+                end
+            end
+        end
+    end
+    return nil
+end
+
+function CinematicCam:IsVendorInteraction()
+    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Guild Store", "Bank" }
+
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
+        local option = _G[longOptionName]
+        if option then
+            local textElement = self:FindPlayerOptionTextElement(option)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                for _, pattern in ipairs(vendorPatterns) do
+                    if optionText and string.find(optionText, pattern) then
+                        return true
+                    end
+                end
+            end
+        end
+
+        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
+        local option2 = _G[shortOptionName]
+        if option2 then
+            local textElement = self:FindPlayerOptionTextElement(option2)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                for _, pattern in ipairs(vendorPatterns) do
+                    if optionText and string.find(optionText, pattern) then
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    return false
+end
+
+function CinematicCam:CheckPlayerOptionsForVendorText()
+    local vendorPatterns = { "^[Ss]tore", "^[Bb]uy", "^[Ss]ell", "^[Tt]rade", "Bank", "<", "Complete Quest", "Skills:",
+        "Morphs:", "Skill Lines", "Companion Menu" }
+    local vendorOnly = { "^[Ss]tore", "^[Bb]uy" }
+    -- Check individual option elements
+    for i = 1, 10 do
+        local longOptionName = "ZO_InteractWindow_GamepadContainerInteractListScrollZO_ChatterOption_Gamepad" .. i
+        local option = _G[longOptionName]
+        if option then
+            local textElement = self:FindPlayerOptionTextElement(option)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                if optionText ~= "" then
+                    -- Check if first option is "Goodbye."
+                    if i == 1 and optionText == "Goodbye." then
+                        return true
+                    end
+                    for _, pattern in ipairs(vendorPatterns) do
+                        if optionText and pattern and string.find(optionText, pattern) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+        local shortOptionName = "ZO_ChatterOption_Gamepad" .. i
+        local option2 = _G[shortOptionName]
+        if option2 then
+            local textElement = self:FindPlayerOptionTextElement(option2)
+            if textElement then
+                local optionText = textElement:GetText() or ""
+                if optionText ~= "" then
+                    -- Check if first option is "Goodbye."
+                    -- Show immediately so player can exit whenever they want
+                    if i == 1 and optionText == "Goodbye." then
+                        return true
+                    end
+                    for _, pattern in ipairs(vendorPatterns) do
+                        if string.find(optionText, pattern) then
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return false
 end
 
 ---=============================================================================

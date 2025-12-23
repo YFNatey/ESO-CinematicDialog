@@ -12,6 +12,7 @@ CinematicCam.homeIds = {
     42, -- Saint Delyn Penthouse
     77, -- Snowmelt Suite
     68, -- Sugar Bowl Suite
+
     -- Apartments
     28, -- Autumn's Gate
     16, -- Captain Margaux's Place
@@ -22,6 +23,7 @@ CinematicCam.homeIds = {
     22, -- Moonmirth House
     13, -- Snugpod
     34, -- Twin Arches
+
     -- Small Homes
     44, -- Ald Velothi Harbor House
     11, -- The Ample Domicile
@@ -34,6 +36,7 @@ CinematicCam.homeIds = {
     17, -- Ravenhurst
     23, -- Sleek Creek house
     20, -- Velothi Reverie
+
     -- Classic Homes
     43, -- Amaya Lake Lodge
     24, -- Dawnshadow
@@ -45,6 +48,7 @@ CinematicCam.homeIds = {
     21, -- Quondam Indorilia
     12, -- Stay-Moist Mansion
     27, -- Strident Springs Demesne
+
     -- Notable Homes
     47, -- Coldharbour Surreal Estate
     38, -- Daggerfall Overlook
@@ -62,22 +66,27 @@ CinematicCam.homeIds = {
     62, -- Grand Psijic Villa
     55, -- The Orbservatory Prior
     57, -- Princely Dawnlight Palace
+
     -- DLC Homes (Murkmire)
     64, -- Lakemire Xanmeer Manor
     63, -- Enchanted Snow Globe Home
+
     -- DLC Homes (Wrothgar)
     56, -- The Erstwhile Sanctuary
+
     -- DLC Homes (Elsweyr)
     69, -- Jodes' Embrace
     70, -- Hall of the Lunar Champion
     71, -- Moon-Sugar Meadow
     72, -- Wraithhome
     73, -- Lucky Cat Landing
+
     -- DLC Homes (Skyrim)
     78, -- Proudspire Manor
     75, -- Forgemaster Falls
     79, -- Bastion Sanguinaris
     80, -- Stillwaters Retreat
+
     -- DLC Homes (Other)
     66, -- Elinhir Private Arena
     65, -- Frostvalt Chasm
