@@ -35,7 +35,7 @@ CinematicCam.defaults = {
 
     },
     interaction = {
-
+        forceThirdPersonOccupationalNPC = true,
         forceThirdPersonDialogue = true,
         forceThirdPersonVendor = false,
         forceThirdPersonBank = false,

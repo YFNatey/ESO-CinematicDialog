@@ -752,6 +752,18 @@ function CinematicCam:CreateSettingsMenu()
             name = self:CC_L("NPC_CAMERA_HEADER"),
         },
 
+        {
+            type = "checkbox",
+            name = "Merchants & Bankers",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC or false
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC = value
+            end,
+            width = "full",
+        },
+
         --[[{
             type = "checkbox",
             name = self:CC_L("CRAFTING_STATIONS"),

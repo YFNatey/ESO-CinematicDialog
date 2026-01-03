@@ -21,6 +21,8 @@ CinematicCam.lastWeaponsState = nil
 CinematicCam.isMounted = false
 CinematicCam.currentZoneType = nil
 CinematicCam.reloadUI = false
+CinematicCam.isHoveringOccupationalNPC = false
+CinematicCam.currentOccupation = nil
 -- Camera Renaming
 CinematicCam.CAMERA_MODE = {
     -- SetGameCameraUIMode()
@@ -80,8 +82,11 @@ function CinematicCam:OnInteractionStart()
     local useGameplayCam = false
     local interactionType = GetInteractionType()
 
-    -- check user settings for camera mode based on current interaction type
-    if interactionTypeMap[interactionType] == true then
+    if self.isHoveringOccupationalNPC and self.savedVars.interaction.forceThirdPersonOccupationalNPC then
+        useGameplayCam = true
+
+        -- Then check user settings for camera mode based on current interaction type
+    elseif interactionTypeMap[interactionType] == true then
         useGameplayCam = true
     end
 
@@ -90,6 +95,7 @@ function CinematicCam:OnInteractionStart()
 
     if useGameplayCam then
         SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE) -- Enable free camera movement
+
 
         CinematicCam.isInteractionModified = true
 
@@ -157,8 +163,13 @@ function CinematicCam:OnInteractionStart()
             ADDON_NAME .. "_ChatterBegin",
             EVENT_CHATTER_BEGIN,
             function()
-                SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
-                SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
+                if self.isHoveringOccupationalNPC then
+                    SetInteractionUsingInteractCamera(CinematicCam.CAMERA_MODE.INTERACT)
+                    SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
+                else
+                    SetInteractionUsingInteractCamera(self.savedVars.useCinematicCamera)
+                    SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
+                end
                 if self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk == false then
                     CinematicCam:ShowPlayerResponse()
                 end
@@ -382,7 +393,8 @@ end)
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_CLOSE_BANK, function()
     CinematicCam:OnInteractionEnd()
 end)
-
+EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_RETICLE_TARGET_CHANGED,
+    function() CinematicCam:OnReticleTargetChanged() end)
 
 EVENT_MANAGER:RegisterForEvent(ADDON_NAME, EVENT_MOUNTED_STATE_CHANGED, function(eventCode, mounted)
     if mounted then
@@ -424,6 +436,68 @@ function CinematicCam:RegisterUIRefreshEvent()
             end, 200)
         end
     end)
+end
+
+function CinematicCam:OnReticleTargetChanged()
+    if DoesUnitExist("reticleover") then
+        local occupation = GetUnitCaption("reticleover")
+
+        if self:IsOccupationalNPC(occupation) then
+            if self.savedVars.interaction.forceThirdPersonOccupationalNPC then
+                self.isHoveringOccupationalNPC = true
+                self.currentOccupation = occupation
+            end
+        else
+            self.isHoveringOccupationalNPC = false
+            self.currentOccupation = nil
+        end
+    else
+        self.isHoveringOccupationalNPC = false
+        self.currentOccupation = nil
+    end
+end
+
+function CinematicCam:IsOccupationalNPC(occupation)
+    if not occupation or occupation == "" then
+        return false
+    end
+
+    -- check for key workds in occupations
+    local occupationLower = string.lower(occupation)
+
+    local occupationalKeywords = {
+        "merchant",
+        "blacksmith",
+        "banker",
+        "armorer",
+        "woodworker",
+        "clothier",
+        "enchanter",
+        "grocer",
+        "alchemist",
+        "provisioner",
+        "trader",
+        "fence",
+        "stable",
+        "mystic",
+        "outlaw",
+        "achievement",
+        "undaunted",
+        "brewer",
+        "innkeeper",
+        "chef",
+        "cook",
+        "banker",
+        "money"
+    }
+
+    for _, keyword in ipairs(occupationalKeywords) do
+        if string.find(occupationLower, keyword) then
+            return true
+        end
+    end
+
+    return false
 end
 
 -- Combat state change for compass, reticle, and action bar
