@@ -1,3 +1,4 @@
+CinematicCam.emoteMenuVisible = false
 local AUTO_EMOTE_CHANCES = {
     frequent = 85,   -- 85% chance
     normal = 50,
@@ -385,10 +386,13 @@ end
 function CinematicCam:CreateEmoteSettingsMenu()
     local LAM = LibAddonMenu2
 
+    if not CinematicCam.savedVars.interaction.allowImmersionControls then
+        return
+    end
     if not LAM then
         return
     end
-
+    CinematicCam.emoteMenuVisible = true
     local panelName = "CinematicCamEmoteOptions"
 
     local panelData = {

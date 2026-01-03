@@ -157,7 +157,26 @@ function CinematicCam:CreateSettingsMenu()
                 CinematicCam.savedVars.interaction.ButtonsVisible = value
             end,
         },
+        {
+            type = "checkbox",
+            name = "Enable Emotes",
+            tooltip =
+            "*Turning ON will trigger a load screen and create a separate menu called 'Cinematic Emotes'\n\nAdds on screen controls emotes. Move the camera with the Right Stick, Move your character with the Left Stick",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.allowImmersionControls
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.allowImmersionControls = value
+                if not CinematicCam.emoteMenuVisible then
+                    CinematicCam.reloadUI = value
+                end
+            end,
 
+
+        },
+        {
+            type = "divider"
+        },
         {
         },
 

@@ -20,7 +20,7 @@ CinematicCam.blockGamepad = false
 CinematicCam.lastWeaponsState = nil
 CinematicCam.isMounted = false
 CinematicCam.currentZoneType = nil
-
+CinematicCam.reloadUI = false
 -- Camera Renaming
 CinematicCam.CAMERA_MODE = {
     -- SetGameCameraUIMode()
@@ -301,6 +301,7 @@ end
 -- Initialize
 --=============================================================================
 local function Initialize()
+    CinematicCam.reloadUI = false
     CinematicCam:InitDefaults()
     CinematicCam:InitializeLetterbox()
     CinematicCam:ConfigurePlayerOptionsBackground()
@@ -315,6 +316,7 @@ local function Initialize()
         CinematicCam:MigrateSettings()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:RegisterUIRefreshEvent()
+        CinematicCam:CreateSettingsMenu()
         CinematicCam:CreateEmoteSettingsMenu()
         CinematicCam:InitializeUITweaks()
         CinematicCam:BuildHomeIdsLookup()
@@ -415,6 +417,9 @@ function CinematicCam:RegisterUIRefreshEvent()
                 if self.pendingUIRefresh then
                     CinematicCam:UpdateUIVisibility()
                     self.pendingUIRefresh = false
+                end
+                if CinematicCam.reloadUI then
+                    ReloadUI()
                 end
             end, 200)
         end
