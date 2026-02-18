@@ -89,6 +89,7 @@ function CinematicCam:InitializeUITweaks()
         CinematicCam:UpdateCompassVisibility()
         CinematicCam:UpdateActionBarVisibility()
         CinematicCam:UpdateReticleVisibility()
+        CinematicCam:UpdateKeybindStripVisibility()
     end
 end
 

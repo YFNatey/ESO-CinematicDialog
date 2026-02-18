@@ -96,7 +96,8 @@ function CinematicCam:OnInteractionStart()
     if useGameplayCam then
         SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE) -- Enable free camera movement
 
-
+        self.savedVars.interface.keybindIsHidden = true
+        CinematicCam:UpdateKeybindStripVisibility()
         CinematicCam.isInteractionModified = true
 
         if CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue or CinematicCam.savedVars.interaction.allowImmersionControls then
@@ -296,7 +297,9 @@ function CinematicCam:OnInteractionEnd()
 
         --Reset chunked dialogue state
         CinematicCam:ResetChunkedDialogueState()
+        self.savedVars.interface.keybindIsHidden = false
 
+        CinematicCam:RestoreKeybindStripVisibility()
         -- Hide letterbox if was visible
         if self.savedVars.interaction.auto.autoLetterboxDialogue and not self.savedVars.letterbox.perma then
             CinematicCam:HideLetterbox()
@@ -358,6 +361,7 @@ local function Initialize()
         CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
     end
 end
+
 
 
 local function OnAddOnLoaded(event, addonName)
@@ -636,6 +640,50 @@ function CinematicCam:MigrateSettings()
     CinematicCam:InitializeInteractionSettings()
 end
 
+function CinematicCam:UpdateKeybindStripVisibility()
+    -- only hide in dialogue interactions. called by OnInteractionStart
+    if not self.savedVars.interface.keybindIsHidden then
+        return
+    end
+    local keybindControl = _G["ZO_KeybindStripControlCenterParent"]
+    local gamepadBackground = _G["ZO_KeybindStripGamepadBackgroundTexture"]
+
+    if self.savedVars.interface.hideKeybindStrip then
+        -- Hide keyboard keybind strip
+        if keybindControl then
+            keybindControl:ClearAnchors()
+            keybindControl:SetAnchor(TOP, GuiRoot, TOP, 0, -5000)
+            keybindControl:SetHidden(true)
+        end
+
+        -- Hide gamepad background
+        if gamepadBackground then
+            gamepadBackground:SetHidden(true)
+        end
+    else
+        -- Show keyboard keybind strip
+        if keybindControl then
+            keybindControl:ClearAnchors()
+            keybindControl:SetAnchor(BOTTOM, GuiRoot, BOTTOM, 0, -20)
+            keybindControl:SetHidden(false)
+        end
+
+        -- Show gamepad background
+        if gamepadBackground then
+            gamepadBackground:SetHidden(false)
+        end
+    end
+end
+
+function CinematicCam:RestoreKeybindStripVisibility()
+    -- Restore when leaving dialogue. called by OnInteractionEnd
+    local gamepadBackground = _G["ZO_KeybindStripGamepadBackgroundTexture"]
+
+    if gamepadBackground then
+        gamepadBackground:SetHidden(false)
+    end
+end
+
 ---=============================================================================
 -- Update System
 --=============================================================================
@@ -828,9 +876,6 @@ function CinematicCam:DetermineNotificationType()
             notification:SetHidden(true)
         end
     end
-
-    -- Always create the single settings menu
-    CinematicCam:CreateSettingsMenu()
 end
 
 ---=============================================================================

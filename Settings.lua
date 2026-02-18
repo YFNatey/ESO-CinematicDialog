@@ -91,6 +91,20 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
+            name = "Hide Keybind Strip",
+            tooltip = "Hides the keybind button prompt strip",
+            getFunc = function() return self.savedVars.interface.hideKeybindStrip end,
+            setFunc = function(value)
+                self.savedVars.interface.hideKeybindStrip = value
+                -- TOOD Keep this for the settings menu revamp: playing a preview of dialogue
+                --CinematicCam:UpdateKeybindStripVisibility()
+                self.pendingUIRefresh = true
+            end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
+            width = "full",
+        },
+        {
+            type = "checkbox",
             name = self:CC_L("HIDE_CHOICES"),
             tooltip = self:CC_L("HIDE_CHOICES_TOOLTIP"),
             getFunc = function() return self.savedVars.interaction.subtitles.hidePlayerOptionsUntilLastChunk end,
@@ -174,6 +188,19 @@ function CinematicCam:CreateSettingsMenu()
 
 
         },
+        {
+            type = "checkbox",
+            name = "Vanilla Merchants & Bankers",
+            tooltip = "Turning ON will always use the default camera when talking to merchants or any NPCs with menus.",
+            getFunc = function()
+                return CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC or false
+            end,
+            setFunc = function(value)
+                CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC = value
+            end,
+            width = "full",
+        },
+
         {
             type = "divider"
         },
@@ -748,58 +775,12 @@ function CinematicCam:CreateSettingsMenu()
             width = "full",
         },
         {
-            type = "header",
-            name = self:CC_L("NPC_CAMERA_HEADER"),
-        },
-
-        {
-            type = "checkbox",
-            name = "Merchants & Bankers",
-            getFunc = function()
-                return CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC or false
-            end,
-            setFunc = function(value)
-                CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC = value
-            end,
-            width = "full",
-        },
-
-        --[[{
-            type = "checkbox",
-            name = self:CC_L("CRAFTING_STATIONS"),
-            tooltip = self:CC_L("CRAFTING_STATIONS_TOOLTIP"),
-            getFunc = function() return self.savedVars.interaction.forceThirdPersonCrafting end,
-            setFunc = function(value)
-                self.savedVars.interaction.forceThirdPersonCrafting = value
-                self.savedVars.interaction.forceThirdPersonDye = false
-                self:InitializeInteractionSettings()
-            end,
-            width = "full",
-        },
---]]
-        {
             type = "description",
             text = self:CC_L("SLASH_COMMANDS"),
             width = "full"
         },
-        {
-            type = "description",
-            text = self:CC_L("UPDATE_NOTES"),
-            tooltip = self:CC_L("UPDATE_NOTES_TOOLTIP"),
-            width = "full",
-        },
-        {
-            type = "divider"
-        },
-        {
-            type = "button",
-            name = self:CC_L("RELOAD_UI"),
-            tooltip = self:CC_L("RELOAD_UI_TOOLTIP"),
-            func = function()
-                ReloadUI()
-            end,
-            width = "half",
-        },
+
+
         {
             type = "header",
             name = self:CC_L("SUPPORT")
