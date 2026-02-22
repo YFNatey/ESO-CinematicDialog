@@ -165,7 +165,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Keep game camera when using crafting stations",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Photo Mode\n/ccbars - Black Bars",
+        SLASH_COMMANDS                         = "/ccui - Photo Mode\n/ccbars - Black Bars\n/moviemode - Photo Mode + Black bars",
         UPDATE_NOTES                           = "Update Notes",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Added Features\n - Added NPC Cam and Player Cam controls\n - Added a new Settings menu: Cinematic Emotes\n - Added Auto Emotes",
@@ -346,8 +346,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Mantiene la cámara del juego al usar estaciones de fabricación",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Modo Foto\n/ccbars - Barras Negras",
-        UPDATE_NOTES                           = "Notas de Actualización",
+        SLASH_COMMANDS                         = "/ccui - Modo Foto\n/ccbars - Barras Negras\n/moviemode - Modo Foto + Barras Negras",
         UPDATE_NOTES_TOOLTIP                   =
         "Versión 6o - Características Añadidas\n - Controles de Cámara de NPC y Jugador añadidos\n - Nuevo menú de ajustes: Emotes Cinemáticos\n - Emotes Automáticos añadidos",
 
@@ -527,8 +526,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Conserver la caméra du jeu lors de l'utilisation des stations d'artisanat",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Mode Photo\n/ccbars - Barres Noires",
-        UPDATE_NOTES                           = "Notes de Mise à Jour",
+        SLASH_COMMANDS                         = "/ccui - Mode Photo\n/ccbars - Barres Noires\n/moviemode - Mode Photo + Barres Noires",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Fonctionnalités Ajoutées\n - Contrôles de caméra PNJ et joueur ajoutés\n - Nouveau menu de paramètres: Émotes Cinématiques\n - Émotes automatiques ajoutées",
 
@@ -708,8 +706,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Spielkamera bei Verwendung von Handwerksstationen beibehalten",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Fotomodus\n/ccbars - Schwarze Balken",
-        UPDATE_NOTES                           = "Update-Notizen",
+        SLASH_COMMANDS                         = "/ccui - Fotomodus\n/ccbars - Schwarze Balken\n/moviemode - Fotomodus + Schwarze Balken",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Hinzugefügte Funktionen\n - NPC-Kamera- und Spieler-Kamera-Steuerungen hinzugefügt\n - Neues Einstellungsmenü: Filmische Emotes\n - Automatische Emotes hinzugefügt",
 
@@ -882,8 +879,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "製作ステーション使用時にゲームカメラを維持",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - フォトモード\n/ccbars - ブラックバー",
-        UPDATE_NOTES                           = "更新履歴",
+        SLASH_COMMANDS                         = "/ccui - フォトモード\n/ccbars - ブラックバー\n/moviemode - フォトモード + ブラックバー",
         UPDATE_NOTES_TOOLTIP                   = "バージョン6o - 追加機能\n - NPCカメラとプレイヤーカメラのコントロールを追加\n - 新しい設定メニュー：シネマティックエモート\n - 自動エモートを追加",
 
         -- SUPPORT

@@ -40,7 +40,7 @@ function CinematicCam:StartGamepadStickPoll()
     end
     -- Left trigger to activate emote pad
     if leftTrigger > 0.3 and CinematicCam.savedVars.interaction.allowImmersionControls then
-        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
+        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
 
         -- Show emote pad if not visible
         if not self.emotePadVisible then

@@ -361,6 +361,8 @@ local function Initialize()
         CinematicCam:LoadFromPresetSlot(3)
         CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
     end
+
+    CinematicCam:InitializeMovieMode()
 end
 
 
@@ -974,4 +976,107 @@ end
 function CinematicCam:OnHousingEditorHudShown()
     -- Stop freecam when housing editor opens
     CinematicCam:StopGamepadStickPoll()
+end
+
+function CinematicCam:InitializeMovieMode()
+    SLASH_COMMANDS["/moviemode"] = function()
+        -- Check if movie mode is currently active by checking if backup exists
+        if CinematicCam.movieModeBackup then
+            -- Movie mode is ON, turn it OFF
+            local backup = CinematicCam.movieModeBackup
+
+            -- Restore UI tweaks
+            CinematicCam.savedVars.interface.usingModTweaks = backup.usingModTweaks
+            CinematicCam.savedVars.interface.hideCompass = backup.hideCompass
+            CinematicCam.savedVars.interface.hideActionBar = backup.hideActionBar
+            CinematicCam.savedVars.interface.hideReticle = backup.hideReticle
+
+            -- Restore visibility
+            CinematicCam:UpdateCompassVisibility()
+            CinematicCam:UpdateActionBarVisibility()
+            CinematicCam:UpdateReticleVisibility()
+
+
+            CinematicCam:HideLetterbox()
+            CinematicCam:ToggleUI()
+
+            -- Restore layout settings
+            CinematicCam.savedVars.interaction.layoutPreset = backup.layoutPreset
+            CinematicCam.savedVars.npcNamePreset = backup.npcNamePreset
+            CinematicCam.savedVars.interaction.ui.hidePanelsESO = backup.hidePanelsESO
+            CinematicCam.savedVars.interaction.subtitles.useChunkedDialogue = backup.useChunkedDialogue
+            CinematicCam.savedVars.interface.hideKeybindStrip = backup.hideKeybindStrip
+
+            -- Apply changes if in dialogue
+            local interactionType = GetInteractionType()
+            if interactionType ~= INTERACTION_NONE then
+                CinematicCam:ApplyNPCNamePreset(CinematicCam.savedVars.npcNamePreset)
+                zo_callLater(function()
+                    CinematicCam:ApplyDialogueRepositioning()
+                end, 50)
+            end
+
+            CinematicCam.pendingUIRefresh = true
+
+            -- Clear the backup
+            CinematicCam.movieModeBackup = nil
+        else
+            -- Movie mode is OFF, turn it ON
+            -- Save current settings before activating movie mode
+            CinematicCam.movieModeBackup = {
+                usingModTweaks = CinematicCam.savedVars.interface.usingModTweaks,
+                hideCompass = CinematicCam.savedVars.interface.hideCompass,
+                hideActionBar = CinematicCam.savedVars.interface.hideActionBar,
+                hideReticle = CinematicCam.savedVars.interface.hideReticle,
+                letterboxVisible = CinematicCam.savedVars.letterbox.letterboxVisible,
+                layoutPreset = CinematicCam.savedVars.interaction.layoutPreset,
+                npcNamePreset = CinematicCam.savedVars.npcNamePreset,
+                hidePanelsESO = CinematicCam.savedVars.interaction.ui.hidePanelsESO,
+                useChunkedDialogue = CinematicCam.savedVars.interaction.subtitles.useChunkedDialogue,
+                hideKeybindStrip = CinematicCam.savedVars.interface.hideKeybindStrip,
+            }
+            CinematicCam:ToggleUI()
+            CinematicCam:ShowLetterbox()
+
+            -- Enable UI tweaks if not already on
+            if not CinematicCam.savedVars.interface.usingModTweaks then
+                CinematicCam.savedVars.interface.usingModTweaks = true
+                CinematicCam:UpdateUIVisibility()
+            end
+
+            -- Hide all UI elements
+            CinematicCam.savedVars.interface.hideCompass = "never"
+            CinematicCam.savedVars.interface.hideActionBar = "never"
+            CinematicCam.savedVars.interface.hideReticle = "never"
+
+            -- Update visibility for each element
+            CinematicCam:UpdateCompassVisibility()
+            CinematicCam:UpdateActionBarVisibility()
+            CinematicCam:UpdateReticleVisibility()
+
+            -- Turn on letterbox (black bars)
+            if not CinematicCam.savedVars.letterbox.letterboxVisible then
+                CinematicCam:ShowLetterbox()
+            end
+
+            -- Switch to cinematic layout
+            CinematicCam.savedVars.interaction.layoutPreset = "cinematic"
+            CinematicCam.savedVars.npcNamePreset = "prepended"
+            CinematicCam.savedVars.interaction.ui.hidePanelsESO = true
+            CinematicCam.savedVars.interaction.subtitles.useChunkedDialogue = true
+
+            -- Hide bottom panel (keybind strip)
+            CinematicCam.savedVars.interface.hideKeybindStrip = true
+            CinematicCam.pendingUIRefresh = true
+
+            -- Apply changes if currently in dialogue
+            local interactionType = GetInteractionType()
+            if interactionType ~= INTERACTION_NONE then
+                CinematicCam:ApplyNPCNamePreset(CinematicCam.savedVars.npcNamePreset)
+                zo_callLater(function()
+                    CinematicCam:ApplyDialogueRepositioning()
+                end, 50)
+            end
+        end
+    end
 end
