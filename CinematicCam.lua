@@ -41,7 +41,6 @@ function CinematicCam:InitializeInteractionSettings()
         [INTERACTION_QUEST] = self.savedVars.interaction.forceThirdPersonQuest,
         [INTERACTION_VENDOR] = self.savedVars.interaction.forceThirdPersonVendor,
         [INTERACTION_STORE] = self.savedVars.interaction.forceThirdPersonVendor,
-        [INTERACTION_BANK] = self.savedVars.interaction.forceThirdPersonBank,
         [INTERACTION_GUILDBANK] = self.savedVars.interaction.forceThirdPersonBank,
         [INTERACTION_TRADINGHOUSE] = self.savedVars.interaction.forceThirdPersonVendor,
         [INTERACTION_STABLE] = self.savedVars.interaction.forceThirdPersonVendor,
@@ -146,7 +145,7 @@ function CinematicCam:OnInteractionStart()
                     CinematicCam:HideCameraPad()
                 elseif CinematicCam.isInteractionModified then
                     EVENT_MANAGER:RegisterForUpdate("CinematicCam_GamepadStickPoll", 50, function()
-                        CinematicCam:GamepadStickPoll()
+                        CinematicCam:StartGamepadStickPoll()
                     end)
                 end
             end)
@@ -156,7 +155,9 @@ function CinematicCam:OnInteractionStart()
         end
 
         CinematicCam:ApplyDialogueRepositioning()
-
+        CinematicCam:HideActionBar()
+        CinematicCam:HideCompass()
+        CinematicCam:HideReticle()
         -- CHATTER
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
         EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
@@ -287,6 +288,7 @@ function CinematicCam:OnInteractionEnd()
     SetInteractionUsingInteractCamera(CinematicCam.CAMERA_MODE.GAMEPLAY)
 
     CinematicCam.lastWeaponsState = nil
+    CinematicCam:UpdateUIVisibility()
     CinematicCam:InitializeUITweaks()
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ConversationUpdate", EVENT_CONVERSATION_UPDATED)
     EVENT_MANAGER:UnregisterForEvent(ADDON_NAME .. "_ChatterBegin", EVENT_CHATTER_BEGIN)
@@ -298,7 +300,6 @@ function CinematicCam:OnInteractionEnd()
         --Reset chunked dialogue state
         CinematicCam:ResetChunkedDialogueState()
         self.savedVars.interface.keybindIsHidden = false
-
         CinematicCam:RestoreKeybindStripVisibility()
         -- Hide letterbox if was visible
         if self.savedVars.interaction.auto.autoLetterboxDialogue and not self.savedVars.letterbox.perma then
@@ -414,11 +415,13 @@ function CinematicCam:RegisterUIRefreshEvent()
     EVENT_MANAGER:RegisterForEvent("CinematicCam", EVENT_RETICLE_HIDDEN_UPDATE, function(eventCode, hidden)
         if not hidden then
             -- Reticle now visible, player has exited menus/settings
+            CinematicCam:UpdateUIVisibility() -- update Ui visibility when exiting menus, maps, quickslot wheel
             zo_callLater(function()
                 -- Check each setting independently
                 SetInteractionUsingInteractCamera(CinematicCam.CAMERA_MODE.GAMEPLAY)
-                CinematicCam:InitializeUITweaks()
-
+                if not self.isInteractionModified then
+                    CinematicCam:InitializeUITweaks()
+                end
                 if self.presetPending then
                     CinematicCam:InitializeChunkedTextControl()
                     CinematicCam:InitializeLetterbox()
@@ -637,6 +640,9 @@ function CinematicCam:MigrateSettings()
     if self.savedVars.interaction.forceThirdPersonBank == true then
         self.savedVars.interaction.forceThirdPersonBank = false
     end
+
+
+
     CinematicCam:InitializeInteractionSettings()
 end
 
@@ -888,6 +894,8 @@ function CinematicCam:RegisterSceneHiddenCallbacks()
         "housingEditorHud",
         "hudui",
         "gamepadMainMenu",
+        "hud",
+        "gamepad_banking"
     }
 
     for _, sceneName in ipairs(scenesToWatch) do
@@ -919,6 +927,8 @@ function CinematicCam:OnTargetSceneShown(sceneName)
         -- mark when menu is opened so StopGamepadStickPoll doesn't override
         CinematicCam.isMenuActive = true
         CinematicCam:StopGamepadStickPoll()
+    elseif sceneName == "gamepad_banking" then
+        CinematicCam:StopGamepadStickPoll()
     end
 end
 
@@ -938,6 +948,8 @@ function CinematicCam:OnTargetSceneHidden(sceneName)
         CinematicCam.isMenuActive = false
         CinematicCam.isInteractionModified = false
         SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
+    elseif sceneName == "gamepad_banking" then
+        CinematicCam:StopGamepadStickPoll()
     end
 end
 

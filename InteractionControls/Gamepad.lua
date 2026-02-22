@@ -1,4 +1,4 @@
-function CinematicCam:GamepadStickPoll()
+function CinematicCam:StartGamepadStickPoll()
     if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
         self:StopGamepadStickPoll()
         return

@@ -55,8 +55,16 @@ CinematicCam.localization = {
         HIDE_CHOICES                           = "Hide Choices until Dialogue finishes",
         HIDE_CHOICES_TOOLTIP                   = "Hides your response options until the NPC has finished speaking",
 
-        SHOW_INTERACTION_BUTTONS               = "Show Interaction Buttons",
-        SHOW_INTERACTION_BUTTONS_TOOLTIP       = "Display interaction buttons during dialogue",
+        SHOW_INTERACTION_BUTTONS               = "Show Additional Buttons",
+        SHOW_INTERACTION_BUTTONS_TOOLTIP       = "Display camera controls and emote buttons (if enabled) during dialogue",
+        HIDE_BOTTOM_PANEL                      = "Hide Bottom Panel",
+        HIDE_BOTTOM_PANEL_TOOLTIP              = "Hides the bottom panel when in dialogue",
+        ENABLE_EMOTES                          = "Enable Emotes",
+        ENABLE_EMOTES_TOOLTIP                  =
+        "Turning ON will trigger a load screen and create a separate menu called 'Cinematic Emotes'\n\nAdds on screen controls emotes. Move the camera with the Right Stick, Move your character with the Left Stick",
+        VANILLA_MERCHANTS_BANKERS              = "Vanilla Merchants & Bankers",
+        VANILLA_MERCHANTS_BANKERS_TOOLTIP      =
+        "Turning ON will always use the default camera when talking to merchants or any NPCs with menus.",
 
         -- APPEARANCE
         SUBTITLE_APPEARANCE                    = "Subtitle Appearance",
@@ -230,6 +238,14 @@ CinematicCam.localization = {
 
         SHOW_INTERACTION_BUTTONS               = "Mostrar Botones de Interacción",
         SHOW_INTERACTION_BUTTONS_TOOLTIP       = "Muestra botones de interacción durante el diálogo",
+        HIDE_BOTTOM_PANEL                      = "Ocultar Panel Inferior",
+        HIDE_BOTTOM_PANEL_TOOLTIP              = "Oculta el panel inferior cuando estás en diálogo",
+        ENABLE_EMOTES                          = "Activar Emotes",
+        ENABLE_EMOTES_TOOLTIP                  =
+        "Activar esto provocará una pantalla de carga y creará un menú separado llamado 'Emotes Cinemáticos'\n\nAñade controles de emotes en pantalla. Mueve la cámara con el Stick Derecho, Mueve tu personaje con el Stick Izquierdo",
+        VANILLA_MERCHANTS_BANKERS              = "Comerciantes y Banqueros Vanilla",
+        VANILLA_MERCHANTS_BANKERS_TOOLTIP      =
+        "Activar esto siempre usará la cámara predeterminada al hablar con comerciantes o NPCs con menús.",
 
         -- APPEARANCE
         SUBTITLE_APPEARANCE                    = "Apariencia de Subtítulos",
@@ -404,7 +420,14 @@ CinematicCam.localization = {
 
         SHOW_INTERACTION_BUTTONS               = "Afficher les Boutons d'Interaction",
         SHOW_INTERACTION_BUTTONS_TOOLTIP       = "Afficher les boutons d'interaction pendant le dialogue",
-
+        HIDE_BOTTOM_PANEL                      = "Masquer le Panneau Inférieur",
+        HIDE_BOTTOM_PANEL_TOOLTIP              = "Masque le panneau inférieur pendant le dialogue",
+        ENABLE_EMOTES                          = "Activer les Émotes",
+        ENABLE_EMOTES_TOOLTIP                  =
+        "L'activation déclenchera un écran de chargement et créera un menu séparé appelé 'Émotes Cinématiques'\n\nAjoute des contrôles d'émotes à l'écran. Déplacez la caméra avec le Stick Droit, Déplacez votre personnage avec le Stick Gauche",
+        VANILLA_MERCHANTS_BANKERS              = "Marchands et Banquiers Vanilla",
+        VANILLA_MERCHANTS_BANKERS_TOOLTIP      =
+        "L'activation utilisera toujours la caméra par défaut lors de la conversation avec les marchands ou les PNJ avec des menus.",
         -- APPEARANCE
         SUBTITLE_APPEARANCE                    = "Apparence des Sous-titres",
         FONT                                   = "Police",
@@ -577,6 +600,14 @@ CinematicCam.localization = {
 
         SHOW_INTERACTION_BUTTONS               = "Interaktionsschaltflächen anzeigen",
         SHOW_INTERACTION_BUTTONS_TOOLTIP       = "Interaktionsschaltflächen während des Dialogs anzeigen",
+        HIDE_BOTTOM_PANEL                      = "Unteren Bereich Ausblenden",
+        HIDE_BOTTOM_PANEL_TOOLTIP              = "Blendet das untere Panel während des Dialogs aus",
+        ENABLE_EMOTES                          = "Emotes Aktivieren",
+        ENABLE_EMOTES_TOOLTIP                  =
+        "Das Einschalten löst einen Ladebildschirm aus und erstellt ein separates Menü namens 'Filmische Emotes'\n\nFügt Emote-Steuerungen auf dem Bildschirm hinzu. Bewegen Sie die Kamera mit dem rechten Stick, Bewegen Sie Ihren Charakter mit dem linken Stick",
+        VANILLA_MERCHANTS_BANKERS              = "Vanilla Händler & Bankiers",
+        VANILLA_MERCHANTS_BANKERS_TOOLTIP      =
+        "Wenn aktiviert, wird immer die Standardkamera verwendet, wenn Sie mit Händlern oder NPCs mit Menüs sprechen.",
 
         -- APPEARANCE
         SUBTITLE_APPEARANCE                    = "Untertitel-Erscheinungsbild",
@@ -750,7 +781,13 @@ CinematicCam.localization = {
 
         SHOW_INTERACTION_BUTTONS               = "インタラクションボタンを表示",
         SHOW_INTERACTION_BUTTONS_TOOLTIP       = "対話中にインタラクションボタンを表示",
-
+        HIDE_BOTTOM_PANEL                      = "下部パネルを非表示",
+        HIDE_BOTTOM_PANEL_TOOLTIP              = "対話中に下部パネルを非表示にします",
+        ENABLE_EMOTES                          = "エモートを有効化",
+        ENABLE_EMOTES_TOOLTIP                  =
+        "オンにするとロード画面が表示され、「シネマティックエモート」という別のメニューが作成されます\n\n画面上のエモートコントロールを追加します。右スティックでカメラを動かし、左スティックでキャラクターを動かします",
+        VANILLA_MERCHANTS_BANKERS              = "バニラ商人と銀行員",
+        VANILLA_MERCHANTS_BANKERS_TOOLTIP      = "オンにすると、商人やメニューを持つNPCと話すときに常にデフォルトカメラを使用します。",
         -- APPEARANCE
         SUBTITLE_APPEARANCE                    = "字幕の外観",
         FONT                                   = "フォント",

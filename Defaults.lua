@@ -87,7 +87,7 @@ CinematicCam.defaults = {
         hideReticle = "always",
         hideActionBar = "always",
         usingModTweaks = true,
-        hideKeybindStrip = true,
+        hideKeybindStrip = false,
         keybindIsHidden = false,
 
         selectedFont = "ESO_Standard",

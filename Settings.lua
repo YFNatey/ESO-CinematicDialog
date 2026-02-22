@@ -64,24 +64,21 @@ function CinematicCam:CreateSettingsMenu()
                 if value == "cinematic" then
                     self.savedVars.npcNamePreset = "prepended"
                     self.savedVars.interaction.ui.hidePanelsESO = true
-                    if self.savedVars.interaction.ui.hidePanelsESO then
-                        CinematicCam:HideDialoguePanels()
-                    end
                     self.savedVars.interaction.subtitles.useChunkedDialogue = true
+                    self.savedVars.interface.hideKeybindStrip = true
                     self.presetPending = false
                 elseif value == "default" then
                     self.savedVars.npcNamePreset = "default"
                     self.savedVars.interaction.ui.hidePanelsESO = false
-                    CinematicCam:ShowDialoguePanels()
                     self.presetPending = true
                 end
+
+
 
                 -- Apply immediately if in dialogue
                 local interactionType = GetInteractionType()
                 if interactionType ~= INTERACTION_NONE then
-                    -- Apply NPC name preset first
                     self:ApplyNPCNamePreset(self.savedVars.npcNamePreset)
-
                     zo_callLater(function()
                         self:ApplyDialogueRepositioning()
                     end, 50)
@@ -91,16 +88,14 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Hide Keybind Strip",
-            tooltip = "Hides the keybind button prompt strip",
+            name = self:CC_L("HIDE_BOTTOM_PANEL"),
+            tooltip = self:CC_L("HIDE_BOTTOM_PANEL_TOOLTIP"),
             getFunc = function() return self.savedVars.interface.hideKeybindStrip end,
             setFunc = function(value)
                 self.savedVars.interface.hideKeybindStrip = value
-                -- TOOD Keep this for the settings menu revamp: playing a preview of dialogue
-                --CinematicCam:UpdateKeybindStripVisibility()
+
                 self.pendingUIRefresh = true
             end,
-            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
             width = "full",
         },
         {
@@ -173,9 +168,9 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Enable Emotes",
-            tooltip =
-            "*Turning ON will trigger a load screen and create a separate menu called 'Cinematic Emotes'\n\nAdds on screen controls emotes. Move the camera with the Right Stick, Move your character with the Left Stick",
+            name = self:CC_L("ENABLE_EMOTES"),
+            tooltip = self:CC_L("ENABLE_EMOTES_TOOLTIP"),
+
             getFunc = function()
                 return CinematicCam.savedVars.interaction.allowImmersionControls
             end,
@@ -190,8 +185,8 @@ function CinematicCam:CreateSettingsMenu()
         },
         {
             type = "checkbox",
-            name = "Vanilla Merchants & Bankers",
-            tooltip = "Turning ON will always use the default camera when talking to merchants or any NPCs with menus.",
+            name = self:CC_L("VANILLA_MERCHANTS_BANKERS"),
+            tooltip = self:CC_L("VANILLA_MERCHANTS_BANKERS_TOOLTIP"),
             getFunc = function()
                 return CinematicCam.savedVars.interaction.forceThirdPersonOccupationalNPC or false
             end,

@@ -5,7 +5,7 @@ CinematicCam.interactionTypes = {
     INTERACTION_QUEST,
     INTERACTION_VENDOR,
     INTERACTION_STORE,
-    INTERACTION_BANK,
+    --NTERACTION_BANK, -- Storage coffers
     INTERACTION_GUILDBANK,
     INTERACTION_TRADINGHOUSE,
     INTERACTION_STABLE,
@@ -89,7 +89,6 @@ function CinematicCam:InitializeUITweaks()
         CinematicCam:UpdateCompassVisibility()
         CinematicCam:UpdateActionBarVisibility()
         CinematicCam:UpdateReticleVisibility()
-        CinematicCam:UpdateKeybindStripVisibility()
     end
 end
 
@@ -308,7 +307,10 @@ function CinematicCam:UpdateActionBarVisibility()
     local inCombat = IsUnitInCombat("player")
     local weaponsSheathed = ArePlayerWeaponsSheathed()
     local showWhenWeaponsUnsheathed = self.savedVars.interface.hideActionBarWhenWeaponsSheathed
-
+    local inDialogue = CinematicCam.isInteractionModified
+    if inDialogue then
+        return
+    end
     -- Check for weapon-unsheathed override
     if showWhenWeaponsUnsheathed and not weaponsSheathed then
         self:ShowActionBar()
