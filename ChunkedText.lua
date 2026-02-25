@@ -477,14 +477,15 @@ function CinematicCam:UpdateChunkBackground(control, background)
         -- Apply color based on current mode EVERY TIME the background is shown
         local backgroundMode = self.savedVars.interface.cinematicBackgroundMode or "subtitles"
         if backgroundMode == "dark" then
-            background:SetTexture("/esoui/art/subtitles/subtitle_background_centerblur.dds")
-            background:SetAlpha(0.3)          -- Dark overlay
+            background:SetTexture("/esoui/art/miscellaneous/listitem_divider.dds")
+            background:SetColor(0, 0, 0, .6)
         elseif backgroundMode == "kingdom" then
             background:SetColor(1, 1, 1, 1.0) -- Normal appearance
             background:SetTexture("/esoui/art/tribute/tributecardnamebanner.dds")
         elseif backgroundMode == "redemption_banner" then
-            background:SetTexture("/esoui/art/subtitles/subtitle_background_centerblur.dds")
-            background:SetColor(0, 0, 0, .3)
+            background:SetTexture("/esoui/art/miscellaneous/listitem_divider.dds")
+
+            background:SetColor(0, 0, 0, .6)
         end
 
         -- Calculate dynamic dimensions
@@ -511,8 +512,8 @@ function CinematicCam:UpdateChunkBackground(control, background)
         elseif backgroundMode == "redemption_banner" then
             backgroundHeight = math.max(100, backgroundHeight) -- Minimum height for banner
             backgroundWidth = math.max(100, backgroundWidth)   -- Minimum width for banner to display properly
-            backgroundWidth = backgroundWidth + 70
-            backgroundHeight = backgroundHeight + 1
+            backgroundWidth = backgroundWidth + 400
+            backgroundHeight = backgroundHeight + 350
         end
 
         -- Position and show background
@@ -527,7 +528,7 @@ function CinematicCam:UpdateChunkBackground(control, background)
         if backgroundMode == "kingdom" then
             targetY = targetY + 38
         elseif backgroundMode == "redemption_banner" then
-            targetY = targetY + 5
+            targetY = targetY + 100
         end
 
         background:ClearAnchors()

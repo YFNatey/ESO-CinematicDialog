@@ -79,7 +79,7 @@ CinematicCam.localization = {
         TEXT_BACKGROUND_TOOLTIP                =
         "Backgrounds for easier viewing of subtitles. Light background is only available in Cinematic layout",
 
-        BG_DEFAULT                             = "Default",
+        BG_DEFAULT                             = "Dark",
         BG_LIGHT                               = "Light",
         BG_NONE                                = "None",
 

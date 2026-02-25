@@ -14,6 +14,11 @@ local fontBook = {
         path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|thick-outline",
         description = "Handwritten-style font"
     },
+    ["Handwritten_shadow"] = {
+        name = "Handwritten",
+        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|soft-shadow-thick",
+        description = "Handwritten-style font"
+    },
 }
 function CinematicCam:GetFontChoices()
     local choices = {}
@@ -72,8 +77,10 @@ function CinematicCam:BuildUserFontString()
         return "EsoUI/Common/Fonts/FTN57.slug|" .. finalSize .. "|soft-shadow-thick"
     elseif selectedFont == "ESO_Bold" then
         return "EsoUI/Common/Fonts/FTN87.slug|" .. finalSize .. "|soft-shadow-thick"
-    elseif selectedFont == "Handwritten" then
+    elseif selectedFont == "Handwritten" and self.savedVars.interface.cinematicBackgroundMode ~= 'none' then
         return "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|" .. finalSize .. ""
+    elseif selectedFont == "Handwritten" and self.savedVars.interface.cinematicBackgroundMode == 'none' then
+        return "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|" .. finalSize .. "|soft-shadow-thick"
     end
 end
 

@@ -37,7 +37,7 @@
             <Controls>
                 <!-- Subtitles Background -->
                 <Texture name="CinematicCam_ChunkedTextBackground" mouseEnabled="false"
-                textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                textureFile="/esoui/art/miscellaneous/listitem_divider.dds"
                          layer="DL_CONTROLS" tier="DT_HIGH" level="590">
                     <Anchor point="CENTER" relativeTo="GuiRoot" relativePoint="CENTER" />
                     <Dimensions x="820" y="120" />
@@ -156,7 +156,7 @@
             <Controls>
                 <!-- Top Blur -->
                 <Texture name="CinematicCam_SepiaFilterTexturedTop" mouseEnabled="false"
-                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                         textureFile="/esoui/art/miscellaneous/listitem_divider.dds"
                          layer="DL_OVERLAY" tier="DT_HIGH" level="1000"
                          color="000000">
                     <Anchor point="TOP" relativeTo="CinematicCam_SepiaFilterTexturedContainer" relativePoint="TOP" offsetX="0" offsetY="-200" />
@@ -166,7 +166,7 @@
                 
                 <!-- Bottom Blur -->
                 <Texture name="CinematicCam_SepiaFilterTexturedBottom" mouseEnabled="false"
-                         textureFile="/esoui/art/subtitles/subtitle_background_centerblur.dds"
+                         textureFile="/esoui/art/miscellaneous/listitem_divider.dds"
                          layer="DL_OVERLAY" tier="DT_HIGH" level="1000"
                          color="000000">
                     <Anchor point="BOTTOM" relativeTo="CinematicCam_SepiaFilterTexturedContainer" relativePoint="BOTTOM" offsetX="0" offsetY="200" />
