@@ -12,6 +12,7 @@ CinematicCam.interactionTypes = {
     INTERACTION_CRAFT,
     INTERACTION_DYE_STATION,
 }
+CinematicCam.manualUIHidden = false
 CinematicCam.uiElements = {
     -- Compass
     "ZO_CompassFrame",
@@ -115,6 +116,9 @@ function CinematicCam:HideUI()
     if not self.savedVars.interface.UiElementsVisible then
         return
     end
+
+    self.manualUIHidden = true -- Set flag
+
     for _, elementName in ipairs(CinematicCam.uiElements) do
         local element = _G[elementName]
         if element and not element:IsHidden() then
@@ -140,6 +144,9 @@ function CinematicCam:ShowUI()
     if self.savedVars.interface.UiElementsVisible then
         return
     end
+
+    self.manualUIHidden = false -- Clear flag
+
     for elementName, _ in pairs(CinematicCam.uiElementsMap) do
         local element = _G[elementName]
         if element then
@@ -156,6 +163,27 @@ function CinematicCam:ToggleUI()
         self:HideUI()
     else
         self:ShowUI()
+    end
+end
+
+function CinematicCam:MovieMode()
+    local uiVisible = self.savedVars.interface.UiElementsVisible
+    local barsVisible = self.savedVars.letterbox.letterboxVisible
+
+    -- If is visible, hide EVERYTHeverythingING (enter movie mode)
+    if uiVisible or not barsVisible then
+        -- Hide UI if it's showing
+        if uiVisible then
+            self:HideUI()
+        end
+        -- Show bars if they're not showing
+        if not barsVisible then
+            self:ShowLetterbox()
+        end
+    else
+        -- Both are already hidden/shown (in movie mode), so exit movie mode
+        self:ShowUI()
+        self:HideLetterbox()
     end
 end
 
@@ -262,157 +290,194 @@ function CinematicCam:HideReticle()
     end
 end
 
-function CinematicCam:HideInteractionReticle()
-    for _, elementName in ipairs(CinematicCam.InteractionReticle) do
-        local element = _G[elementName]
-        if element then
-            element:SetHidden(true)
-        end
-    end
-end
-
-function CinematicCam:UpdateCompassVisibility()
-    local setting = self.savedVars.interface.hideCompass
-    local interactionType = GetInteractionType()
-    local inCombat = IsUnitInCombat("player")
-    local weaponsSheathed = ArePlayerWeaponsSheathed()
-    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideCompassWhenWeaponsSheathed
-
-    -- Check for weapon-unsheathed override
-    if showWhenWeaponsUnsheathed and not weaponsSheathed then
-        self:ShowCompass()
-        return
-    end
-
-    if setting == "never" then
-        self:HideCompass()
-    elseif setting == "always" then
-        self:ShowCompass()
-    elseif setting == "combat" then
-        if inCombat then
-            self:ShowCompass()
-        else
-            self:HideCompass()
-        end
-    elseif setting == "weapons" then
-        self:PollWeapons()
-        return
-    end
-    self:StopPollingWeapons()
-end
-
--- Update action bar visibility
-function CinematicCam:UpdateActionBarVisibility()
-    local setting = self.savedVars.interface.hideActionBar
-    local inCombat = IsUnitInCombat("player")
-    local weaponsSheathed = ArePlayerWeaponsSheathed()
-    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideActionBarWhenWeaponsSheathed
-    local inDialogue = CinematicCam.isInteractionModified
-    if inDialogue then
-        return
-    end
-    -- Check for weapon-unsheathed override
-    if showWhenWeaponsUnsheathed and not weaponsSheathed then
-        self:ShowActionBar()
-        return
-    end
-
-    if setting == "never" then
-        self:HideActionBar()
-    elseif setting == "always" then
-        self:ShowActionBar()
-    elseif setting == "combat" then
-        if inCombat then
-            self:ShowActionBar()
-        else
-            self:HideActionBar()
-        end
-    elseif setting == "weapons" then
-        self:PollWeapons()
-        return
-    end
-    self:StopPollingWeapons()
-end
-
 function CinematicCam:UpdateUIVisibility()
     CinematicCam:UpdateActionBarVisibility()
     CinematicCam:UpdateCompassVisibility()
     CinematicCam:UpdateReticleVisibility()
 end
 
-function CinematicCam:PollWeapons()
-    local ReticleSetting = self.savedVars.interface.hideReticle
-    local CompassSetting = self.savedVars.interface.hideCompass
-    local ActionbarSetting = self.savedVars.interface.hideActionBar
+CinematicCam.weaponsPoll = {
+    timer = nil,
+    isActive = false,
+    subscribers = {}
+}
 
-    local weaponsSheathed = ArePlayerWeaponsSheathed()
 
-    if CinematicCam.lastWeaponsState == weaponsSheathed then
-        self.weaponsPollTimer = zo_callLater(function()
-            self:PollWeapons()
-        end, 1000)
+function CinematicCam:StartWeaponsPoll(subscriberName)
+    -- Add subscriber
+    self.weaponsPoll.subscribers[subscriberName] = true
+
+    -- If already polling, just return
+    if self.weaponsPoll.isActive then
         return
     end
 
-    CinematicCam.lastWeaponsState = weaponsSheathed
+    -- Start the poll
+    self.weaponsPoll.isActive = true
+    self:ExecuteWeaponsPoll()
+end
 
-    if not weaponsSheathed then
-        if ReticleSetting == "weapons" then
-            self:ShowReticle()
+function CinematicCam:StopWeaponsPoll(subscriberName)
+    -- Remove subscriber
+    if subscriberName then
+        self.weaponsPoll.subscribers[subscriberName] = nil
+    end
+
+    -- Check if anyone still needs polling
+    local hasSubscribers = false
+    for _ in pairs(self.weaponsPoll.subscribers) do
+        hasSubscribers = true
+        break
+    end
+
+    -- Only stop if no subscribers
+    if not hasSubscribers then
+        if self.weaponsPoll.timer then
+            zo_removeCallLater(self.weaponsPoll.timer)
+            self.weaponsPoll.timer = nil
         end
-        if CompassSetting == "weapons" then
-            self:ShowCompass()
-        end
-        if ActionbarSetting == "weapons" then
-            self:ShowActionBar()
-        end
-    else
-        if ReticleSetting == "weapons" then
-            self:HideReticle()
-        end
-        if CompassSetting == "weapons" then
-            self:HideCompass()
-        end
-        if ActionbarSetting == "weapons" then
-            self:HideActionBar()
+        self.weaponsPoll.isActive = false
+    end
+end
+
+function CinematicCam:ExecuteWeaponsPoll()
+    if not self.weaponsPoll.isActive then
+        return
+    end
+
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+
+    -- Only update if state changed
+    if CinematicCam.lastWeaponsState ~= weaponsSheathed then
+        CinematicCam.lastWeaponsState = weaponsSheathed
+
+        -- Update all UI elements based on their settings
+        local reticleSetting = self.savedVars.interface.hideReticle
+        local compassSetting = self.savedVars.interface.hideCompass
+        local actionbarSetting = self.savedVars.interface.hideActionBar
+
+        if not weaponsSheathed then
+            if reticleSetting == "weapons" then
+                self:ShowReticle()
+            end
+            if compassSetting == "weapons" then
+                self:ShowCompass()
+            end
+            if actionbarSetting == "weapons" then
+                self:ShowActionBar()
+            end
+        else
+            if reticleSetting == "weapons" then
+                self:HideReticle()
+            end
+            if compassSetting == "weapons" then
+                self:HideCompass()
+            end
+            if actionbarSetting == "weapons" then
+                self:HideActionBar()
+            end
         end
     end
 
-    self.weaponsPollTimer = zo_callLater(function()
-        self:PollWeapons()
+    -- Schedule next poll
+    self.weaponsPoll.timer = zo_callLater(function()
+        self:ExecuteWeaponsPoll()
     end, 1000)
 end
 
-function CinematicCam:StopPollingWeapons()
-    if self.weaponsPollTimer then
-        zo_removeCallLater(self.weaponsPollTimer)
-        self.weaponsPollTimer = nil
+function CinematicCam:UpdateCompassVisibility()
+    local setting = self.savedVars.interface.hideCompass
+    local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideCompassWhenWeaponsSheathed
+
+    if showWhenWeaponsUnsheathed and not weaponsSheathed then
+        self:ShowCompass()
+        self:StopWeaponsPoll("compass")
+        return
+    end
+
+    if setting == "never" then
+        self:HideCompass()
+        self:StopWeaponsPoll("compass")
+    elseif setting == "always" then
+        self:ShowCompass()
+        self:StopWeaponsPoll("compass")
+    elseif setting == "combat" then
+        if inCombat then
+            self:ShowCompass()
+        else
+            self:HideCompass()
+        end
+        self:StopWeaponsPoll("compass")
+    elseif setting == "weapons" then
+        self:StartWeaponsPoll("compass")
+    else
+        self:StopWeaponsPoll("compass")
     end
 end
 
--- Update reticle visibility
+function CinematicCam:UpdateActionBarVisibility()
+    local setting = self.savedVars.interface.hideActionBar
+    local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideActionBarWhenWeaponsSheathed
+    local inDialogue = CinematicCam.isInteractionModified
+
+    if inDialogue then
+        self:StopWeaponsPoll("actionbar")
+        return
+    end
+
+    if showWhenWeaponsUnsheathed and not weaponsSheathed then
+        self:ShowActionBar()
+        self:StopWeaponsPoll("actionbar")
+        return
+    end
+
+    if setting == "never" then
+        self:HideActionBar()
+        self:StopWeaponsPoll("actionbar")
+    elseif setting == "always" then
+        self:ShowActionBar()
+        self:StopWeaponsPoll("actionbar")
+    elseif setting == "combat" then
+        if inCombat then
+            self:ShowActionBar()
+        else
+            self:HideActionBar()
+        end
+        self:StopWeaponsPoll("actionbar")
+    elseif setting == "weapons" then
+        self:StartWeaponsPoll("actionbar")
+    else
+        self:StopWeaponsPoll("actionbar")
+    end
+end
+
 function CinematicCam:UpdateReticleVisibility()
     local setting = self.savedVars.interface.hideReticle
     local inCombat = IsUnitInCombat("player")
     local weaponsSheathed = ArePlayerWeaponsSheathed()
 
-
-
     if setting == "never" then
         self:HideReticle()
+        self:StopWeaponsPoll("reticle")
     elseif setting == "always" then
         self:ShowReticle()
+        self:StopWeaponsPoll("reticle")
     elseif setting == "combat" then
         if inCombat then
             self:ShowReticle()
         else
             self:HideReticle()
         end
+        self:StopWeaponsPoll("reticle")
     elseif setting == "weapons" then
-        self:PollWeapons()
-        return
+        self:StartWeaponsPoll("reticle")
+    else
+        self:StopWeaponsPoll("reticle")
     end
-    self:StopPollingWeapons()
 end
 
 ---=============================================================================
@@ -659,4 +724,94 @@ function CinematicCam:FadeOutElement(element, duration)
     end)
 
     timeline:PlayFromStart()
+end
+
+---=============================================================================
+-- LibRadialMenu
+--=============================================================================
+function CinematicCam:InitializeLibRadialMenu()
+    -- Check if LibRadialMenu is loaded
+    if not LibRadialMenu then
+        return
+    end
+
+    -- Register our addon
+    LibRadialMenu:RegisterAddon("CinematicCam", "Cinematic Dialogue")
+
+    -- Register Toggle UI command
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",                               -- addonId
+        "Clean UI",                                   -- entryName
+        "cinematiccam_toggle_ui",                     -- entryId
+        "/esoui/art/chatwindow/chat_addtab_down.dds", -- entryIcon
+        function()                                    -- entryCallback
+            CinematicCam:ToggleUI()
+        end,
+        "Toggle visibility of UI elements" -- entryDescription
+    )
+
+    -- Register Toggle Letterbox command
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",
+        "Toggle Black Bars",
+        "cinematiccam_toggle_letterbox",
+        "/esoui/art/lorelibrary/lorelibrary_dwemerbook.dds",
+        function()
+            CinematicCam:ToggleLetterbox()
+        end,
+        "Toggle cinematic letterbox bars"
+    )
+
+    -- Register Movie Mode command
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",
+        "Movie Mode",
+        "cinematiccam_movie_mode",
+
+        "/esoui/art/loadingscreens/loadscreen_sunhold_01.dds",
+        function()
+            CinematicCam:MovieMode()
+        end,
+        "Toggle UI and letterbox together"
+    )
+
+    -- Register Preset 1 (Home)
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",
+        "Preset: Home",
+        "cinematiccam_preset_1",
+        "/esoui/art/guild/tabicon_home_up.dds",
+        function()
+            CinematicCam:LoadFromPresetSlot(1)
+            CinematicCam:ShowPresetNotificationUI("Home")
+        end,
+        "Load Home preset settings"
+    )
+
+    -- Register Preset 2 (Overland)
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",
+        "Preset: Overland",
+        "cinematiccam_preset_2",
+
+        "/esoui/art/compass/quest_icon.dds",
+        function()
+            CinematicCam:LoadFromPresetSlot(2)
+            CinematicCam:ShowPresetNotificationUI("Overland")
+        end,
+        "Load Overland preset settings"
+    )
+
+    -- Register Preset 3 (Dungeon/Trials)
+    LibRadialMenu:RegisterEntry(
+        "CinematicCam",
+        "Preset: Dungeon/Trials",
+        "cinematiccam_preset_3",
+        "/esoui/art/icons/achievement_update11_dungeons_019.dds",
+        function()
+            CinematicCam:LoadFromPresetSlot(3)
+            CinematicCam:ShowPresetNotificationUI("Dungeon/Trials")
+        end,
+        "Load Dungeon/Trials preset settings"
+    )
 end

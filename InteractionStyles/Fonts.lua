@@ -11,14 +11,10 @@ local fontBook = {
     },
     ["Handwritten"] = {
         name = "Handwritten",
-        path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|thick-outline",
-        description = "Handwritten-style font"
-    },
-    ["Handwritten_shadow"] = {
-        name = "Handwritten",
         path = "EsoUI/Common/Fonts/ProseAntiquePSMT.slug|30|soft-shadow-thick",
         description = "Handwritten-style font"
     },
+
 }
 function CinematicCam:GetFontChoices()
     local choices = {}

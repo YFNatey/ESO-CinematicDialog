@@ -124,7 +124,7 @@
     <!-- Update Text -->
     <Label name="CinematicCam_UpdateNotificationText" mouseEnabled="false"
            font="EsoUI/Common/Fonts/FTN57.slug|32|soft-shadow-thick" color="FFFFFF" 
-           text="Cinematic Dialog Updated. Check settings to see whats new!"
+           text="Cinematic Dialogue Updated. Tip: Download LibRadialMenu to add commands to quickslot menu"
            layer="DL_OVERLAY" tier="DT_HIGH" level="10" wrapMode="TEXT_WRAP_MODE_ELLIPSIS"
            verticalAlignment="CENTER" horizontalAlignment="LEFT">
         <Anchor point="LEFT" relativeTo="CinematicCam_UpdateNotificationIcon" 

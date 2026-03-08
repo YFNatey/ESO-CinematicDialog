@@ -8,7 +8,7 @@
 ## APIVersion: 101048
 ## SavedVariables: CinematicCam2SavedVars
 ## ConsoleDependsOn: LibAddonMenu-2.0
-
+## OptionalDependsOn: LibRadialMenu
 ## Main
 
 CinematicCam.lua

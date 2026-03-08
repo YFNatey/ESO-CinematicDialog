@@ -769,6 +769,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
+
         {
             type = "description",
             text = self:CC_L("SLASH_COMMANDS"),

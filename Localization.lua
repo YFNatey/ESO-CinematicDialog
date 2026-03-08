@@ -165,7 +165,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Keep game camera when using crafting stations",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Photo Mode\n/ccbars - Black Bars\n/moviemode - Photo Mode + Black bars",
+        SLASH_COMMANDS                         = "/ccui - Photo Mode\n/ccbars - Black Bars\n/movie - Photo Mode + Black bars",
         UPDATE_NOTES                           = "Update Notes",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Added Features\n - Added NPC Cam and Player Cam controls\n - Added a new Settings menu: Cinematic Emotes\n - Added Auto Emotes",
@@ -178,6 +178,8 @@ CinematicCam.localization = {
         SUPPORT_TEXT                           = "If you find this addon useful, consider supporting its development!",
         PAYPAL                                 = "Paypal",
         PAYPAL_TOOLTIP                         = "paypal.me/yfnatey",
+        UPDATE_NOTIFICATION_RADIAL_TIP         =
+        "Cinematic Dialogue Updated.\nTip: Download LibRadialMenu to add commands to quickslot wheel",
     },
 
     es = {
@@ -346,7 +348,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Mantiene la cámara del juego al usar estaciones de fabricación",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Modo Foto\n/ccbars - Barras Negras\n/moviemode - Modo Foto + Barras Negras",
+        SLASH_COMMANDS                         = "/ccui - Modo Foto\n/ccbars - Barras Negras\n/movie - Modo Foto + Barras Negras",
         UPDATE_NOTES_TOOLTIP                   =
         "Versión 6o - Características Añadidas\n - Controles de Cámara de NPC y Jugador añadidos\n - Nuevo menú de ajustes: Emotes Cinemáticos\n - Emotes Automáticos añadidos",
 
@@ -358,6 +360,8 @@ CinematicCam.localization = {
         SUPPORT_TEXT                           = "¡Si encuentras este addon útil, considera apoyar su desarrollo!",
         PAYPAL                                 = "Paypal",
         PAYPAL_TOOLTIP                         = "paypal.me/yfnatey",
+        UPDATE_NOTIFICATION_RADIAL_TIP         =
+        "Diálogo Cinemático Actualizado.\nConsejo: Descarga LibRadialMenu para añadir comandos a la rueda de acceso rápido",
     },
 
     fr = {
@@ -526,7 +530,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Conserver la caméra du jeu lors de l'utilisation des stations d'artisanat",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Mode Photo\n/ccbars - Barres Noires\n/moviemode - Mode Photo + Barres Noires",
+        SLASH_COMMANDS                         = "/ccui - Mode Photo\n/ccbars - Barres Noires\n/movie - Mode Photo + Barres Noires",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Fonctionnalités Ajoutées\n - Contrôles de caméra PNJ et joueur ajoutés\n - Nouveau menu de paramètres: Émotes Cinématiques\n - Émotes automatiques ajoutées",
 
@@ -538,6 +542,8 @@ CinematicCam.localization = {
         SUPPORT_TEXT                           = "Si vous trouvez cet addon utile, envisagez de soutenir son développement!",
         PAYPAL                                 = "Paypal",
         PAYPAL_TOOLTIP                         = "paypal.me/yfnatey",
+        UPDATE_NOTIFICATION_RADIAL_TIP         =
+        "Dialogue Cinématique Mis à Jour.\nAstuce: Téléchargez LibRadialMenu pour ajouter des commandes à la roue de raccourcis",
     },
 
     de = {
@@ -706,7 +712,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "Spielkamera bei Verwendung von Handwerksstationen beibehalten",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - Fotomodus\n/ccbars - Schwarze Balken\n/moviemode - Fotomodus + Schwarze Balken",
+        SLASH_COMMANDS                         = "/ccui - Fotomodus\n/ccbars - Schwarze Balken\n/movie - Fotomodus + Schwarze Balken",
         UPDATE_NOTES_TOOLTIP                   =
         "Version 6o - Hinzugefügte Funktionen\n - NPC-Kamera- und Spieler-Kamera-Steuerungen hinzugefügt\n - Neues Einstellungsmenü: Filmische Emotes\n - Automatische Emotes hinzugefügt",
 
@@ -718,6 +724,8 @@ CinematicCam.localization = {
         SUPPORT_TEXT                           = "Wenn du dieses Addon nützlich findest, ziehe in Betracht, seine Entwicklung zu unterstützen!",
         PAYPAL                                 = "Paypal",
         PAYPAL_TOOLTIP                         = "paypal.me/yfnatey",
+        UPDATE_NOTIFICATION_RADIAL_TIP         =
+        "Filmischer Dialog Aktualisiert.\nTipp: Lade LibRadialMenu herunter, um Befehle zum Schnellzugriffsrad hinzuzufügen",
     },
 
     jp = {
@@ -879,7 +887,7 @@ CinematicCam.localization = {
         CRAFTING_STATIONS_TOOLTIP              = "製作ステーション使用時にゲームカメラを維持",
 
         -- MISC
-        SLASH_COMMANDS                         = "/ccui - フォトモード\n/ccbars - ブラックバー\n/moviemode - フォトモード + ブラックバー",
+        SLASH_COMMANDS                         = "/ccui - フォトモード\n/ccbars - ブラックバー\n/movie - フォトモード + ブラックバー",
         UPDATE_NOTES_TOOLTIP                   = "バージョン6o - 追加機能\n - NPCカメラとプレイヤーカメラのコントロールを追加\n - 新しい設定メニュー：シネマティックエモート\n - 自動エモートを追加",
 
         -- SUPPORT
@@ -890,6 +898,7 @@ CinematicCam.localization = {
         SUPPORT_TEXT                           = "このアドオンが役に立つ場合は、開発をサポートすることを検討してください！",
         PAYPAL                                 = "Paypal",
         PAYPAL_TOOLTIP                         = "paypal.me/yfnatey",
+        UPDATE_NOTIFICATION_RADIAL_TIP         = "シネマティック対話が更新されました。\nヒント：LibRadialMenuをダウンロードしてクイックスロットホイールにコマンドを追加",
     }
 }
 
