@@ -723,7 +723,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
+        --[[{
             type = "checkbox",
             name = self:CC_L("VIGNETTE"),
             tooltip = self:CC_L("VIGNETTE_TOOLTIP"),
@@ -735,40 +735,7 @@ function CinematicCam:CreateSettingsMenu()
             end,
             width = "full",
         },
-        {
-
-            type = "dropdown",
-            name = self:CC_L("QUICK_PRESETS"),
-            tooltip = self:CC_L("QUICK_PRESETS_TOOLTIP"),
-            choices = {
-                self:CC_L("PRESET_NONE"),
-                self:CC_L("PRESET_PULP"),
-                self:CC_L("PRESET_REDEMPTION"),
-                self:CC_L("PRESET_KINGDOM"),
-                self:CC_L("PRESET_VANILLA")
-            },
-            choicesValues = { "none", "tarantinoril", "redemption", "kingdom", "vanilla" },
-            getFunc = function() return self.savedVars.interface.currentPreset end,
-            setFunc = function(value)
-                if value == "tarantinoril" then
-                    self:ShowLetterbox()
-                    self:ApplyTarantinoriPreset()
-                elseif value == "redemption" then
-                    if self.savedVars.letterbox.letterboxVisible then
-                        self:HideLetterbox()
-                    end
-                    self:ApplyRedemptionPreset()
-                elseif value == "kingdom" then
-                    if self.savedVars.letterbox.letterboxVisible then
-                        self:HideLetterbox()
-                    end
-                    self:ApplyKingdomPreset()
-                elseif value == "vanilla" then
-                    self:ApplyVanillaPreset()
-                end
-            end,
-            width = "full",
-        },
+--]]
 
         {
             type = "description",
@@ -1149,55 +1116,6 @@ function CinematicCam:SetActiveBackgroundControl()
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundKingdom
     else
         CinematicCam.chunkedDialogueData.backgroundControl = backgroundNormal
-    end
-end
-
-function CinematicCam:InitializeFilters()
-    -- Initialize saved variable for sepia filter
-    if self.savedVars.interface.sepiaFilter == nil then
-        self.savedVars.interface.sepiaFilter = {
-            enabled = false,
-            intensity = 0.35,  -- Alpha value
-            useTextured = true -- Use the textured version or solid color version
-        }
-    end
-
-    -- Apply the initial state
-    self:UpdateFilter()
-end
-
-function CinematicCam:ToggleFilter()
-    self.savedVars.interface.sepiaFilter.enabled = not self.savedVars.interface.sepiaFilter.enabled
-    self:UpdateFilter()
-end
-
-function CinematicCam:ShowFilter()
-    local settings = self.savedVars.interface.sepiaFilter
-
-    if settings.useTextured then
-        -- Use the vignette effect (textured blur on top and bottom)
-        CinematicCam_SepiaFilterTexturedContainer:SetHidden(false)
-        CinematicCam_SepiaFilterTexturedTop:SetAlpha(settings.intensity)
-        CinematicCam_SepiaFilterTexturedBottom:SetAlpha(settings.intensity)
-        CinematicCam_SepiaFilterContainer:SetHidden(true)
-    else
-        -- Use the solid color sepia version
-        CinematicCam_SepiaFilterContainer:SetHidden(false)
-        CinematicCam_SepiaFilter:SetAlpha(settings.intensity)
-        CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
-    end
-end
-
-function CinematicCam:HideFilter()
-    CinematicCam_SepiaFilterContainer:SetHidden(true)
-    CinematicCam_SepiaFilterTexturedContainer:SetHidden(true)
-end
-
-function CinematicCam:UpdateFilter()
-    if self.savedVars.interface.sepiaFilter.enabled then
-        self:ShowFilter()
-    else
-        self:HideFilter()
     end
 end
 

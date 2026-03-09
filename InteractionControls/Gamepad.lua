@@ -1,12 +1,14 @@
+--- Track gamepad sticks and trigger inputs during interactions for emote and camera controls.
+
 function CinematicCam:StartGamepadStickPoll()
     if not self.gamepadStickPoll or not self.gamepadStickPoll.isActive then
         self:StopGamepadStickPoll()
         return
     end
 
+    -- Check if interaction type is valid
     local interactionType = GetInteractionType()
     if interactionType == INTERACTION_NONE then
-        -- Interaction ended but event hasn't fired yet
         self:StopGamepadStickPoll()
         if self.isInteractionModified then
             self:OnInteractionEnd()
@@ -15,10 +17,11 @@ function CinematicCam:StartGamepadStickPoll()
     end
 
     -- Only run polling during actual interactions
-    if not CinematicCam.isInteractionModified then
+    if not self.isInteractionModified then
         return
     end
 
+    -- Gamepad inputs to track
     local leftTrigger = GetGamepadLeftTriggerMagnitude()
     local rightTrigger = GetGamepadRightTriggerMagnitude()
     local rightX = ZO_Gamepad_GetRightStickEasedX()
@@ -31,13 +34,11 @@ function CinematicCam:StartGamepadStickPoll()
     local currentTime = GetGameTimeMilliseconds()
 
 
-    --  disable camera UI mode (free camera)
-    if rightMagnitude > 0 and rightTrigger == 0 then
+    -- disable camera UI mode (free camera)
+    if (rightMagnitude > 0 or leftMagnitude > 0) and rightTrigger == 0 then
         SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
     end
-    if leftMagnitude > 0 and rightTrigger == 0 then
-        SetGameCameraUIMode(CinematicCam.CAMERA_MODE.FREE)
-    end
+
     -- Left trigger to activate emote pad
     if leftTrigger > 0.3 and CinematicCam.savedVars.interaction.allowImmersionControls then
         SetGameCameraUIMode(CinematicCam.CAMERA_MODE.STATIC)
@@ -106,6 +107,7 @@ function CinematicCam:StartGamepadStickPoll()
         else
             self:ResetEmoteHighlights()
         end
+
         -- Right trigger to activate camera pad
     elseif rightTrigger > 0.3 and CinematicCam.savedVars.interaction.allowCameraMovementDuringDialogue then
         -- Show camera pad if not visible
@@ -183,7 +185,6 @@ end
 function CinematicCam:StopGamepadStickPoll()
     if not self.gamepadStickPoll then return end
     self.gamepadStickPoll.isActive = false
-
 
     self:HideEmoteWheel()
     self:HideEmotePad()

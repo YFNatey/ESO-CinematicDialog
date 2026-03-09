@@ -193,7 +193,7 @@
 
 
 
-        <!-- Settings Menu Tooltip (simplified) -->
+        <!-- Settings Menu Tooltip  -->
 <Control name="CinematicCam_Settings_EmoteTooltip" mouseEnabled="false" hidden="true">
     <Dimensions x="200" y="50" />
     

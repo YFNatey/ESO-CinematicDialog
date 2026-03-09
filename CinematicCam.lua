@@ -325,12 +325,9 @@ local function Initialize()
     CinematicCam:InitializeEmoteWheel()
     CinematicCam:RegisterFontEvents()
     CinematicCam:InitializeCameraWheel()
-    CinematicCam:InitializeFilters()
     CinematicCam:InitializeLibRadialMenu()
     zo_callLater(function()
         CinematicCam:InitializeLetterbox()
-
-
         CinematicCam:MigrateSettings()
         CinematicCam:InitializeInteractionSettings()
         CinematicCam:RegisterUIRefreshEvent()
