@@ -659,6 +659,25 @@ function CinematicCam:CreateSettingsMenu()
             disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
         },
         {
+            type = "dropdown",
+            name = self:CC_L("SHOW_HEALTH_BARS"),
+            tooltip = self:CC_L("SHOW_HEALTH_BARS_TOOLTIP"),
+            choices = {
+                self:CC_L("ALWAYS"),
+                self:CC_L("NEVER"),
+                self:CC_L("COMBAT_ONLY"),
+                self:CC_L("WEAPONS_DRAWN")
+            },
+            choicesValues = { "always", "never", "combat", "weapons" },
+            getFunc = function() return self.savedVars.interface.hideHealthBars end,
+            setFunc = function(value)
+                self.savedVars.interface.hideHealthBars = value
+                CinematicCam:UpdateHealthBarsVisibility()
+                self.pendingUIRefresh = true
+            end,
+            disabled = function() return not CinematicCam.savedVars.interface.usingModTweaks end,
+        },
+        {
 
             type = "header",
             name = self:CC_L("BLACK_BARS"),

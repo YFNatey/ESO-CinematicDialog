@@ -123,7 +123,9 @@ CinematicCam.localization = {
         SHOW_RETICLE                           = "Show Reticle",
         SHOW_RETICLE_TOOLTIP                   =
         "Choose when to hide the center reticle and resource bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
-
+        SHOW_HEALTH_BARS                       = "Show Health Bars",
+        SHOW_HEALTH_BARS_TOOLTIP               =
+        "Choose when to hide player/enemy health bars\nAlways: Always Show\nNever: Never show\nCombat Only: Show only in combat\nWeapons Drawn: Show only when weapons are drawn",
         ALWAYS                                 = "Always",
         NEVER                                  = "Never",
         COMBAT_ONLY                            = "Combat Only",
@@ -306,7 +308,9 @@ CinematicCam.localization = {
         SHOW_RETICLE                           = "Mostrar Retícula",
         SHOW_RETICLE_TOOLTIP                   =
         "Elige cuándo ocultar la retícula central y barras de recursos\nSiempre: Mostrar siempre\nNunca: No mostrar nunca\nSolo en Combate: Mostrar solo en combate\nArmas Desenfundadas: Mostrar solo con armas desenfundadas",
-
+        HOW_HEALTH_BARS                        = "Mostrar Barras de Salud",
+        SHOW_HEALTH_BARS_TOOLTIP               =
+        "Elige cuándo ocultar las barras de salud del jugador/enemigo\nSiempre: Mostrar siempre\nNunca: No mostrar nunca\nSolo en Combate: Mostrar solo en combate\nArmas Desenfundadas: Mostrar solo con armas desenfundadas",
         ALWAYS                                 = "Siempre",
         NEVER                                  = "Nunca",
         COMBAT_ONLY                            = "Solo en Combate",
@@ -488,7 +492,9 @@ CinematicCam.localization = {
         SHOW_RETICLE                           = "Afficher le Réticule",
         SHOW_RETICLE_TOOLTIP                   =
         "Choisir quand masquer le réticule central et les barres de ressources\nToujours: Toujours afficher\nJamais: Ne jamais afficher\nCombat Uniquement: Afficher seulement en combat\nArmes Dégainées: Afficher seulement avec armes dégainées",
-
+        SHOW_HEALTH_BARS                       = "Afficher Barres de Vie",
+        SHOW_HEALTH_BARS_TOOLTIP               =
+        "Choisir quand masquer les barres de vie du joueur/ennemi\nToujours: Toujours afficher\nJamais: Ne jamais afficher\nCombat Uniquement: Afficher seulement en combat\nArmes Dégainées: Afficher seulement avec armes dégainées",
         ALWAYS                                 = "Toujours",
         NEVER                                  = "Jamais",
         COMBAT_ONLY                            = "Combat Uniquement",
@@ -670,7 +676,9 @@ CinematicCam.localization = {
         SHOW_RETICLE                           = "Fadenkreuz anzeigen",
         SHOW_RETICLE_TOOLTIP                   =
         "Wähle, wann das zentrale Fadenkreuz und die Ressourcenleisten ausgeblendet werden sollen\nImmer: Immer anzeigen\nNie: Nie anzeigen\nNur im Kampf: Nur im Kampf anzeigen\nWaffen gezogen: Nur mit gezogenen Waffen anzeigen",
-
+        SHOW_HEALTH_BARS                       = "Lebensbalken anzeigen",
+        SHOW_HEALTH_BARS_TOOLTIP               =
+        "Wähle, wann die Lebensbalken des Spielers/Gegners ausgeblendet werden sollen\nImmer: Immer anzeigen\nNie: Nie anzeigen\nNur im Kampf: Nur im Kampf anzeigen\nWaffen gezogen: Nur mit gezogenen Waffen anzeigen",
         ALWAYS                                 = "Immer",
         NEVER                                  = "Nie",
         COMBAT_ONLY                            = "Nur im Kampf",
@@ -845,7 +853,8 @@ CinematicCam.localization = {
 
         SHOW_RETICLE                           = "レティクルを表示",
         SHOW_RETICLE_TOOLTIP                   = "中央のレティクルとリソースバーを非表示にするタイミングを選択\n常に：常に表示\nしない：表示しない\n戦闘のみ：戦闘中のみ表示\n武器抜刀時：武器抜刀時のみ表示",
-
+        SHOW_HEALTH_BARS                       = "ヘルスバーを表示",
+        SHOW_HEALTH_BARS_TOOLTIP               = "プレイヤー/敵のヘルスバーを非表示にするタイミングを選択\n常に：常に表示\nしない：表示しない\n戦闘のみ：戦闘中のみ表示\n武器抜刀時：武器抜刀時のみ表示",
         ALWAYS                                 = "常に",
         NEVER                                  = "しない",
         COMBAT_ONLY                            = "戦闘のみ",

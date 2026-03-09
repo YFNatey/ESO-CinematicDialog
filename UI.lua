@@ -38,9 +38,9 @@ CinematicCam.uiElements = {
 
     -- Reticle
     "ZO_ReticleContainerReticle",
-    "ZO_ReticleContainer",
     "ZO_ReticleContainerStealthIcon",
-    "ZO_ReticleContainerNoneInteract",
+    --"ZO_ReticleContainerNoneInteract", --prevents player from interacting with objects when hidden
+    -- "ZO_ReticleContainer",
 
     -- Quest-related UI
     "ZO_QuestJournal",
@@ -60,7 +60,6 @@ CinematicCam.uiElements = {
     "ZO_TutorialOverlay",
 
 }
-
 
 function CinematicCam:InitializeUI()
     if not CinematicCam.savedVars.interface.UiElementsVisible then
@@ -90,6 +89,7 @@ function CinematicCam:InitializeUITweaks()
         CinematicCam:UpdateCompassVisibility()
         CinematicCam:UpdateActionBarVisibility()
         CinematicCam:UpdateReticleVisibility()
+        CinematicCam:UpdateHealthBarsVisibility()
     end
 end
 
@@ -170,7 +170,7 @@ function CinematicCam:MovieMode()
     local uiVisible = self.savedVars.interface.UiElementsVisible
     local barsVisible = self.savedVars.letterbox.letterboxVisible
 
-    -- If is visible, hide EVERYTHeverythingING (enter movie mode)
+    -- If is visible, hide everything (enter movie mode)
     if uiVisible or not barsVisible then
         -- Hide UI if it's showing
         if uiVisible then
@@ -202,13 +202,16 @@ CinematicCam.actionbar = {
     "ZO_PlayerAttributeStamina",
     "ZO_ActionBar1",
     "ZO_ActionBar2",
-    "ZO_TargetUnitFrame",
-    "ZO_UnitFrames",
-    "ZO_MinimapContainer",
+
     "ZO_PowerBlock",
     "ZO_BuffTracker",
 }
 
+CinematicCam.healthbars = {
+    "ZO_TargetUnitFrame",
+    "ZO_UnitFrames",
+    "ZO_MinimapContainer",
+}
 CinematicCam.reticle = {
     "ZO_ReticleContainerReticle",
     "ZO_ReticleContainerStealthIcon",
@@ -290,10 +293,29 @@ function CinematicCam:HideReticle()
     end
 end
 
+function CinematicCam:ShowHealthBars()
+    for _, elementName in ipairs(CinematicCam.healthbars) do
+        local element = _G[elementName]
+        if element then
+            self:FadeInElement(element, 200)
+        end
+    end
+end
+
+function CinematicCam:HideHealthBars()
+    for _, elementName in ipairs(CinematicCam.healthbars) do
+        local element = _G[elementName]
+        if element then
+            self:FadeOutElement(element, 200)
+        end
+    end
+end
+
 function CinematicCam:UpdateUIVisibility()
     CinematicCam:UpdateActionBarVisibility()
     CinematicCam:UpdateCompassVisibility()
     CinematicCam:UpdateReticleVisibility()
+    CinematicCam:UpdateHealthBarsVisibility()
 end
 
 CinematicCam.weaponsPoll = {
@@ -355,6 +377,7 @@ function CinematicCam:ExecuteWeaponsPoll()
         local reticleSetting = self.savedVars.interface.hideReticle
         local compassSetting = self.savedVars.interface.hideCompass
         local actionbarSetting = self.savedVars.interface.hideActionBar
+        local healthbarsSetting = self.savedVars.interface.hideHealthBars
 
         if not weaponsSheathed then
             if reticleSetting == "weapons" then
@@ -366,6 +389,9 @@ function CinematicCam:ExecuteWeaponsPoll()
             if actionbarSetting == "weapons" then
                 self:ShowActionBar()
             end
+            if healthbarsSetting == "weapons" then
+                self:ShowHealthBars()
+            end
         else
             if reticleSetting == "weapons" then
                 self:HideReticle()
@@ -375,6 +401,9 @@ function CinematicCam:ExecuteWeaponsPoll()
             end
             if actionbarSetting == "weapons" then
                 self:HideActionBar()
+            end
+            if healthbarsSetting == "weapons" then
+                self:HideHealthBars()
             end
         end
     end
@@ -477,6 +506,38 @@ function CinematicCam:UpdateReticleVisibility()
         self:StartWeaponsPoll("reticle")
     else
         self:StopWeaponsPoll("reticle")
+    end
+end
+
+function CinematicCam:UpdateHealthBarsVisibility()
+    local setting = self.savedVars.interface.hideHealthBars
+    local inCombat = IsUnitInCombat("player")
+    local weaponsSheathed = ArePlayerWeaponsSheathed()
+    local showWhenWeaponsUnsheathed = self.savedVars.interface.hideHealthBarsWhenWeaponsSheathed
+
+    if showWhenWeaponsUnsheathed and not weaponsSheathed then
+        self:ShowHealthBars()
+        self:StopWeaponsPoll("healthbars")
+        return
+    end
+
+    if setting == "never" then
+        self:HideHealthBars()
+        self:StopWeaponsPoll("healthbars")
+    elseif setting == "always" then
+        self:ShowHealthBars()
+        self:StopWeaponsPoll("healthbars")
+    elseif setting == "combat" then
+        if inCombat then
+            self:ShowHealthBars()
+        else
+            self:HideHealthBars()
+        end
+        self:StopWeaponsPoll("healthbars")
+    elseif setting == "weapons" then
+        self:StartWeaponsPoll("healthbars")
+    else
+        self:StopWeaponsPoll("healthbars")
     end
 end
 
